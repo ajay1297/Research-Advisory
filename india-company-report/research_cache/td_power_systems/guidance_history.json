@@ -1,0 +1,29 @@
+{
+  "guidances": [
+    {
+      "given_in": "Q4 FY25",
+      "for_period": "FY26",
+      "metric": "revenue",
+      "value_cr": 1599.0,
+      "note": "guided FY26 revenue growth of 25%+ over FY25 base of INR1,279cr"
+    },
+    {
+      "given_in": "Q4 FY26",
+      "for_period": "FY27",
+      "metric": "revenue",
+      "value_cr": 2400.0,
+      "note": "revised FY27 guidance to INR2,400cr+, high probability of further upward revision"
+    }
+  ],
+  "actuals": [
+    {
+      "period": "FY26",
+      "metric": "revenue",
+      "value_cr": 1856.0,
+      "guided_value_cr": 1599.0,
+      "guided_in": "Q4 FY25",
+      "delta_pct": 16.1,
+      "verdict": "beat"
+    }
+  ]
+}

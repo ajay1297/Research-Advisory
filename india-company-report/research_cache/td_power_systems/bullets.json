@@ -1,0 +1,63 @@
+{
+  "company": "TD Power Systems",
+  "near_term": [
+    {
+      "headline": "Q1 FY27 Execution Rebound",
+      "claim": "A one-off shipping delay on a Turkey contract compressed Q4 FY26 gross margins by about 3 percentage points; management expects Q1 FY27 execution to improve on Q4.",
+      "quote": "we are heavily focused on Q1 execution, where based on the progress so far, we see that we will do better than Q4 of last financial year.",
+      "source": "Q4 FY26 concall, May 15 2026"
+    },
+    {
+      "headline": "Record Order Book and Inflow",
+      "claim": "Manufacturing order book stands at INR1,973 crore (INR1,677 crore generators, INR247 crore railway), with Q4 FY26 order inflow up 61% QoQ to INR666 crore.",
+      "quote": "we see a very strong order inflow situation continuing, and the focus right now is on execution.",
+      "source": "Q4 FY26 concall, May 15 2026"
+    },
+    {
+      "headline": "Hydro Order Wins This Quarter and Next",
+      "claim": "Management expects FY27 to be one of TDPS's strongest years in Hydro, with high-value order wins in the current and next quarter.",
+      "quote": "This segment will result in some high-value order wins for TDPS in this quarter and next.",
+      "source": "Q4 FY26 concall, May 15 2026"
+    }
+  ],
+  "medium_term": [
+    {
+      "headline": "FY27 Guidance Raised to INR2,400cr+",
+      "claim": "Consolidated FY27 revenue guidance was raised to INR2,400-plus crore, with management flagging a high probability of a further upward revision as the year progresses.",
+      "quote": "We've revised our guidance for FY '27 at INR2,400-plus crores with an extremely high probability to increase our guidance further to match the rate of order inflow that we saw in Q4 and what we expect in this financial year from Q1 to Q4.",
+      "source": "Q4 FY26 concall, May 15 2026"
+    },
+    {
+      "headline": "20-25% Growth Guided for FY28",
+      "claim": "Ahead of formal FY28 order-book guidance, management conservatively guides to 20-25% growth over FY27, citing the trajectory of quarter-on-quarter order inflow.",
+      "quote": "we'll definitely be able to grow 20% to 25% even next year over this year.",
+      "source": "Q4 FY26 concall, May 15 2026"
+    },
+    {
+      "headline": "INR100cr Capex Program Through FY28",
+      "claim": "TDPS plans roughly INR50 crore of capex in FY27 and another INR50 crore in FY28 to debottleneck existing lines and add automation, separate from planned large-generator capacity investment.",
+      "quote": "we have a plan to invest around another INR50 crores in capex, okay, in addition to whatever we did previously.",
+      "source": "Q4 FY26 concall, May 15 2026"
+    }
+  ],
+  "long_term": [
+    {
+      "headline": "Large-Generator Capacity Ramp-Up by Calendar 2028",
+      "claim": "New large-generator (up to 200MW) capacity is targeted for completion by calendar 2027, with the full production ramp-up expected only in calendar 2028 (FY29), aimed largely at export markets.",
+      "quote": "The earliest that we can put in our complete capacity would be something like in calendar '27... we'll be looking at the big ramp-up taking place in our large generator business only in calendar '28.",
+      "source": "Q4 FY26 concall, May 15 2026"
+    },
+    {
+      "headline": "Capacity Sized for INR3,000-3,200cr Sales by FY28",
+      "claim": "Current capacity, plus the incremental investments planned through FY28, is sized by management to support sales of roughly INR3,000-3,200 crore.",
+      "quote": "we believe that we can go up to about INR30 billion to INR32 billion with our current capacities and with these incremental investments made this year and next year.",
+      "source": "Q4 FY26 concall, May 15 2026"
+    },
+    {
+      "headline": "AI Data Center Demand Framed as a Multi-Year, 100GW+ Opportunity",
+      "claim": "Management sizes the US AI data-center power opportunity at roughly 100 gigawatts, expected to take 5-7 years to build out, with global demand potentially reaching double that.",
+      "quote": "the power requirement of the data center market for U.S. alone is projected to be somewhere around 100 gigawatts in size. And the expected time frame to address installation of this capacity is going to take 5 to 7 years.",
+      "source": "Q4 FY26 concall, May 15 2026"
+    }
+  ]
+}
