@@ -1,0 +1,5 @@
+{
+  "name": "research-advisory",
+  "description": "Research and advisory tools for Indian equity analysis. Bundles report-generator (concall/investor-presentation/annual-report-sourced company research reports) and portfolio-analysis (placeholder, not yet implemented).",
+  "version": "1.0.0"
+}
