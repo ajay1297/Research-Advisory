@@ -15,6 +15,13 @@ state.json and tells Claude exactly what to do next:
     else. Old transcripts already in research_cache/ are NOT reprocessed.
   - "no_state": first time for this company, full pipeline runs, then call
     --mark-processed to write initial state.
+  - "force_full": the user explicitly asked to regenerate this company's report *from
+    scratch* (not just refresh it). Every source document gets refetched and every
+    report section gets rebuilt from those fresh fetches — nothing carries forward from
+    the cached report.md. This is a content rebuild, not a data-deletion request: the
+    tracker histories (guidance_history.json, fundraise_history.json,
+    rating_history.json, litigation_history.json) are a cumulative record of real past
+    disclosures and are NOT wiped by --force; they keep accumulating exactly as before.
 
 Runs entirely locally, no network required — the actual "what's the latest quarter"
 check is a WebSearch/web_fetch call Claude makes separately and passes in here.
@@ -22,6 +29,9 @@ check is a WebSearch/web_fetch call Claude makes separately and passes in here.
 Usage:
     # check
     python3 check_freshness.py <company_slug> --latest-seen "May 2026"
+
+    # force a from-scratch rebuild regardless of cached state
+    python3 check_freshness.py <company_slug> --force
 
     # after finishing processing, record what's now current
     python3 check_freshness.py <company_slug> --mark-processed "May 2026" --price 1235
@@ -49,6 +59,9 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("company_slug")
     parser.add_argument("--latest-seen", help="latest concall/quarter label seen on screener.in just now")
+    parser.add_argument("--force", action="store_true",
+                         help="user asked to regenerate from scratch — ignore cached state, "
+                              "return force_full regardless of --latest-seen")
     parser.add_argument("--mark-processed", help="record this label as now fully processed")
     parser.add_argument("--price", type=float, help="price to record alongside --mark-processed")
     parser.add_argument("--lookback-months", type=int, default=6,
@@ -69,6 +82,21 @@ def main():
         with open(path, "w", encoding="utf-8") as f:
             json.dump(state, f, indent=2)
         print(f"Recorded state: last_processed_label={args.mark_processed}")
+        return
+
+    if args.force:
+        print(json.dumps({
+            "status": "force_full",
+            "action": "run_full_pipeline_ignore_cache",
+            "previously_processed_label": (state or {}).get("last_processed_label"),
+            "lookback_months": args.lookback_months,
+            "note": "User asked to regenerate from scratch. Refetch every source document "
+                    "(concall, investor presentation, annual report, screener.in) fresh and "
+                    "rebuild every report section from those fetches — do not carry anything "
+                    "forward from the cached report.md. Tracker histories (guidance/fundraise/"
+                    "rating/litigation JSON) are cumulative real-world records, not stale "
+                    "cache — do not wipe or rebuild them from scratch, keep appending as usual.",
+        }, indent=2))
         return
 
     if state is None:

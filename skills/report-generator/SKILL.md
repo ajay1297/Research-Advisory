@@ -91,14 +91,32 @@ language. Say one of these, naming the company each time (full name, or the name
 you'd search screener.in with — a stock symbol like "KARNIKA" or "TDPOWERSYS" also
 works):
 
-- `research <Company Name>`
+- `research <Company Name>` — new company, first run. Goes through the full pipeline
+  (Step 0 reports `no_state`).
 - `generate a report on <Company Name>`
 - `analyse <Company Name>'s concall`
 - `regenerate <Company Name>'s report` / `refresh <Company Name>'s report` /
-  `update <Company Name>'s report` — for an already-generated company, this reuses
-  Step 0's freshness check rather than re-running everything from scratch.
+  `update <Company Name>'s report` — for an **already-generated** company. This reuses
+  Step 0's freshness check (`up_to_date` or `new_quarter`) rather than re-running
+  everything — only what's actually changed since the last run gets refetched, and
+  unchanged sections carry forward from the cached `report.md`. This is the default,
+  cheap path for "update" requests — don't treat plain "regenerate/refresh/update"
+  as an instruction to rebuild from scratch.
+- `regenerate <Company Name>'s report from scratch` / `rebuild <Company Name> from
+  scratch` / `redo <Company Name>'s report from scratch` / `ignore the cache and redo
+  <Company Name>` — also for an already-generated company, but explicitly asking to
+  bypass the cache: call `scripts/check_freshness.py <slug> --force`, which returns
+  `force_full`, and refetch every source document fresh and rebuild every section
+  rather than carrying anything forward from the cached `report.md`. Tracker histories
+  (`guidance_history.json`, `fundraise_history.json`, `rating_history.json`,
+  `litigation_history.json`) are cumulative real-world records, not cache — they are
+  never wiped, from-scratch or not; keep appending to them as usual. Only go down this
+  path when the user's phrasing explicitly says "from scratch" / "rebuild" / "ignore
+  the cache" / "redo entirely" — plain "regenerate"/"refresh"/"update" always means the
+  cheap incremental path above.
 - `rerun for <Company A> and <Company B>` — works for multiple companies in one
-  request; each is processed independently through the same pipeline.
+  request; each is processed independently through the same pipeline (and each can be
+  a new company, an incremental update, or a from-scratch rebuild independently).
 - `what's the story with <Company/Ticker>` / `build me a thesis on <Company Name>` /
   `do a deep dive on <Company Name> — is it a buy?` / `research <Company Name> for a
   turnaround thesis` — informal, non-jargon phrasing also triggers this skill; the user
@@ -108,6 +126,14 @@ If you've uploaded a concall transcript, investor presentation, or annual report
 directly instead of naming a company, that also triggers this skill — sourcing then
 prefers your uploaded documents over fetching (see "User-uploaded documents" in
 `reference/source_playbook.md`).
+
+**If no company was named** (e.g. just "research", "generate a report", "update the
+report" with nothing to identify who) — don't guess a company, don't reuse a company
+from earlier in the conversation unless the request is clearly a continuation of that
+same thread, and don't start any part of the pipeline. Ask a single direct question
+back: which company (name or ticker)? If the user has previously generated reports
+this session, listing 2-3 of those as examples in the question is fine, but the user
+still has to name one — don't auto-pick the most recent one for them.
 
 There is no separate "setup" step and no config to edit — every run is self-contained
 and named by company. **All working state and deliverables live outside this plugin
@@ -175,8 +201,17 @@ report you've already generated for this company.
 
 1. Fetch screener.in's Documents/Concalls tab only (not the transcript itself yet) to
    see the latest concall label (e.g. "May 2026").
-2. Run `python3 scripts/check_freshness.py <company_slug> --latest-seen "<label>"`.
+2. If the user's request explicitly asked for a from-scratch rebuild (see "How to
+   trigger" above), skip straight to running
+   `python3 scripts/check_freshness.py <company_slug> --force` — this returns
+   `force_full` regardless of the label, and every source gets refetched/rebuilt as
+   described there. Otherwise run
+   `python3 scripts/check_freshness.py <company_slug> --latest-seen "<label>"`.
    - `no_state` → this is the first run for this company. Do the full pipeline below.
+   - `force_full` → user explicitly asked to rebuild from scratch. Refetch every
+     source document and rebuild every section — do not reuse anything from the
+     cached `report.md`. Tracker histories (guidance/fundraise/rating/litigation
+     JSON) are not wiped — keep appending to them as usual, same as any other run.
    - `up_to_date` → nothing has changed since the last run. Reuse
      `~/.report-generator/research_cache/<company_slug>/report.md` as-is. If the user only supplied a new
      price for the valuation section, rerun `scripts/forward_pe.py` alone with the

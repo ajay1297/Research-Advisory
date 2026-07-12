@@ -109,15 +109,122 @@ ln -s "$(pwd)" ~/.claude/plugins/research-advisory
 ### After installing (either option)
 
 Currently `skills/` has `report-generator` (fully implemented) and
-`portfolio-analysis` (placeholder, not yet implemented).
+`portfolio-analysis` (placeholder, not yet implemented). Install
+dependencies (see Setup below), then confirm it installed correctly:
 
-**Install dependencies** — see [`skills/report-generator/README.md`](skills/report-generator/README.md#setup)
-for the Python/system packages that skill needs (PDF extraction, WeasyPrint
-rendering, etc.). Not every skill in this plugin will necessarily share the
-same dependencies, so check each skill's own README.
+1. Both `research-advisory:report-generator` and `research-advisory:portfolio-analysis`
+   should show up by name in the list of available skills in the system prompt
+   (visible to Claude every turn once the plugin is installed) — no need to
+   invoke anything first, they're just present.
+2. Say `research <any company name>` and check that Claude follows the
+   `report-generator` pipeline end to end, creating
+   `~/.report-generator/research_cache/<company_slug>/` and
+   `~/.report-generator/output/<company_slug>/` (outside the plugin entirely —
+   see Plugin structure above) as it goes.
 
-**Confirm it installed correctly** — say `research <any company name>` and
-check that Claude follows the `report-generator` pipeline end to end,
-creating `~/.report-generator/research_cache/<company_slug>/` and
-`~/.report-generator/output/<company_slug>/` (outside the plugin entirely —
-see Plugin structure above) as it goes.
+## Setup
+
+No API keys or environment variables required for anything in this plugin.
+Not every skill necessarily shares the same dependencies — check each
+skill's own README for its full setup section; `report-generator`'s is
+summarized here since it's the only implemented skill so far.
+
+### `report-generator`
+
+All sourcing is done via web search/fetch (screener.in, BSE/NSE, credit-rating
+agency sites) and locally bundled Python 3 scripts — nothing needs a server or
+daemon.
+
+**Python packages:**
+
+```bash
+pip install pdfplumber weasyprint matplotlib reportlab --break-system-packages
+```
+
+| Package | Used by | Required? |
+|---|---|---|
+| `pdfplumber` | PDF → plain text extraction | Yes, for every source PDF |
+| `weasyprint` | Primary visual-PDF renderer | Yes, for the default PDF pipeline |
+| `matplotlib` | Chart generation | Only if you ask for a chart version of a section — opt-in, not default |
+| `reportlab` | Legacy text-only PDF fallback | Only if WeasyPrint can't be installed |
+
+**System packages** (native libraries WeasyPrint and the PDF-verification step
+need — not pip-installable):
+
+```bash
+# macOS
+brew install pango poppler
+
+# Debian/Ubuntu
+sudo apt-get install libpango-1.0-0 libpangoft2-1.0-0 libcairo2 poppler-utils
+```
+
+`poppler` provides `pdftoppm`, used to visually check the rendered PDF (no
+clipped tables, no dead whitespace) before delivery — this runs on every
+report, not optional.
+
+**Verify the install:**
+
+```bash
+python3 -c "import pdfplumber, weasyprint; print('ok')"
+pdftoppm -v
+```
+
+Full setup detail (known gotchas, the `pdftotext -layout` fallback for
+mis-extracted PDFs, directory-creation behavior) lives in
+[`skills/report-generator/README.md`](skills/report-generator/README.md#setup).
+
+## Usage
+
+Every skill in this plugin triggers via natural language — no slash command.
+Name the company each time; there is no separate "setup a company" step.
+
+### `report-generator`
+
+Four distinct things you can ask for — the phrasing tells Claude which one you mean:
+
+**1. Generate a report for a new company** — full pipeline, first run:
+
+```
+research <Company Name>
+generate a report on <Company Name>
+analyse <Company Name>'s concall
+what's the story with <Company/Ticker>
+build me a thesis on <Company Name>
+```
+
+**2. Update the report for an already-generated company** — the cheap default
+path; only refetches what's actually changed since the last run:
+
+```
+regenerate <Company Name>'s report
+refresh <Company Name>'s report
+update <Company Name>'s report
+```
+
+**3. Re-generate the report from scratch for an already-generated company** —
+explicitly bypasses the cache and refetches/rebuilds everything (tracker
+histories like guidance/fundraise/rating/litigation are cumulative records and
+are never wiped, from-scratch or not):
+
+```
+regenerate <Company Name>'s report from scratch
+rebuild <Company Name> from scratch
+redo <Company Name>'s report from scratch
+ignore the cache and redo <Company Name>
+```
+
+**4. Invoking without a company name** — Claude won't guess or silently reuse
+a company from earlier in the conversation; it asks which company you mean
+before doing anything else.
+
+Also: `rerun for <Company A> and <Company B>` processes multiple companies
+independently in one request, and uploading a concall transcript, investor
+presentation, or annual report PDF directly also triggers the skill,
+preferring the uploaded document over fetching one.
+
+Every run ends with both `~/.report-generator/output/<company_slug>/<Company>_report.md`
+and `~/.report-generator/output/<company_slug>/<Company>_report.pdf` — PDF export
+is automatic, never a separate ask. Full detail (architecture, end-to-end
+flow diagram, section-by-section source mapping) lives in
+[`skills/report-generator/README.md`](skills/report-generator/README.md#usage).

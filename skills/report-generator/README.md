@@ -109,29 +109,33 @@ from anything downstream.
      Fetch screener.in's Concalls tab label only (not the transcript yet)
        |
        v
-     check_freshness.py <slug> --latest-seen "<label>"
-       |
-       +---------------------+---------------------+
-       |                     |                     |
-       v                     v                     v
-   no_state              up_to_date            new_quarter
-   (first run)      (nothing changed)     (a new quarter posted)
-       |                     |                     |
-       |                     v                     |
-       |            Reuse cached report.md          |
-       |            as-is. Skip to [8] if only       |
-       |            price changed (rerun              |
-       |            forward_pe.py alone).            |
-       |                                             |
-       v                                             v
- [4] FULL SOURCE PIPELINE                  [4'] INCREMENTAL PIPELINE
-     Fetch + process everything below           Fetch ONLY the new quarter's
-     for the first time.                        concall + investor presentation
-                                                 + screener.in's last 1-2 columns.
-                                                 Reuse everything else already in
-                                                 ~/.report-generator/research_cache/<slug>/ untouched.
-       |                                             |
-       +---------------------+-----------------------+
+     "...from scratch"/"rebuild"/"ignore the cache" in the request?
+       |                                     |
+       v yes                                 v no
+     check_freshness.py <slug> --force    check_freshness.py <slug> --latest-seen "<label>"
+       |                                     |
+       v                       +---------------------+---------------------+
+   force_full                  |                     |                     |
+   (explicit rebuild)          v                     v                     v
+       |                   no_state              up_to_date            new_quarter
+       |                   (first run)      (nothing changed)     (a new quarter posted)
+       |                       |                     |                     |
+       |                       |                     v                     |
+       |                       |            Reuse cached report.md          |
+       |                       |            as-is. Skip to [8] if only       |
+       |                       |            price changed (rerun              |
+       |                       |            forward_pe.py alone).            |
+       |                       |                                             |
+       v                       v                                             v
+ [4''] FROM-SCRATCH REBUILD  [4] FULL SOURCE PIPELINE            [4'] INCREMENTAL PIPELINE
+     Refetch + rebuild every    Fetch + process everything below      Fetch ONLY the new quarter's
+     section, same as [4], but  for the first time.                   concall + investor presentation
+     trackers (guidance/                                              + screener.in's last 1-2 columns.
+     fundraise/rating/                                                Reuse everything else already in
+     litigation) keep                                                 ~/.report-generator/research_cache/<slug>/
+     accumulating, not reset.                                         untouched.
+       |                       |                                             |
+       +-----------------------+---------------------+-----------------------+
                              v
  [5] FETCH (WebFetch / WebSearch / Claude Browser as JS-render fallback;
      BSE/NSE direct if screener.in's widgets won't populate)
@@ -273,6 +277,11 @@ Promoter/Governance section's multi-quarter track record possible at all: the re
 can say "guided X in Q3, revised to Y in Q4, now On Track" because the evolution is
 reconstructed from this log, not re-read from old transcripts each time.
 
+On a `force_full` run (explicit "regenerate from scratch" request), every *report
+section* gets rebuilt from freshly refetched sources — but these four tracker files
+are treated the same as any other run: they still only receive appends, never a
+reset. "From scratch" describes the report content, not the historical fact log.
+
 ## Script responsibilities
 
 | Script | Role | Network? |
@@ -285,7 +294,7 @@ reconstructed from this log, not re-read from old transcripts each time.
 | `litigation_tracker.py` | Log/report litigation, reopen-risk flags | No |
 | `capacity_utilization.py` | Before/after-capex revenue-headroom arithmetic | No |
 | `forward_pe.py` | Forward EPS/PE arithmetic | No |
-| `check_freshness.py` | Decide `no_state`/`up_to_date`/`new_quarter`, mark state | No |
+| `check_freshness.py` | Decide `no_state`/`up_to_date`/`new_quarter`/`force_full` (`--force`), mark state | No |
 | `charts.py` | matplotlib chart generators — **opt-in only**, not called by default | No |
 | `html_helpers.py` | HTML builders (cover, cards, tables, timeline, verdict box) for the visual PDF | No |
 | `report_to_pdf.py` | Legacy markdown→PDF via reportlab, text-only fallback if WeasyPrint is unavailable | No |
@@ -432,19 +441,71 @@ from scratch, using whatever you've built up locally.
 
 ## Usage
 
-Trigger with natural language, naming the company each time:
+Trigger with natural language, naming the company each time — no slash command. There
+are four distinct things you can ask for; the phrasing you use is what tells Claude
+which one you mean.
 
-- `research <Company Name>`
-- `generate a report on <Company Name>`
-- `analyse <Company Name>'s concall`
-- `regenerate <Company Name>'s report` / `refresh <Company Name>'s report`
-- `what's the story with <Company/Ticker>` / `build me a thesis on <Company Name>`
+### 1. Generate a report for a new company
+
+First run for this company — goes through the full pipeline (Step 0 reports
+`no_state`), fetching every source from scratch and building every tracker file for
+the first time.
+
+```
+research <Company Name>
+generate a report on <Company Name>
+analyse <Company Name>'s concall
+what's the story with <Company/Ticker>
+build me a thesis on <Company Name>
+do a deep dive on <Company Name> — is it a buy?
+```
+
+### 2. Update the report for an already-generated company
+
+The cheap, default path for a company you've already researched. Only refetches
+what's actually new since the last run (`up_to_date` → nothing to do, or
+`new_quarter` → just the new concall/results); everything else carries forward from
+the cached `report.md`.
+
+```
+regenerate <Company Name>'s report
+refresh <Company Name>'s report
+update <Company Name>'s report
+```
+
+### 3. Re-generate the report from scratch for an already-generated company
+
+Explicitly bypasses the cache: every source document gets refetched fresh and every
+section gets rebuilt, rather than carrying anything forward from the cached
+`report.md`. Use this if you think the last report was built on stale or incomplete
+sourcing. The tracker histories (`guidance_history.json`, `fundraise_history.json`,
+`rating_history.json`, `litigation_history.json`) are cumulative real-world records
+and are **not** wiped by this — they keep accumulating exactly as on any other run.
+Only phrasing that explicitly says "from scratch" / "rebuild" / "ignore the cache"
+triggers this path — plain "regenerate"/"refresh"/"update" always means option 2 above.
+
+```
+regenerate <Company Name>'s report from scratch
+rebuild <Company Name> from scratch
+redo <Company Name>'s report from scratch
+ignore the cache and redo <Company Name>
+```
+
+### 4. Invoking without a company name
+
+If you ask for a report without naming a company (e.g. just "research", "generate a
+report", "update the report"), Claude won't guess or silently reuse a company from
+earlier in the conversation — it asks which company you mean before doing anything
+else.
+
+### Other invocation notes
+
 - `rerun for <Company A> and <Company B>` — processes multiple companies
-  independently in one request
-
-Uploading a concall transcript, investor presentation, or annual report PDF
-directly also triggers the skill, preferring the uploaded document over
-fetching one.
+  independently in one request; each can be a new company, an update, or a
+  from-scratch rebuild independently.
+- Uploading a concall transcript, investor presentation, or annual report PDF
+  directly also triggers the skill, preferring the uploaded document over fetching
+  one.
 
 Every run ends with both `~/.report-generator/output/<company_slug>/<Company>_report.md` and
 `~/.report-generator/output/<company_slug>/<Company>_report.pdf` — you don't need to separately
