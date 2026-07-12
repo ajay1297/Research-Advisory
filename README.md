@@ -27,7 +27,10 @@ More skills may be added here over time, each in its own `skills/<name>/` direct
 ```
 Research-Advisory/                    (plugin root -- everything here is the plugin)
 |-- .claude-plugin/
-|   `-- plugin.json                   Plugin manifest (name, version, description)
+|   |-- plugin.json                   Plugin manifest (name, version, description)
+|   `-- marketplace.json              Marketplace manifest (self-references "." as
+|                                       the plugin source -- lets this same repo be
+|                                       added via the Add-marketplace UI/CLI)
 |-- .gitignore
 `-- skills/
     |-- report-generator/             One skill = one self-contained directory
@@ -56,40 +59,65 @@ removed by using the skill.
 
 ## Installation
 
-**1. Clone the repo:**
+This repo is set up as **both** the marketplace catalog and the plugin
+itself (self-referencing via `.claude-plugin/marketplace.json`'s
+`"source": "."`), so you can install it either through Claude's plugin UI or
+straight from the CLI — pick whichever you're using.
+
+### Option A — via the marketplace (Claude Desktop UI or CLI)
+
+**Add the marketplace:**
+
+```bash
+claude plugin marketplace add ajay1297/Research-Advisory
+```
+
+Or in the Claude Desktop/Code "Add marketplace" dialog, paste the repo URL
+exactly as `https://github.com/ajay1297/Research-Advisory.git` (or the
+`owner/repo` short form `ajay1297/Research-Advisory`) and press Sync. If you
+still see *"no manifest found at .claude-plugin/marketplace.json"*, you're on
+an older clone/cache of the repo from before that file existed — make sure
+you've pulled the latest commit that adds it.
+
+**Then install the plugin from it:**
+
+```bash
+/plugin install research-advisory@research-advisory
+```
+
+(or the equivalent option in the plugin picker once the marketplace is added).
+
+### Option B — local dev/testing, no marketplace needed
 
 ```bash
 git clone git@github.com:ajay1297/Research-Advisory.git
 cd Research-Advisory
-```
-
-**2. Test locally without publishing anywhere:**
-
-```bash
 claude --plugin-dir .
 ```
 
 Use `/reload-plugins` inside a running session to pick up changes without
-restarting. Every skill under `skills/` becomes available automatically — no
-per-skill registration step. Currently that's `report-generator` (fully
-implemented) and `portfolio-analysis` (placeholder, not yet implemented).
-
-**3. Make it load automatically every session** (optional, instead of
-passing `--plugin-dir` each time) — symlink this repo into your personal
-plugins directory so it keeps updating in place on `git pull`:
+restarting — useful while editing the plugin itself. Every skill under
+`skills/` becomes available automatically. To make it load every session
+without passing `--plugin-dir` each time, symlink the clone into your
+personal plugins directory instead:
 
 ```bash
 mkdir -p ~/.claude/plugins
 ln -s "$(pwd)" ~/.claude/plugins/research-advisory
 ```
 
-**4. Install dependencies** — see [`skills/report-generator/README.md`](skills/report-generator/README.md#setup)
+### After installing (either option)
+
+Currently `skills/` has `report-generator` (fully implemented) and
+`portfolio-analysis` (placeholder, not yet implemented).
+
+**Install dependencies** — see [`skills/report-generator/README.md`](skills/report-generator/README.md#setup)
 for the Python/system packages that skill needs (PDF extraction, WeasyPrint
 rendering, etc.). Not every skill in this plugin will necessarily share the
 same dependencies, so check each skill's own README.
 
-**5. Confirm it installed correctly** — say `research <any company name>`
-and check that Claude follows the `report-generator` pipeline end to end,
+**Confirm it installed correctly** — say `research <any company name>` and
+check that Claude follows the `report-generator` pipeline end to end,
 creating `~/.report-generator/research_cache/<company_slug>/` and
 `~/.report-generator/output/<company_slug>/` (outside the plugin entirely —
 see Plugin structure above) as it goes.
