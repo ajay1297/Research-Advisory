@@ -1,0 +1,84 @@
+{
+  "guidances": [
+    {
+      "given_in": "H1 FY26 concall (Nov 2025)",
+      "for_period": "FY26",
+      "metric": "combined_revenue",
+      "value_cr": 245.0,
+      "note": "Combined Karnika + Kidcity revenue target for FY26, reiterated on H2/Q4 FY26 call",
+      "id": 0,
+      "status": "delivered",
+      "supersedes_id": null
+    },
+    {
+      "given_in": "H1 FY26 concall (Nov 2025)",
+      "for_period": "FY26",
+      "metric": "kidcity_revenue",
+      "value_cr": 30.0,
+      "note": "Kidcity standalone revenue guidance for FY26 (Rs 3,000 lakh)",
+      "id": 1,
+      "status": "missed",
+      "supersedes_id": null
+    },
+    {
+      "id": 2,
+      "given_in": "H1 FY26 concall (Nov 2025)",
+      "for_period": "FY28",
+      "metric": "kidcity_fy28_revenue",
+      "value_cr": 120.0,
+      "status": "on_track",
+      "supersedes_id": null,
+      "note": "Kidcity revenue outlook: Rs3,000 lakh FY26 to Rs12,000 lakh (INR120cr) by FY28"
+    },
+    {
+      "id": 3,
+      "given_in": "H2/Q4 FY26 concall (May 2026)",
+      "for_period": "FY28-FY29",
+      "metric": "kidcity_fy28_revenue",
+      "value_cr": 225.0,
+      "status": "on_track",
+      "supersedes_id": 2,
+      "note": "Raised to INR200-250cr (midpoint 225cr used) over FY28-29, vs INR120cr FY28 originally guided"
+    },
+    {
+      "id": 4,
+      "given_in": "H1 FY26 concall (Nov 2025)",
+      "for_period": "next 2-3 years",
+      "metric": "karnika_standalone_revenue",
+      "value_cr": 300.0,
+      "status": "on_track",
+      "supersedes_id": null,
+      "note": "MD: will make revenue of more than Rs300cr for Karnika standalone in next 2-3 years; supported by Jun 2026 promoter warrant raise partly earmarked for capacity"
+    },
+    {
+      "id": 5,
+      "given_in": "H1 FY26 concall (Nov 2025)",
+      "for_period": "FY28",
+      "metric": "combined_fy28_revenue",
+      "value_cr": 425.0,
+      "status": "on_track",
+      "supersedes_id": null,
+      "note": "Combined Karnika + Kidcity FY28 target of Rs42,500 lakh (INR425cr), consistent with 30-35% CAGR framing reiterated at H2 FY26 call"
+    }
+  ],
+  "actuals": [
+    {
+      "period": "FY26",
+      "metric": "combined_revenue",
+      "value_cr": 248.0,
+      "guided_value_cr": 245.0,
+      "guided_in": "H1 FY26 concall (Nov 2025)",
+      "delta_pct": 1.2,
+      "verdict": "beat"
+    },
+    {
+      "period": "FY26",
+      "metric": "kidcity_revenue",
+      "value_cr": 24.5,
+      "guided_value_cr": 30.0,
+      "guided_in": "H1 FY26 concall (Nov 2025)",
+      "delta_pct": -18.3,
+      "verdict": "miss"
+    }
+  ]
+}

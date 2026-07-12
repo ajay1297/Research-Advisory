@@ -1,0 +1,20 @@
+{
+  "raises": [
+    {
+      "id": 0,
+      "date": "2025-03-01",
+      "instrument": "qip",
+      "allottee": "institution",
+      "amount_cr": 210.0,
+      "units": null,
+      "price_per_unit": null,
+      "upfront_pct": null,
+      "tenure": null,
+      "rate_pct": null,
+      "purpose": "Expansion of existing business and working capital, aligned with CARE Ratings' Jan 2025 note of a planned raise of up to Rs250cr via preferential allotment/private placement/QIP",
+      "source": "CARE Ratings Aug 2025 rationale; press reports",
+      "status": "allotted",
+      "note": "Materially improved capital structure: consolidated TOL/TNW improved from 6.99x (Mar 2024) to 2.57x (Mar 2025), cited by CARE as a driver of its Aug 2025 outlook upgrade to Positive."
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "raises": [
+    {
+      "id": 0,
+      "date": "2026-06-18",
+      "instrument": "warrants",
+      "allottee": "promoter",
+      "amount_cr": 48.0,
+      "units": 3966860,
+      "price_per_unit": 121.0,
+      "upfront_pct": 25.0,
+      "tenure": null,
+      "rate_pct": null,
+      "purpose": "Per BSE/NSE disclosure: working capital requirements incl. repayment to creditors and bank loans, and general corporate purposes. Management separately described the raise on the May 2026 concall as funding Kidcity's expansion needs.",
+      "source": "BSE/NSE preferential allotment announcement; EGM approval 11 May 2026; NSE in-principle approval 5 Jun 2026; Board allotment 18 Jun 2026",
+      "status": "pending",
+      "note": "14 allottees total: 13 promoter/promoter-group entities + 1 non-promoter (Bhagwan Nath Sidh). Issue price Rs121 vs Rs10 face value; roughly in line with CMP at allotment, not a steep discount."
+    }
+  ]
+}

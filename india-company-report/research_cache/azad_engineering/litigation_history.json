@@ -1,0 +1,16 @@
+{
+  "cases": [
+    {
+      "id": 0,
+      "case_ref": "Hamuel litigation",
+      "forum": "Not disclosed in sources reviewed",
+      "case_type": "customer_vendor_dispute",
+      "parties": "Azad Engineering vs. Hamuel (counterparty; nature not disclosed in sources reviewed)",
+      "amount_cr": null,
+      "status": "ongoing",
+      "appeal_window": "",
+      "note": "Confirmed but unquantified. The company's own investor presentation footnotes 'professional and consultancy charges towards Hamuel litigation' as a non-recurring Adjusted EBITDA add-back — confirming a litigation matter exists (case reference: 'Hamuel'), but no forum, contingent-liability amount, or current status was found in the sources reviewed for this report.",
+      "source": "Investor Presentation, May 2026 (Adjusted EBITDA bridge footnote); referenced in FY21 non-recurring expense adjustments"
+    }
+  ]
+}

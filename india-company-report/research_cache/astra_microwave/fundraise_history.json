@@ -1,0 +1,20 @@
+{
+  "raises": [
+    {
+      "id": 0,
+      "date": "2025-06-24",
+      "instrument": "warrants",
+      "allottee": "promoter",
+      "amount_cr": 173.99,
+      "units": 2013885,
+      "price_per_unit": 864.0,
+      "upfront_pct": 25.0,
+      "tenure": null,
+      "rate_pct": null,
+      "purpose": "Working capital requirements and general corporate purposes",
+      "source": "BSE/NSE preferential issue allotment, 23-24 Jun 2025; CRISIL monitoring agency reports through Q4 FY26",
+      "status": "pending",
+      "note": "Allottees per public disclosure: Prakash Anand Chitrakar (promoter), plus Renuka Chitrakar, Gopikishan Damani, Atim Kabra among others. 18-month conversion window runs to 29 Dec 2026; as of the Q4 FY26 (Mar 2026) monitoring report, no conversions had occurred — INR43.49cr (25% upfront) received, INR130.50cr (75% balance) still pending exercise."
+    }
+  ]
+}

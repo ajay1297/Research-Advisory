@@ -1,0 +1,48 @@
+{
+  "ratings": [
+    {
+      "id": 0,
+      "date": "2025-01-16",
+      "agency": "care",
+      "instrument": "bank facilities (enhanced, Rs267.13cr + Rs166cr LT/ST)",
+      "rating": "BBB/A3+",
+      "outlook": "stable",
+      "action": "reaffirmed",
+      "note": "Reaffirmed on enhanced facilities; notes CEL's plan to raise up to Rs250cr via preferential allotment/private placement/QIP; flags exposure to loss-making French subsidiary CTS.",
+      "source": "CARE Ratings press release, 16 Jan 2025"
+    },
+    {
+      "id": 1,
+      "date": "2025-08-01",
+      "agency": "care",
+      "instrument": "bank facilities",
+      "rating": "BBB/A3+",
+      "outlook": "positive",
+      "action": "outlook_revised_positive",
+      "note": "Outlook revised Stable->Positive after Rs210cr QIP (March 2025) improved TOL/TNW from 6.99x (Mar 2024) to 2.57x (Mar 2025); cites growing order book in high-margin SEBU/BTS segment.",
+      "source": "CARE Ratings press release, Aug 2025 (via press reports)"
+    },
+    {
+      "id": 2,
+      "date": "2025-10-08",
+      "agency": "crisil",
+      "instrument": "bank facilities, Rs399.7cr",
+      "rating": "BBB/A3+",
+      "outlook": "stable",
+      "action": "reaffirmed",
+      "note": "TOL/TNW at 2.56x as of 31 Mar 2025; expects capital structure to improve further absent major debt-funded capex.",
+      "source": "CRISIL Ratings rationale, 8 Oct 2025"
+    },
+    {
+      "id": 3,
+      "date": "2026-05-08",
+      "agency": "crisil",
+      "instrument": "bank facilities, Rs399.7cr",
+      "rating": "BBB/A3+",
+      "outlook": "positive",
+      "action": "outlook_revised_positive",
+      "note": "Outlook revised Stable->Positive; ratings/facility amount unchanged. Conditional on availing proposed facilities within 180 days of the letter.",
+      "source": "CRISIL Ratings rationale, 8 May 2026"
+    }
+  ]
+}

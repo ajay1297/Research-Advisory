@@ -1,0 +1,155 @@
+{
+  "guidances": [
+    {
+      "id": 0,
+      "given_in": "Q3 FY26 concall (16 Feb 2026)",
+      "for_period": "not yet dated",
+      "metric": "france_subsidiary_resolution",
+      "value_cr": null,
+      "status": "pending",
+      "supersedes_id": null,
+      "note": "Board approved evaluating divestment/sale/transfer/judicial reorganization options for French subsidiary Centum T&S; no firm timeline given."
+    },
+    {
+      "id": 1,
+      "given_in": "Q3 FY26 concall (16 Feb 2026)",
+      "for_period": "FY26 remainder",
+      "metric": "france_no_further_impact",
+      "value_cr": null,
+      "status": "pending",
+      "supersedes_id": null,
+      "note": "Management: 'Based on our present assessment, we do not expect any further material financial impact beyond what has already been recognized.'"
+    },
+    {
+      "id": 2,
+      "given_in": "Q4 FY26 press release/concall (15 May 2026)",
+      "for_period": "by July 2026",
+      "metric": "france_subsidiary_resolution",
+      "value_cr": null,
+      "status": "on_track",
+      "supersedes_id": 0,
+      "note": "France entered Redressement Judiciaire (court-supervised process) in March 2026; final bids due to the Lyon court by 1 June 2026; 'we expect the divestment process to be substantially concluded by July 2026.' Court-approved plan (10 June 2026) has MBDA France and SII acquiring the main activities."
+    },
+    {
+      "id": 3,
+      "given_in": "Q4 FY26 press release/concall (15 May 2026)",
+      "for_period": "FY26 (already arrived)",
+      "metric": "france_no_further_impact",
+      "value_cr": null,
+      "status": "missed",
+      "supersedes_id": 1,
+      "note": "Contrary to the Q3 FY26 assessment, additional impairments/operating losses were recognized in Q4 FY26 as the French subsidiary was reclassified to discontinued operations (goodwill/intangible impairment, inventory write-off, ~Rs1,525mn 'discontinuing operations' impact disclosed in the Q4 investor presentation)."
+    },
+    {
+      "id": 4,
+      "given_in": "Q4 FY26 concall (15 May 2026)",
+      "for_period": "Q1 FY27",
+      "metric": "canada_wind_up",
+      "value_cr": null,
+      "status": "pending",
+      "supersedes_id": null,
+      "note": "Canada operations discontinued in Q4 FY26; wind-up proceedings to commence in Q1 FY27."
+    },
+    {
+      "id": 5,
+      "given_in": "Q4 FY26 concall (15 May 2026)",
+      "for_period": "FY26",
+      "metric": "standalone_ebitda_margin_13_15pct",
+      "value_cr": null,
+      "status": "missed",
+      "supersedes_id": null,
+      "note": "Management: 'we're targeting to be in the range of 13% to 15% at a combined level and we are slightly below that for the full year' -- FY26 standalone EBITDA margin came in at 12.42%, below the guided range, due to EMS product mix."
+    },
+    {
+      "id": 6,
+      "given_in": "Q4 FY26 concall (15 May 2026)",
+      "for_period": "FY27-FY28",
+      "metric": "standalone_ebitda_margin_13_15pct",
+      "value_cr": null,
+      "status": "pending",
+      "supersedes_id": 5,
+      "note": "Management reiterated the same 13-15% EBITDA margin target for FY27: 'that's what we're working towards, and we maintain that target' -- and again for the next 2-3 years in response to a later question."
+    },
+    {
+      "id": 7,
+      "given_in": "Q3 FY26 / Q4 FY26 concalls",
+      "for_period": "medium-term, multi-year",
+      "metric": "standalone_revenue_growth_25_30pct",
+      "value_cr": null,
+      "status": "on_track",
+      "supersedes_id": null,
+      "note": "Standing medium-term standalone growth target of 25-30% CAGR, reiterated at both Q3 and Q4 FY26 calls; FY26 actual standalone revenue growth of +25.4% YoY sits at the low end of this range."
+    },
+    {
+      "id": 8,
+      "given_in": "Q3 FY26 concall (16 Feb 2026)",
+      "for_period": "5-6 years",
+      "metric": "hal_uhm_radar_program",
+      "value_cr": null,
+      "status": "pending",
+      "supersedes_id": null,
+      "note": "Declared L1 bidder for development & production of a complete radar system for a major helicopter/airborne platform of a defense PSU; total program value estimated at ~Rs700cr over 5-6 years."
+    },
+    {
+      "id": 9,
+      "given_in": "Q4 FY26 concall (15 May 2026)",
+      "for_period": "development phase 2yrs, production through FY30/31",
+      "metric": "hal_uhm_radar_program",
+      "value_cr": null,
+      "status": "delivered",
+      "supersedes_id": 8,
+      "note": "L1 bid converted into a confirmed order: HAL AESA Radar for the UHM platform, total opportunity Rs570+cr -- development phase (~Rs66-67cr) over 2 years, production phase (~Rs500cr+) executed through FY30/31. Full program still mostly ahead; only the order win itself is delivered."
+    },
+    {
+      "id": 10,
+      "given_in": "Q3 FY26 concall (16 Feb 2026)",
+      "for_period": "3-5 years",
+      "metric": "grse_air_navigation_opportunity",
+      "value_cr": null,
+      "status": "pending",
+      "supersedes_id": null,
+      "note": "GRSE air navigation program: first order ~Rs30cr received; total opportunity ~Rs500cr over 3-5 years across shipyards (GRSE, MDL, GSL, HSL). 'We expect to receive orders from several other shipyards including GSL and HSL in coming quarters.'"
+    },
+    {
+      "id": 11,
+      "given_in": "Q3 FY26 concall (16 Feb 2026)",
+      "for_period": "coming quarters",
+      "metric": "space_based_surveillance_opportunity",
+      "value_cr": null,
+      "status": "pending",
+      "supersedes_id": null,
+      "note": "Space-Based Surveillance (SBS) opportunity sized at ~Rs1,000cr; 'We expect orders to start coming in Q4 and subsequent quarters.'"
+    },
+    {
+      "id": 12,
+      "given_in": "Q4 FY26 concall (15 May 2026)",
+      "for_period": "FY26 (already arrived)",
+      "metric": "space_based_surveillance_opportunity",
+      "value_cr": null,
+      "status": "on_track",
+      "supersedes_id": 11,
+      "note": "Secured second complete radar system order for satellite and space debris tracking (~Rs30cr) -- a first tranche of the Rs1,000cr SBS opportunity converting to firm orders as expected."
+    },
+    {
+      "id": 13,
+      "given_in": "Q3 FY26 concall (16 Feb 2026)",
+      "for_period": "2-3 years",
+      "metric": "semiconductor_anchor_customer_ramp",
+      "value_cr": null,
+      "status": "pending",
+      "supersedes_id": null,
+      "note": "Analyst asked about ~USD30mn annual revenue target in 2-3 years from anchor semiconductor equipment customer."
+    },
+    {
+      "id": 14,
+      "given_in": "Q4 FY26 concall (15 May 2026)",
+      "for_period": "2-3 years",
+      "metric": "semiconductor_anchor_customer_ramp",
+      "value_cr": null,
+      "status": "on_track",
+      "supersedes_id": 13,
+      "note": "Management: 'we are progressing quite well, I would say, broadly in line with our expectations for the growth from this customer segment' -- discussions begun with a couple of other semiconductor customers, still preliminary."
+    }
+  ],
+  "actuals": []
+}

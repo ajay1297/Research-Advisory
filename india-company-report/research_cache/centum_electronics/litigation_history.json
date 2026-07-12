@@ -1,0 +1,16 @@
+{
+  "cases": [
+    {
+      "id": 0,
+      "case_ref": "Income tax demand AY2018-19 to AY2021-22 and AY2023-24 to AY2024-25",
+      "forum": "Commissioner of Income-Tax (Appeals)-27, New Delhi",
+      "case_type": "tax_dispute",
+      "parties": "Centum Electronics vs Income Tax Department",
+      "amount_cr": 84.89,
+      "status": "ongoing",
+      "appeal_window": "",
+      "note": "Company believes the demand suffers from 'mistakes apparent from records' and is filing rectification applications/appeals; expects the demand to be substantially reduced. A separate appellate order already led to an expected Rs4.573cr reduction (disclosed ~17 Jan 2026).",
+      "source": "BSE disclosure, 31 Jan 2026"
+    }
+  ]
+}

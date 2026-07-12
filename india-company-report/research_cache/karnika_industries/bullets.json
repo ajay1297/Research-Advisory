@@ -1,0 +1,54 @@
+{
+  "company": "Karnika Industries Ltd",
+  "near_term": [
+    {
+      "headline": "Working Capital Cycle Cut Further",
+      "claim": "Management has already reduced the working capital cycle from 4.5-5 months to about 4 months and is targeting a further ~100-day reduction in the current financial year.",
+      "quote": "Last year our cycle is around four and half to five months. Current financial year we have reduced it to around four months and we are planning to reduce it by around 100 days in the coming financial year."
+    },
+    {
+      "headline": "Kiosk and EBO Payback Periods",
+      "claim": "New Kidcity kiosks are expected to pay back in 8-9 months and exclusive brand outlets (EBOs) in 15-18 months, the near-term unit economics underpinning the retail rollout.",
+      "quote": "Kiosk, as I told, it will be around eight to nine months. EBOs will be around 15 to 18 months."
+    },
+    {
+      "headline": "Cotton Cost Pressure Easing",
+      "claim": "The elevated cotton-price pressure that weighed on Q4 FY26 margins has largely normalized entering the new financial year, per management.",
+      "quote": "It was there in quarter four, but now it's quite normalized."
+    }
+  ],
+  "medium_term": [
+    {
+      "headline": "Kidcity Revenue to Roughly Triple",
+      "claim": "Management projects Kidcity's standalone revenue to roughly 3x in FY27 from the ~INR24-25 crore it delivered in FY26, against an original FY26 guide of INR30 crore.",
+      "quote": "I think it would be, we project around 3x revenue from the Kidcity for next financial year."
+    },
+    {
+      "headline": "Karnika Standalone Growth Guidance",
+      "claim": "Karnika's standalone business is guided to grow 25-30% in the near-to-medium term, self-funded from internal earnings, while Kidcity's separate expansion needs are being funded via the promoter-backed warrant raise.",
+      "quote": "In Karnika standalone, it will be around 25% to 30%, but Kidcity will show a major growth pattern. This will increase way more than that."
+    },
+    {
+      "headline": "Consolidated Margins to Normalize",
+      "claim": "Management expects consolidated PAT margins to settle in an 11-13% band over the next two to three years as Kidcity integration and transitional costs fade.",
+      "quote": "Normalized margins would be around, if I consolidate the balance sheet, that will be in a range of around 11% to 13%."
+    }
+  ],
+  "long_term": [
+    {
+      "headline": "FY28 Combined Revenue Target",
+      "claim": "Management has guided to a combined Karnika + Kidcity revenue target of roughly INR425 crore by FY28, versus INR248 crore delivered in FY26.",
+      "quote": "For '28, we are targeting for 42,500 lakhs."
+    },
+    {
+      "headline": "Kidcity Scaling to INR200-250cr",
+      "claim": "By FY28-29, management expects Kidcity alone to reach INR200-250 crore in revenue as its shop-in-shop and EBO network scales into high-street malls and airports.",
+      "quote": "If I go by the financial year ‘28 or ‘29, it will be definitely around INR200 crores to INR250 crores revenue from the Kidcity."
+    },
+    {
+      "headline": "30-35% Multi-Year CAGR Target",
+      "claim": "Management is guiding to a 30-35% consolidated revenue CAGR over the next three to four years, positioning Kidcity's integrated shop-in-shop format in tier 2/3 malls as a category no organized peer currently occupies.",
+      "quote": "We are making CAGR of around 30% to 35% in the next three to four years."
+    }
+  ]
+}

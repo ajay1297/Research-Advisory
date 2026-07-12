@@ -1,0 +1,20 @@
+# OS junk
+.DS_Store
+
+# Python
+__pycache__/
+*.pyc
+
+# Raw source documents (concall transcripts, investor presentations, annual
+# reports, rating rationale PDFs) fetched per-company by india-company-report.
+# These are large, re-fetchable from BSE/screener.in/company IR pages at any
+# time, and are not required for the pipeline's incremental-regeneration
+# logic — that relies on the small JSON caches (quotes.json, bullets.json,
+# guidance_history.json, fundraise_history.json, rating_history.json,
+# litigation_history.json, state.json) and report.md, which ARE tracked.
+india-company-report/research_cache/*/raw/
+
+# Intermediate build artifacts from the visual-PDF assembly step (deleted
+# after each run per SKILL.md, but ignored here as a backstop).
+india-company-report/**/report.html
+india-company-report/**/*.png

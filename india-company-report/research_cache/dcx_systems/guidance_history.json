@@ -1,0 +1,145 @@
+{
+  "guidances": [
+    {
+      "id": 0,
+      "given_in": "Q4 FY25 concall (May 2025)",
+      "for_period": "FY26-FY27 (2yr execution)",
+      "metric": "order_book_execution_timeline",
+      "value_cr": null,
+      "status": "pending",
+      "supersedes_id": null,
+      "note": "Chairman: current order book execution 'around 2 years maximum' from Rs 2,855cr order book as of 31 Mar 2025."
+    },
+    {
+      "id": 1,
+      "given_in": "Q4 FY25 concall (May 2025)",
+      "for_period": "~April 2026 (11 months)",
+      "metric": "eltx_jv_commercial_launch",
+      "value_cr": null,
+      "status": "pending",
+      "supersedes_id": null,
+      "note": "Chairman: 'We signed the JV and within 11 months we target to start the operation in this company.'"
+    },
+    {
+      "id": 2,
+      "given_in": "Q4 FY25 concall (May 2025)",
+      "for_period": "ongoing",
+      "metric": "niart_rdso_certification",
+      "value_cr": null,
+      "status": "pending",
+      "supersedes_id": null,
+      "note": "One fog test pending for NIART obstacle detection system; final RDSO certification pending fog season."
+    },
+    {
+      "id": 3,
+      "given_in": "Q3 FY26 press release (Feb 2026)",
+      "for_period": "NIART fog trials",
+      "metric": "niart_rdso_certification",
+      "value_cr": null,
+      "status": "on_track",
+      "supersedes_id": 2,
+      "note": "NIART completed functional and fog test trials for TRINETRA obstacle-detection system; 'expect to conclude on all the operational aspects of the system with the RDSO in the very near term and gear up to receive and deliver production batch orders.'"
+    },
+    {
+      "id": 4,
+      "given_in": "Q3 FY26 press release (Feb 2026)",
+      "for_period": "by 2027",
+      "metric": "eltx_jv_commercial_launch",
+      "value_cr": null,
+      "status": "delayed",
+      "supersedes_id": 1,
+      "note": "Chairman: 'we expect to complete the infrastructure and commence operation by 2027' at Hosur, Tamil Nadu -- pushed out from the original ~11-month (~April 2026) target guided at Q4 FY25 concall."
+    },
+    {
+      "id": 5,
+      "given_in": "Q4 FY26 press release (May 2026)",
+      "for_period": "by 2027",
+      "metric": "eltx_jv_commercial_launch",
+      "value_cr": null,
+      "status": "delayed",
+      "supersedes_id": 4,
+      "note": "ELTX 'has initiated groundwork for its state-of-the-art facility in Tamil Nadu and is expected to commence commercial operations by 2027' -- reaffirms the 2027 timeline (Shoolagiri Industrial Area groundbreaking)."
+    },
+    {
+      "id": 6,
+      "given_in": "Q4 FY26 press release (May 2026)",
+      "for_period": "FY26 full year",
+      "metric": "order_book_execution_timeline",
+      "value_cr": null,
+      "status": "delayed",
+      "supersedes_id": 0,
+      "note": "FY26 consolidated revenue fell 31.41% YoY to Rs 743.34cr despite order book growing to Rs 2,984cr; Chairman cited export-license delays and 'further slippages due to stringent technical qualification and certification processes inherent to defence-sector compliance.'"
+    },
+    {
+      "id": 7,
+      "given_in": "Q4 FY26 press release (May 2026)",
+      "for_period": "Q1-Q2 FY27",
+      "metric": "revenue_momentum_recovery",
+      "value_cr": null,
+      "status": "pending",
+      "supersedes_id": null,
+      "note": "Chairman: 'we anticipate stronger momentum in the upcoming periods and remain confident in our ability to deliver substantial progress in revenue generation,' citing improving supply-chain/export-license conditions after FY26 decline."
+    },
+    {
+      "id": 8,
+      "given_in": "AGM (Oct 2025)",
+      "for_period": "next 3-4 years",
+      "metric": "export_domestic_mix_shift",
+      "value_cr": null,
+      "status": "pending",
+      "supersedes_id": null,
+      "note": "Chairman: order book ~40-45% domestic/55% export currently; 'may be this ratio will be continued next 3-4 years... We may be 60:40 in upcoming days' (more export-weighted)."
+    },
+    {
+      "id": 9,
+      "given_in": "Q4 FY25 concall (May 2025)",
+      "for_period": "next 5 years",
+      "metric": "niart_railway_tam_capture",
+      "value_cr": null,
+      "status": "pending",
+      "supersedes_id": null,
+      "note": "Chairman: of ~15,000 locos in India, expects 5,000-6,000 to be fitted with NIART's obstacle detection product over 5 years; plus visibility for ~1,750 units in one other country over 3 years."
+    },
+    {
+      "id": 10,
+      "given_in": "Investor Presentation, Q3 & Q4 FY26",
+      "for_period": "multi-year",
+      "metric": "offset_opportunity_capture",
+      "value_cr": null,
+      "status": "pending",
+      "supersedes_id": null,
+      "note": "DCX targeting offset opportunity of ~USD 1bn against total pending Defence Offset Management Wing (DOMW) obligation of ~USD 13.21bn owed by foreign OEMs."
+    },
+    {
+      "id": 11,
+      "given_in": "AGM (Oct 2025) / Annual Report FY25 MD&A",
+      "for_period": "multi-year",
+      "metric": "product_company_transition",
+      "value_cr": null,
+      "status": "pending",
+      "supersedes_id": null,
+      "note": "Strategic goal to transition from build-to-print EMS/SI player to technology-driven product company via ToT deals from Israel/US OEMs, using NIART/ELTX JVs as initial vehicles, to improve margins."
+    },
+    {
+      "id": 12,
+      "given_in": "NDTV Profit KYC management interview, 11 Mar 2026",
+      "for_period": "12-18 months from PO (~Mar 2027-Sep 2027)",
+      "metric": "hal_antenna_powersupply_order_execution",
+      "value_cr": null,
+      "status": "pending",
+      "supersedes_id": null,
+      "note": "Chairman on the ~Rs68cr HAL PO for airborne antennas & power supplies: 'we need to execute this program within 12 to 18 months. This is the lead time has been put on the PO... we are confident to deliver this product.' First entry into a major DPSU (HAL) for DCX."
+    },
+    {
+      "id": 13,
+      "given_in": "NDTV Profit KYC management interview, 11 Mar 2026",
+      "for_period": "FY26-27",
+      "metric": "cable_pcb_capacity_capex",
+      "value_cr": null,
+      "status": "pending",
+      "supersedes_id": null,
+      "note": "Chairman: 'we are planning to put about a 1 and a half million to 2 million expansion plan especially on the cable and PCB site... we are budgeting about a  million to invest on this 26-27' (~Rs13-17cr) -- capacity enhancement for cable & PCB business distinct from the ELTX JV capex."
+    }
+  ],
+  "actuals": []
+}

@@ -1,0 +1,45 @@
+{
+  "guidances": [
+    {
+      "id": 0,
+      "given_in": "reiterated across recent calls, incl. Q4 FY26 (14 May 2026)",
+      "for_period": "multi-year (long-term company-wide target)",
+      "metric": "revenue_usd2bn_target",
+      "value_cr": null,
+      "status": "pending",
+      "supersedes_id": null,
+      "note": "Management reiterated commitment to a USD 2 billion overall revenue milestone: 'our guidance overall, we remain committed to the 2 billion guidance and industrial and aftermarket have an important role to play as we move and progress towards the 2 billion milestone.'"
+    },
+    {
+      "id": 1,
+      "given_in": "Q4 FY26 concall (14 May 2026)",
+      "for_period": "by ~Apr 2027",
+      "metric": "kagal_capacity_50k_engines",
+      "value_cr": 700.0,
+      "status": "pending",
+      "supersedes_id": null,
+      "note": "INR700cr capex for a 50,000-engine capacity expansion (new lines within the existing Kagal plant) -- 'that's coming online by April of next year and 50,000 engines.'"
+    },
+    {
+      "id": 2,
+      "given_in": "Q4 FY26 concall (14 May 2026)",
+      "for_period": "FY27-FY28",
+      "metric": "kagal_capacity_20k_engines",
+      "value_cr": 1400.0,
+      "status": "pending",
+      "supersedes_id": null,
+      "note": "INR1,400cr capex over the next two years for a further 20,000-engine capacity expansion (new building + new lines at the Kagal site, weighted toward HHP/high-horsepower and international-market engines) -- 'we are investing close to INR1,400 crores on that. So that will be our capital allocation for this next two years.'"
+    },
+    {
+      "id": 3,
+      "given_in": "Q4 FY26 concall (14 May 2026)",
+      "for_period": "FY26 (delivered)",
+      "metric": "industrial_segment_fy26",
+      "value_cr": 1444.0,
+      "status": "delivered",
+      "supersedes_id": null,
+      "note": "Industrial segment delivered FY26 revenue of INR1,444cr, +22% YoY -- a completed full-year outcome, not a forward claim."
+    }
+  ],
+  "actuals": []
+}

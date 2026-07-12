@@ -30,7 +30,7 @@ def main():
     parser.add_argument("--revenue-guidance-cr", type=float, required=True,
                          help="Management's guided revenue for the forward period, INR crore")
     parser.add_argument("--pat-margin-pct", type=float,
-                         help="PAT margin % to apply (use management's guided margin if given)")
+                         help="PAT margin pct to apply (use management's guided margin if given)")
     parser.add_argument("--trailing-pat-cr", type=float,
                          help="Trailing PAT, INR crore (used to derive margin if --pat-margin-pct not given)")
     parser.add_argument("--trailing-revenue-cr", type=float,

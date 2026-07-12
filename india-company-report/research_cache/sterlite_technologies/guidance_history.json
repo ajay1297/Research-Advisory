@@ -1,0 +1,45 @@
+{
+  "guidances": [
+    {
+      "id": 0,
+      "given_in": "Q4 FY26 concall (29 Apr 2026)",
+      "for_period": "FY27 (by Q4)",
+      "metric": "ebitda_margin_reported",
+      "value_cr": null,
+      "status": "pending",
+      "supersedes_id": null,
+      "note": "Management reiterated/upfronted guidance of reaching 20% reported-level EBITDA margin by the end of the current fiscal (FY27) -- 'continues to expand in line with our guidance of 20% at reported level by end of the current fiscal.' FY26 actual reported EBITDA margin was 13.2%."
+    },
+    {
+      "id": 1,
+      "given_in": "Q4 FY26 concall (29 Apr 2026)",
+      "for_period": "FY27",
+      "metric": "enterprise_dc_segment_mix",
+      "value_cr": 30.0,
+      "status": "pending",
+      "supersedes_id": null,
+      "note": "Enterprise and Data Center segment guided to scale up to 30% of revenue in FY27, upfronted from an earlier 12-18 month timeline per analyst Q&A -- 'we expect the Enterprise and Data Center segment to scale up to 30% of revenues in the current fiscal.' Segment was 19% of FY26 revenue (moderated due to a copper-business decline from higher LME prices). Value-cr field holds the percentage (30), not a rupee figure -- unit is % of revenue, not INR crore."
+    },
+    {
+      "id": 2,
+      "given_in": "Q4 FY26 concall (29 Apr 2026)",
+      "for_period": "near-term",
+      "metric": "capex_plan",
+      "value_cr": 500.0,
+      "status": "pending",
+      "supersedes_id": null,
+      "note": "Approximately INR500cr capex planned, focused on technology leadership and upgrading the asset base to support high-value data center portfolio offerings -- 'we are looking at a capex of about INR 500 crores.'"
+    },
+    {
+      "id": 3,
+      "given_in": "start of FY26 (prior calls)",
+      "for_period": "FY26",
+      "metric": "fy26_order_inflow",
+      "value_cr": 7687.0,
+      "status": "delivered",
+      "supersedes_id": null,
+      "note": "FY26 order inflows more than doubled to INR7,687cr, +109% YoY vs INR3,672cr in FY25 -- a completed full-year outcome ('record order book intake'), driven by large-scale North America data-center projects and long-term Tier-1 India telecom orders."
+    }
+  ],
+  "actuals": []
+}

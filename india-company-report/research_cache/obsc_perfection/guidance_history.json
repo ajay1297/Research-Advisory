@@ -1,0 +1,45 @@
+{
+  "guidances": [
+    {
+      "id": 0,
+      "given_in": "Q4 FY26 investor release/secondary coverage, ~21 May 2026",
+      "for_period": "FY27",
+      "metric": "capex_plan",
+      "value_cr": 17.5,
+      "status": "pending",
+      "supersedes_id": null,
+      "note": "Management guided FY27 capex of approximately INR15-20cr (midpoint ~INR17.5cr used here), expected to drive growth over the subsequent two years. Sourced to secondary coverage (tradebrains.in) of the Q4 FY26 investor release/call -- the primary transcript PDF could not be retrieved in this run (see sourcing note in report)."
+    },
+    {
+      "id": 1,
+      "given_in": "Q4 FY26 investor release/secondary coverage, ~21 May 2026",
+      "for_period": "FY27",
+      "metric": "humanoid_robotics_contribution",
+      "value_cr": null,
+      "status": "pending",
+      "supersedes_id": null,
+      "note": "Management indicated the humanoid robotics business (currently in prototyping/validation phase with customers) is expected to make an important contribution in FY27. Sourced to secondary coverage; primary transcript not retrieved in this run."
+    },
+    {
+      "id": 2,
+      "given_in": "ongoing as of Q4 FY26",
+      "for_period": "~1 year from start",
+      "metric": "as9100d_certification",
+      "value_cr": null,
+      "status": "pending",
+      "supersedes_id": null,
+      "note": "Company is in process of obtaining AS9100D certification (aerospace manufacturing quality standard), described as an intense process expected to take about one year. Sourced to secondary coverage; primary transcript not retrieved in this run."
+    },
+    {
+      "id": 3,
+      "given_in": "FY26 close (~Mar 2026)",
+      "for_period": "FY26 (delivered)",
+      "metric": "fy26_revenue",
+      "value_cr": 219.54,
+      "status": "delivered",
+      "supersedes_id": null,
+      "note": "FY26 revenue from operations of INR219.54cr (+53.8% YoY) and net profit of INR27.01cr (+61.2% YoY) -- completed full-year outcomes, per company exchange disclosure."
+    }
+  ],
+  "actuals": []
+}

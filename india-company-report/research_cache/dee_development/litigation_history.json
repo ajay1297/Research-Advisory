@@ -1,0 +1,16 @@
+{
+  "cases": [
+    {
+      "id": 0,
+      "case_ref": "PSERC tariff order, Power Division (Malwa Power / 8MW biomass plant)",
+      "forum": "High Court of Punjab & Haryana (appeal from PSERC order)",
+      "case_type": "regulatory",
+      "parties": "DEE Development Engineers (Power Division / Malwa Power Private Limited) vs. PSERC / PSPCL",
+      "amount_cr": null,
+      "status": "ongoing",
+      "appeal_window": "",
+      "note": "PSERC revised the Power Division's tariff downward to INR5.877/unit; the company appealed to the High Court of Punjab & Haryana, which stayed the PSERC order on 23 Oct 2025. Pending final disposal, the company continues billing PSPCL at the prior tariff of INR7.47/unit, and any tariff-differential recovery PSPCL might claim remains withheld. Management has also flagged a possible future appeal to APTEL (Appellate Tribunal for Electricity) seeking a tariff increase per CERC regulations. This matches the PSERC/tariff commentary in the company's Q3 FY26 concall (management referenced a 'final hearing with the PSERC' and a per-unit production cost around Rs.5.8).",
+      "source": "PSERC order dated 20 Aug 2025 (tariff revised to INR5.877/unit); High Court stay order dated 23 Oct 2025"
+    }
+  ]
+}

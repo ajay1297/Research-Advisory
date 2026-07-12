@@ -1,0 +1,16 @@
+{
+  "cases": [
+    {
+      "id": 0,
+      "case_ref": "Kirloskar 16% equity/share-transfer dispute",
+      "forum": "Karnataka High Court (on appeal from a Bengaluru Commercial Court, which had refused a temporary injunction)",
+      "case_type": "promoter_related",
+      "parties": "Vijay Ravindra Kirloskar and KEC Welfare Trusts vs Mohib Nomanbhai Khericha (Chairman, TDPSL) and Nikhil Kumar (MD, TDPSL, Kirloskar's nephew) and others",
+      "amount_cr": 555.0,
+      "status": "ongoing",
+      "appeal_window": "",
+      "note": "Kirloskar (founder of TDPSL in 1999, also Chairman of Kirloskar Electric Company) asserts a claim over a 16% equity stake (2.51 crore shares) held by Khericha/Kumar/others. Karnataka HC granted an interim order 12 Jul 2023 restraining transfer/sale of the shares; respondents given 1 week to seek vacating it. No public update found after Aug 2023 (a separate Business Standard piece the same month described Kirloskar alleging insufficient SEBI disclosure around shareholder agreements) -- current 2026 status not independently confirmed in sources reviewed; verify before treating as resolved either way.",
+      "source": "Zee Business / Deccan Herald, 12-13 Jul 2023; Business Standard, 20 Aug 2023"
+    }
+  ]
+}

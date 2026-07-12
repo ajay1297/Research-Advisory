@@ -1,0 +1,85 @@
+{
+  "guidances": [
+    {
+      "id": 0,
+      "given_in": "start of FY26 (management commentary)",
+      "for_period": "FY26",
+      "metric": "standalone_revenue_fy26",
+      "value_cr": 1157.0,
+      "status": "delivered",
+      "supersedes_id": null,
+      "note": "FY26 standalone/consolidated turnover of INR1,157cr confirmed as 'at par with the guidance given in the beginning of the year' on the Q4 FY26 concall (27 May 2026)."
+    },
+    {
+      "id": 1,
+      "given_in": "Q4 FY26 concall (27 May 2026)",
+      "for_period": "FY27",
+      "metric": "standalone_revenue_fy27",
+      "value_cr": 1350.0,
+      "status": "pending",
+      "supersedes_id": null,
+      "note": "Standalone sales planned at INR1,300-1,400cr for FY27 (~15-20% YoY growth vs FY26), covering ~40% R&D and ~60% production-area orders per management commentary."
+    },
+    {
+      "id": 2,
+      "given_in": "Q3 FY26 concall (13 Feb 2026)",
+      "for_period": "FY27-FY30 (4-year window)",
+      "metric": "multi_year_sales_target",
+      "value_cr": 7500.0,
+      "status": "on_track",
+      "supersedes_id": null,
+      "note": "New order booking of INR8,000-10,000cr and concurrent sales of ~INR7,500cr+ over the next 4 years, per Atim Kabra (Executive Director)."
+    },
+    {
+      "id": 3,
+      "given_in": "Q4 FY26 concall (27 May 2026)",
+      "for_period": "FY27",
+      "metric": "arc_jv_growth",
+      "value_cr": null,
+      "status": "pending",
+      "supersedes_id": null,
+      "note": "ARC (JV/subsidiary with Rafael) guided minimum 50% growth in both order booking and sales for FY27; visibility of INR200cr order book as of the call, sales expected to cross INR600cr (vs FY26 actual of INR360cr)."
+    },
+    {
+      "id": 4,
+      "given_in": "Jun 2026 board meeting",
+      "for_period": "pending shareholder/regulatory approval",
+      "metric": "demerger_astpl",
+      "value_cr": null,
+      "status": "pending",
+      "supersedes_id": null,
+      "note": "Board approved in-principle demerger of the Space, Meteorology and Hydrology business into a new entity (ASTPL) with 1:1 share entitlement to existing shareholders, subject to shareholder/regulatory/NCLT approvals."
+    },
+    {
+      "id": 5,
+      "given_in": "Q3 FY26 concall (13 Feb 2026)",
+      "for_period": "~Aug 2026 (6 months from Feb 2026)",
+      "metric": "drdo_radar_certification",
+      "value_cr": null,
+      "status": "pending",
+      "supersedes_id": null,
+      "note": "Management said it was 'hopeful' a final radar product would be DRDO-certified within 6 months, in response to a direct analyst question \u2014 described as tentative, not a firm commitment."
+    },
+    {
+      "id": 6,
+      "given_in": "Q4 FY26 concall (27 May 2026)",
+      "for_period": "FY30-FY31",
+      "metric": "multi_year_sales_target",
+      "value_cr": 3470.0,
+      "status": "on_track",
+      "supersedes_id": 2,
+      "note": "Reiterated and re-timed: management now frames this as 'nearly triple' FY26's INR1,157cr turnover (~INR3,400-3,500cr) over a 4.5-5.5 year window from FY26, i.e. by FY30-31; separately floated a coming-decade ambition of '>USD 0.5bn revenue enterprise.' Value-cr uses the ~3x-turnover reading, not the 10-yr figure."
+    },
+    {
+      "id": 7,
+      "given_in": "Q4 FY26 concall (27 May 2026)",
+      "for_period": "FY28",
+      "metric": "drdo_radar_certification",
+      "value_cr": null,
+      "status": "delayed",
+      "supersedes_id": 5,
+      "note": "Timeline pushed out: management now expects DRDO to be ready to qualify the overall (Uttam AESA) radar only in FY28, versus the ~6-month hope expressed on the prior quarter's call."
+    }
+  ],
+  "actuals": []
+}

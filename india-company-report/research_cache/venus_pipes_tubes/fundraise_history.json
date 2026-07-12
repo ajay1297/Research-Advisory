@@ -1,0 +1,21 @@
+{
+  "raises": [
+    {
+      "id": 0,
+      "date": "2024-02-29",
+      "instrument": "warrants",
+      "allottee": "mixed",
+      "amount_cr": 71.4,
+      "units": 420000,
+      "price_per_unit": 1700.0,
+      "upfront_pct": 25.0,
+      "tenure": null,
+      "rate_pct": null,
+      "purpose": "Fund capex - fittings plant entry + seamless/welded capacity expansion (total capex program ~INR175-200cr)",
+      "source": "Venus Pipes postal ballot notice Feb 2024; investor release 7 Oct 2025 confirming final tranche conversion",
+      "status": "converted",
+      "note": "Allotted to Promoter Group & Non-Promoter Group entities; final tranche received 7 Oct 2025 - fully converted, no lapse; promoters/directors contributed up to ~INR51cr of the total",
+      "investors": "Arun Axaykumar Kothari (Chairman & MD), Megharam S Choudhary (Whole-Time Director), Jayantiram Motiram Choudhary (Whole-Time Director), Dhruv Mahendrakumar Patel (Whole-Time Director) \u2014 all named promoter-directors; specific non-promoter co-allottee names not found in sources searched"
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "ratings": [
+    {
+      "id": 0,
+      "date": "2026-07-03",
+      "agency": "crisil",
+      "instrument": "bank facilities (Cash Credit INR45.25cr, Term Loan INR33.08cr, Proposed Fund-Based Limits INR21.67cr)",
+      "rating": "BBB+",
+      "outlook": "stable",
+      "action": "first_time",
+      "note": "First-time rating: CRISIL BBB+/Stable on ~INR100cr of bank facilities (Cash Credit INR45.25cr, Term Loan INR33.08cr, Proposed Fund-Based Limits INR21.67cr). Cites experienced promoters, diversified product profile, healthy order book, and comfortable financial risk profile.",
+      "source": "CRISIL Ratings, disclosed to exchanges 3 Jul 2026"
+    }
+  ]
+}

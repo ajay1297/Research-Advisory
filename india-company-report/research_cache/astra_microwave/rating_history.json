@@ -1,0 +1,26 @@
+{
+  "ratings": [
+    {
+      "id": 0,
+      "date": "2025-07-03",
+      "agency": "crisil",
+      "instrument": "long-term bank facilities",
+      "rating": "A",
+      "outlook": "stable",
+      "action": "reaffirmed",
+      "note": "FY25 revenue grew 16% YoY; 13% revenue CAGR since FY21, driven by execution of domestic defence orders.",
+      "source": "CRISIL Ratings rationale, 3 Jul 2025"
+    },
+    {
+      "id": 1,
+      "date": "2025-12-11",
+      "agency": "crisil",
+      "instrument": "long-term bank facilities (enhanced to INR1,536.5cr from INR1,336.5cr)",
+      "rating": "A",
+      "outlook": "positive",
+      "action": "outlook_revised_positive",
+      "note": "Outlook revised to Positive from Stable; ratings reaffirmed (CRISIL A/Positive long-term, CRISIL A1 short-term, CRISIL A/Positive corporate credit rating). Cites established defence-segment market position, revenue growth of 13-14% expected over the medium term, operating margin improving to 24-25%, gearing below 0.5x and interest coverage above 5x through FY26, annual cash accrual of INR160-200cr against INR17-19cr yearly debt obligations, and the planned INR174cr equity raise (the Jun 2025 warrant issue).",
+      "source": "CRISIL Ratings rationale, 11 Dec 2025"
+    }
+  ]
+}

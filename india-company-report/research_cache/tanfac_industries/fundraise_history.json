@@ -1,0 +1,38 @@
+{
+  "raises": [
+    {
+      "id": 0,
+      "date": "2026-06-25",
+      "instrument": "qip",
+      "allottee": "institution",
+      "amount_cr": 250.0,
+      "units": 1258918,
+      "price_per_unit": 1985.83,
+      "upfront_pct": null,
+      "tenure": null,
+      "rate_pct": null,
+      "purpose": "Fund HFC-32 refrigerant gas plant, downstream fluorochemical capacity expansion, backward integration (HF/sulphuric acid), general corporate purposes",
+      "source": "BSE announcement / company press release, 25 Jun 2026",
+      "status": "allotted",
+      "note": "Company's first equity capital raise in over three decades; issue price was a 5% discount to the SEBI floor price of Rs 2,090.34",
+      "investors": "Motilal Oswal Mutual Fund, Motilal Oswal India Excellence Fund, Bengal Finance & Investment Pvt Ltd, Turn Around Opportunities Fund, Niveshaay Hedgehogs Fund"
+    },
+    {
+      "id": 1,
+      "date": "2026-07-06",
+      "instrument": "preferential_equity",
+      "allottee": "mixed",
+      "amount_cr": 99.41,
+      "units": null,
+      "price_per_unit": 2341.0,
+      "upfront_pct": null,
+      "tenure": null,
+      "rate_pct": null,
+      "purpose": "Part of the ~Rs 400cr capex funding plan (balance Rs 100cr promoter preferential + Rs 300cr QIP/term debt) flagged on the Q4 FY26 concall",
+      "source": "BSE board-meeting outcome, 6 Jul 2026; press reports on reduced issue size",
+      "status": "pending",
+      "note": "Originally announced as Rs 173.48cr (7.41 lakh shares); reduced 42.7% to Rs 99.41cr. Shareholder approval pending at EGM scheduled 30 Jul 2026 — not yet allotted as of this report. Per-allottee split at the reduced size not confirmed in sources reviewed.",
+      "investors": "Anupam Rasayan India Ltd (promoter, lead subscriber), Alrox Enterprises Pvt Ltd, Vivek Jain, Tatvam Trade"
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "raises": [
+    {
+      "id": 0,
+      "date": "2024-01-19",
+      "instrument": "qip",
+      "allottee": "institution",
+      "amount_cr": 500.0,
+      "units": null,
+      "price_per_unit": null,
+      "upfront_pct": null,
+      "tenure": null,
+      "rate_pct": null,
+      "purpose": "Growth plan / capex; Rs 361.78cr of proceeds still pending utilization as of Mar 2025",
+      "source": "FY25 Annual Report, Note 45A",
+      "status": "allotted",
+      "note": "Qualified Institutional Placement to institutional investors, not a promoter-directed instrument. Mechanically diluted promoter stake alongside the Nov 2022 IPO (promoter holding fell from 98.2% pre-IPO to 52.17% by Mar 2026)."
+    }
+  ]
+}

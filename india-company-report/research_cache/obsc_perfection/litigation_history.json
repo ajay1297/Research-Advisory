@@ -1,0 +1,16 @@
+{
+  "cases": [
+    {
+      "id": 0,
+      "case_ref": "Seema Vishwamber Rathod vs. OBSC Perfection -- Employees' Compensation Act claim",
+      "forum": "Not specified in sources reviewed (Employees' Compensation Act, 1923 proceeding)",
+      "case_type": "labor",
+      "parties": "Seema Vishwamber Rathod (employee) vs. OBSC Perfection Limited",
+      "amount_cr": 0.1075,
+      "status": "ongoing",
+      "appeal_window": "",
+      "note": "Claim of INR10.75 lakh (~INR0.11cr) filed under Section 4 of the Employees' Compensation Act, 1923, following a workplace injury. Immaterial in size relative to company scale but logged per this report's discipline of checking litigation on every run. No contingent liabilities were otherwise disclosed as of FY2024 per the same source.",
+      "source": "DRHP disclosure, dated 23 Jul 2024 (per secondary coverage; primary DRHP litigation section not independently re-verified in this run)"
+    }
+  ]
+}
