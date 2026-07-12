@@ -59,6 +59,15 @@ removed by using the skill.
 
 ## Installation
 
+**Install this plugin only through Cowork's own plugin/marketplace
+management flow — never by asking Claude to install it for you inside a
+regular chat conversation.** Plugin installs change what's available to
+every future session, so they belong in Cowork's dedicated setup surface,
+not as a side effect of a chat message. If you're in a chat session and want
+this plugin, go to Cowork's plugin management (or use the CLI directly
+yourself, as below) rather than asking Claude to run the install commands
+on your behalf mid-conversation.
+
 This repo is set up as **both** the marketplace catalog and the plugin
 itself (self-referencing via `.claude-plugin/marketplace.json`'s
 `"source": "."`), so you can install it either through Claude's plugin UI or
