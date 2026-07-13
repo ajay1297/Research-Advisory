@@ -87,6 +87,23 @@ from what was disclosed (e.g., "an OEM's own OEM customers are X" is fair to nam
 the company said so; don't guess an entire multi-tier chain from a one-line business
 description).
 
+**Backward integration must show up as part of "The Company" box, not the Upstream
+box.** Before drawing the diagram, check explicitly how far upstream the company's own
+manufacturing actually reaches — many companies describe themselves as integrated back
+to a raw or semi-processed input (e.g. "from glass preform to pre-terminated
+assemblies" for an optical fiber maker, "from billet to finished pipe" for a tube
+maker, "from clinker to cement" for a cement maker). If the company states this kind of
+backward-integration claim anywhere in the sources reviewed, the "THE COMPANY" box's
+detail line must say so explicitly (e.g. "Manufactures its own glass preform in-house,
+then draws optical fiber and cables from it — not a preform buyer"), and the UPSTREAM
+box should be scoped to only the inputs genuinely bought from outside (e.g. raw
+germanium/silica feedstock), not the semi-processed stage the company itself makes. Get
+this wrong and the diagram understates the moat — a company that makes its own preform
+has a materially different cost/quality/lead-time position than one that buys preform
+and only draws fiber, and a reader skimming the diagram alone should not come away
+thinking the two are the same. If the sources don't say how far back the company's own
+manufacturing goes, say so in the company box rather than guessing.
+
 **Always follow the paragraph with a flow diagram** in a fenced code block (four
 backticks... no, three: ```` ``` ````) in the markdown deliverable. Use a **vertical
 stacked-box layout**, one box per value-chain stage, connected by a `|` / `v`
@@ -222,7 +239,7 @@ a script name, or a `--flag` value.
 
 ## Sections after the Near/Medium/Long Term outlook
 
-Append these eighteen sections, in this order, after Long Term. Each is conditional — skip
+Append these nineteen sections, in this order, after Long Term. Each is conditional — skip
 a section entirely (don't print an empty heading) if the underlying input isn't
 available, and say so in one line rather than silently omitting it (the sole exception
 is section 3, CDMO Pipeline, which is omitted with no mention at all for a non-CDMO
@@ -426,39 +443,130 @@ alone (a registered office is not necessarily a manufacturing site). **Always re
 as a bullet list, one point per location/fact — never merge into a single paragraph**,
 per the Assembly section's formatting rule below.
 
-**Raw material import dependency** — check whether the company's key raw material
-(the metal/chemical/component input specific to its industry — e.g. stainless steel
-billets for a pipe maker, API intermediates for a pharma company) is imported,
-domestically sourced, or a mix, and capture the disclosed import % and country/region
-of origin if given. The primary source is the annual report's "Value of raw materials
-consumed — indigenous vs. imported" note (a standard Companies Act/Ind AS disclosure,
-usually in the Notes to Accounts, sometimes titled "Additional Information pursuant to
-Schedule III"); concall Q&A about raw-material sourcing or supply-chain risk is a
-secondary source. If the annual report isn't accessible, an export/import
-shipment-data aggregator (Volza, Seair Exim, ImportGenius, Zauba Corp — see
-`reference/source_playbook.md`) can show actual inbound shipment records (shipper,
-origin country) as a partial substitute — say explicitly if only a partial picture was
-available this way, since these sites usually gate full records behind a paywall.
-State the fact plainly — if imports are a majority of raw-material consumption, or
-concentrated in one country, this is a real cost/FX/geopolitical exposure and should be
-cross-referenced in Key Risks (alongside the existing commodity/FX-exposure risk
-category). If a specific import % or country genuinely isn't disclosed anywhere
-reviewed, say so explicitly rather than assuming full domestic sourcing or estimating a
-figure — a qualitative management comment about raw-material supply-chain risk (without
-a hard %) is still worth reporting, just labeled as qualitative, not quantified.
+**Raw Material Sourcing — domestic vs. imported, country-wise where disclosed** —
+check whether the company's key raw material (the metal/chemical/component input
+specific to its industry — e.g. stainless steel billets for a pipe maker, API
+intermediates for a pharma company, glass preform feedstock for a fiber maker) is
+imported, domestically sourced, or a mix. Capture:
+- The domestic vs. imported **%** split of total raw material consumption.
+- **If any portion is imported, break it down by country/region** wherever the source
+  discloses that level of detail (e.g. "62% imported: China 40%, South Korea 15%,
+  others 7%") — a single blended "imported" % without a country split understates a
+  genuine concentration risk (a single-country dependency is a materially different
+  exposure than a diversified import basket, even at the same aggregate %). If only the
+  aggregate imported % is disclosed with no country breakdown, say so explicitly rather
+  than presenting the aggregate as if it were the complete picture.
+
+The primary source is the annual report's "Value of raw materials consumed —
+indigenous vs. imported" note (a standard Companies Act/Ind AS disclosure, usually in
+the Notes to Accounts, sometimes titled "Additional Information pursuant to Schedule
+III") — this note occasionally also carries a country-of-origin breakdown or the MD&A
+section nearby does. Concall Q&A about raw-material sourcing or supply-chain risk is a
+secondary source for qualitative color (which may name specific countries even without
+a hard %). If the annual report isn't accessible, an export/import shipment-data
+aggregator (Volza, Seair Exim, ImportGenius, Zauba Corp — see
+`reference/source_playbook.md`) can show actual **inbound** shipment records (shipper
+name, origin country, sometimes value/quantity) as a partial substitute for both the
+import % and the country split — say explicitly if only a partial picture was available
+this way, since these sites usually gate full records behind a paywall. State the fact
+plainly — if imports are a majority of raw-material consumption, or concentrated in one
+country, this is a real cost/FX/geopolitical exposure and should be cross-referenced in
+Key Risks (alongside the existing commodity/FX-exposure risk category). If a specific
+import % or country genuinely isn't disclosed anywhere reviewed, say so explicitly
+rather than assuming full domestic sourcing or estimating a figure — a qualitative
+management comment about raw-material supply-chain risk (without a hard %) is still
+worth reporting, just labeled as qualitative, not quantified.
+
+**Export Shipment / Customs Data** — for any company that exports (finished goods) or
+imports (raw materials/components), always attempt one targeted check of a
+shipment-data aggregator (Volza, Seair Exim, ImportGenius, Zauba Corp, Panjiva — see
+`reference/source_playbook.md`) rather than treating this as optional. Where records are
+found, list the concrete shipment-level detail actually surfaced — consignee/shipper
+name, destination/origin country, and product description, and quantity/value if
+shown — as its own short list (e.g. "Per Volza shipment records (not company-disclosed):
+3 shipments of optical fiber cable to a consignee in Vietnam, Mar-May 2026; 2 shipments
+to a consignee in Kenya, Jan 2026"), clearly labeled as third-party customs data rather
+than company disclosure. This serves two purposes and should be checked for both: (1)
+corroborating or surfacing customer names for Marquee & Niche Customers, and (2)
+corroborating or filling the country-of-origin gap for Raw Material Sourcing above. If a
+genuinely thorough check turns up nothing usable (site paywalled beyond a preview, no
+records indexed for the company), say so explicitly in one line rather than omitting the
+attempt silently — this is a check that should always be attempted and reported on, not
+a check that's only mentioned when it succeeds.
 
 ### 8. Capacity Utilization & Headroom
 
 Only include if a capacity utilization % or the inputs to derive one (installed
 capacity, units produced) were disclosed — usually from the concall Q&A or an investor
-presentation's operations slide. Compute via `scripts/capacity_utilization.py`: current
-revenue at current utilization %, and the max revenue achievable at 100% utilization of
-*existing* capacity with no further capex. State both figures and the headroom between
-them plainly — e.g. "At 82% utilization, the company is doing INR248cr; its current
-capacity alone could support ~INR302cr (22% headroom) before any new capex is needed."
-If utilization is already at or above 85%, reproduce the script's high-utilization flag
-verbatim — near-term growth beyond that point depends on the Capex/Milestones timeline
-above, not just running the existing plant harder.
+presentation's operations slide.
+
+**For bespoke/engineered-equipment makers, also capture product size/range capability
+as its own distinct fact, separate from throughput capacity.** A company that
+manufactures made-to-order equipment (cryogenic tanks, pressure vessels, transformers,
+process skids, etc.) often discloses two genuinely different "capacity" concepts, and
+both are worth including if disclosed — don't conflate them:
+- **Throughput/volume capacity** — units or physical output per year (the
+  fiber-km/annum, MT/annum, units/annum framing above).
+- **Product size/range capability** — the largest (and smallest) unit the company is
+  actually equipped to build, e.g. "manufactures tanks from 1-litre portable dewars to
+  1,500,000-litre stationary tanks; transport tanks up to 60,000 litres," or "static LNG
+  tanks up to one million litres." This is a real capability constraint distinct from
+  annual throughput — a company can be running below its annual unit-volume capacity
+  while *also* being one of very few suppliers capable of a specific largest-size
+  product, and that size ceiling is itself a competitive/moat fact (cross-reference
+  MOATs) as much as a capacity fact. State both where the company discloses each,
+  rather than defaulting to only the annual-throughput framing.
+
+Source for the size/range figure: the annual report's "Company Overview"/"Divisional
+Review" section in the Management Discussion & Analysis (often phrased as a per-division
+product range), the investor presentation's product-portfolio slide, or concall
+descriptions of a specific large order (e.g. "the largest-sized tanks, 1,500 m³, in the
+industrial gases segment"). A single large project's stated capacity (e.g. "10 x 1,500
+m³ LNG storage tanks... largest installation of shop-fabricated, double-walled,
+vacuum-insulated cryogenic tanks in the world") is itself worth citing as evidence of
+the size ceiling actually being reached in practice, not just claimed.
+
+**Report capacity in the industry's own physical unit first, revenue second.** Every
+industry measures capacity differently, and that native unit is the primary figure a
+reader needs — a revenue-only framing hides real information (utilization dynamics,
+product-mix flexibility, comparability to the company's own historical disclosures and
+to peers). Use whatever unit the company itself discloses: fiber-km/annum for an
+optical fiber maker, MT/annum for a metals/chemicals/cement producer, MW/MWp for a power
+or renewable-equipment company, number of vehicles/looms/spindles/kegs/cylinders for a
+discrete-unit manufacturer, bed-days or occupancy % for a hospital, etc. — never force
+a single generic "utilization %" without stating what's actually being utilized. If the
+company discloses capacity split by sub-type/grade/spec within the same broad unit
+(e.g. an optical fiber maker breaking out standard single-mode fiber vs. a specialty
+grade like 50-micron/OM-series multi-mode fiber, or a steel maker splitting flat vs.
+long products), show that breakdown rather than collapsing it into one aggregate
+figure — the utilization dynamics for a specialty/high-margin sub-type are often the
+more decision-relevant number than the blended aggregate.
+
+**Flag explicitly if the capacity is a shared, multi-purpose pool** — i.e. the same
+production line/plant/asset can be swung between multiple product variants or grades
+rather than each variant having dedicated, ring-fenced capacity. This matters because
+utilization of the aggregate pool doesn't tell a reader how much of *any one* variant
+could be produced if demand shifted toward it — state this plainly (e.g. "the Kalol
+line is a multi-purpose asset that can be allocated across standard, hollow-core, and
+multi-core fiber depending on order mix — the utilization figure below is for the
+shared pool, not any single fiber type") rather than presenting a blended % as if it
+described a dedicated line. If the company discloses genuinely dedicated (single-product)
+capacity instead, say that explicitly too — the distinction is the point, not a detail
+to skip.
+
+Once the physical-unit figures are established, optionally convert to a revenue lens
+via `scripts/capacity_utilization.py`: current revenue at current utilization %, and
+the max revenue achievable at 100% utilization of *existing* capacity with no further
+capex. State both the physical-unit figures and, where realization/pricing data
+supports it, the revenue headroom plainly — e.g. "Installed capacity is 50 million
+fiber-km/annum (shared across standard and specialty grades); FY26 production was 39
+million fiber-km (78% utilization). At full utilization of existing capacity alone,
+that implies ~INR302cr of additional revenue headroom before any new capex is needed."
+If a revenue conversion isn't supportable (no realization/pricing figure available),
+show the physical-unit utilization alone rather than forcing a revenue estimate. If
+utilization is already at or above 85% (on the physical-unit basis), reproduce the
+script's high-utilization flag verbatim — near-term growth beyond that point depends on
+the Capex/Milestones timeline above, not just running the existing plant harder.
 
 **Before vs. after capex, where a post-capex figure exists**: if the Capex/Milestones
 timeline (section 2) or the outlook sections already captured a management-disclosed
@@ -470,8 +578,11 @@ the disclosed post-capex potential ("after capex"), plus the revenue the capex i
 unlocks (the gap between the two). If no post-capex revenue figure was disclosed
 anywhere, show the before-capex figure alone and say so, rather than estimating one.
 
-**In the visual PDF, this is a `data_table()` only** (before-capex / after-capex /
-headroom-unlocked as columns or rows) — no chart by default, per "Assembly" below.
+**In the visual PDF, this is a `data_table()` only** — columns/rows for installed
+capacity (in the industry's native unit), current production/utilization, before-capex
+ceiling, after-capex potential, and headroom-unlocked, with a separate row or note for
+each disclosed sub-type/grade if the company breaks capacity out that way. No chart by
+default, per "Assembly" below.
 
 ### 9. Total Addressable Market (TAM)
 
@@ -543,6 +654,50 @@ Medium/Long Term sections should already have captured). Compute via
   base font renders a raw ₹ as a black box; the primary WeasyPrint pipeline (see
   "Assembly" below) embeds a real font and renders ₹ natively, no substitution needed.
 
+### Broker / agency research — inline-tagged, no dedicated section
+
+When the user has uploaded a third-party broker/agency research report (Nuvama,
+Motilal Oswal, ICICI Securities, etc. — see "Broker / agency research reports" in
+`reference/source_playbook.md` for the sourcing/compliance rule; this pipeline never
+fetches broker research off the web), **there is no separate section for it.** Instead,
+fold each broker-sourced fact directly into whichever section it naturally belongs to
+— a target price and rating into Valuation, a broker's demand-growth read into
+Industry Tailwinds/Headwinds, a broker's thesis point into Investment Thesis Summary,
+a broker-flagged risk into Key Risks, and so on — exactly where a reader would expect
+to find that kind of claim, rather than segregated into its own block.
+
+**What keeps it from getting mixed up with the pipeline's own sourcing is an inline
+tag on every broker-sourced point, not physical separation.** Immediately after any
+fact, figure, or claim drawn from a broker report, append a tag in this exact format:
+
+```
+[<BROKER>_<DDMMYYYY>]
+```
+
+`<BROKER>` is the agency name, uppercase, no spaces (`NUVAMA`, `MOTILALOSWAL`,
+`ICICISEC`, etc.); `<DDMMYYYY>` is the report's own publication date, not today's
+date. Example, from an actual Nuvama Result Update dated 29 April 2026:
+
+> Nuvama raised its 12-month target price to Rs.440, valuing the company at 15x
+> Mar-28E EBITDA [NUVAMA_29042026].
+
+Every broker-sourced sentence gets its own tag, even if two consecutive sentences come
+from the same report — don't tag a whole paragraph once and leave later sentences in
+it untagged, since a reader (or a later edit) may lift one sentence out of context.
+A table row or bullet point pulled from a broker report gets the tag at the end of
+that row/bullet, same rule. If the same fact is independently corroborated by both a
+broker report and a primary source (e.g. the company's own concall), cite both — the
+tag doesn't replace the pipeline's own sourcing discipline, it adds to it: `management
+guided X on the Q4 concall, later reiterated as Nuvama's base case [NUVAMA_29042026]`.
+
+Never let a broker's estimate or target silently become "the" number in a section that
+also carries the pipeline's own independently-derived figure (e.g. Valuation's Forward
+PE table) — if both exist, show both, each clearly attributed (the pipeline's own row
+unlabeled/as normal, the broker's row carrying its tag), never averaged or merged into
+one number. Paraphrase a broker's thesis/risk points in your own words rather than
+reproducing paragraphs verbatim (per the compliance note in `source_playbook.md`) —
+the tag establishes attribution, it doesn't license copying the source text at length.
+
 ### 11. Industry Tailwinds / Headwinds
 
 2-4 bullets, each citing a specific external source (peer concall, sector report, news
@@ -551,7 +706,7 @@ Format: `**<Tailwind/Headwind name>**: <one to two sentence factual claim>. (Sou
 <name, date>)`. Separate tailwinds from headwinds with a one-line subheading each if
 both are present.
 
-### 12. Competitive Positioning: Peer Comparison, Entry Barriers & Product Criticality
+### 12. Competitive Positioning: Peer Comparison
 
 Always attempt this section — unlike a disclosure-gated section (TAM, order book), a
 basic peer comparison is normally sourceable for any listed company from screener.in's
@@ -575,30 +730,53 @@ hold a stronger position than the reporting company on IP, customer niche-ness, 
 certifications — and where the reporting company leads instead. This is a factual
 comparison of what each company has itself disclosed (or what a sector report states),
 not a ranking score, a moat "score," or a buy/sell signal — never editorialize beyond
-the disclosed facts.
+the disclosed facts. If no direct listed pure-play peer exists (common for a genuinely
+niche business), say so explicitly and use the closest adjacent listed comparables
+available, labeling them as adjacent rather than direct competitors.
 
-**Entry Barriers** — list the barriers a new entrant would actually face in this
-specific business, sourced from the company's own commentary (concalls often address
-"why can't a new entrant just walk in" when analysts ask), peer commentary, or the
-annual report's industry-overview/competitive-strengths section: capital intensity
-(plant/equipment cost to reach minimum viable scale), certification/qualification lead
-time (e.g. aerospace AS9100, defense vendor empanelment, pharma USFDA approval — often
-multi-year processes), customer qualification/design-in cycles, proprietary technology
-or know-how, and switching costs for existing customers. Only state a barrier the
-sources actually support — don't assume high barriers just because a business sounds
-specialized.
+### 13. MOATs
 
-**Product Criticality** — state how critical the company's product is to its
-customer's end-use, per what's actually disclosed: is it a safety-critical or
-mission-critical component (aerospace, defense, power-plant, pharma) where a failure or
-substitution carries an outsized cost to the customer beyond the product's own price —
-or is it a more discretionary/substitutable input? This is usually the same underlying
-fact that drives the entry-barrier and switching-cost points above — cross-reference
-rather than re-explain. Source from management's own framing of the product's role, a
-customer's disclosed qualification requirements, or industry context; never invent a
-criticality claim the sources don't support.
+A dedicated section — kept separate from the Peer Comparison table above because a
+company's moat is about its own durable structural advantages, not how it stacks up
+against named peers on a table. **Render as a bullet list (`flag_list(kind='bull')` in
+the visual PDF, plain markdown bullets in the `.md`) — never a merged paragraph.** Cover
+whichever of these actually apply, each bullet naming the specific evidence behind it
+(never a generic "strong moat" assertion with no support):
 
-### 13. Technical Snapshot
+- **IP / Technology Moat** — patents, proprietary processes, in-house R&D depth,
+  a technology platform/product the company itself claims is differentiated (e.g. a
+  specific fiber type, alloy, formulation, or software stack), and the backward
+  integration depth already established in Value Chain Positioning above
+  (cross-reference rather than re-explain).
+- **Entry Barriers** — the barriers a new entrant would actually face in this specific
+  business, sourced from the company's own commentary (concalls often address "why
+  can't a new entrant just walk in" when analysts ask), peer commentary, or the annual
+  report's industry-overview/competitive-strengths section: capital intensity
+  (plant/equipment cost to reach minimum viable scale), certification/qualification
+  lead time (e.g. aerospace AS9100, defense vendor empanelment, pharma USFDA approval —
+  often multi-year processes, a specific number of years if management gave one),
+  customer qualification/design-in cycles, proprietary technology or know-how, and
+  regulatory barriers specific to the market (e.g. an import-certification regime that
+  blocks foreign competitors). Only state a barrier the sources actually support — don't
+  assume high barriers just because a business sounds specialized.
+- **Product Criticality** — how critical the company's product is to its customer's
+  end-use: is it a safety-critical or mission-critical component (aerospace, defense,
+  power-plant, pharma) where a failure or substitution carries an outsized cost to the
+  customer beyond the product's own price — or is it a more discretionary/substitutable
+  input? Source from management's own framing of the product's role, a customer's
+  disclosed qualification requirements, or industry context; never invent a criticality
+  claim the sources don't support.
+- **Switching Costs** — anything disclosed about how costly/slow it is for an existing
+  customer to move to a competitor (re-qualification cycles, integration depth,
+  contractual lock-in) — this is often the same underlying fact as the entry-barrier and
+  criticality points above; cross-reference rather than re-explain if so.
+
+If the research genuinely doesn't support a real moat on one or more of these fronts for
+this company, say so plainly for that bullet rather than manufacturing one — a company
+can have a real moat on IP/technology while having weak switching costs, and the section
+should reflect that honestly rather than presenting a uniformly strong picture.
+
+### 14. Technical Snapshot
 
 Pull, don't compute — get the trend/moving-average/RSI/support-resistance summary from
 a technicals-focused source (see source_playbook.md) rather than deriving indicators
@@ -608,16 +786,22 @@ trailing P/E, trend versus 50/200-day moving averages, RSI reading and what it i
 section since it goes stale within days — flag that explicitly if the report is more
 than a week old.
 
-**In the visual PDF, lead with a `data_table()`** — `Metric | Value | As of`, one row
-per metric (Price, 52-Week High, 52-Week Low, Trailing P/E, Moving Averages, RSI,
-Support/Resistance) — this is the default format, not a paragraph. If a specific
-metric (moving averages, RSI, support/resistance) genuinely wasn't sourced this run,
-put "Not reliably sourced this run" as its value rather than omitting the row or
-guessing a number. Follow the table with a short `para()` (normal body text, not the
-small italic `.note` style — this section has real numbers a reader needs to read
-comfortably) giving context on the 52-week range and the staleness caveat.
+**Table or bullet points — never a prose paragraph, in either the `.md` or the PDF.**
+This section is a scannable metric dump, not a narrative, so the markdown deliverable
+itself must use a markdown table (`Metric | Value | As of`) or a bullet list, one
+metric per row/bullet — the same discipline the rest of this spec applies to Order
+Book, Segment-wise Performance, and Capacity Utilization. **In the visual PDF, lead
+with a `data_table()`** — `Metric | Value | As of`, one row per metric (Price, 52-Week
+High, 52-Week Low, Trailing P/E, Moving Averages, RSI, Support/Resistance) — this is
+the default format, not a paragraph. If a specific metric (moving averages, RSI,
+support/resistance) genuinely wasn't sourced this run, put "Not reliably sourced this
+run" as its value rather than omitting the row or guessing a number. It's fine to
+follow the table with one short `para()` (normal body text, not the small italic
+`.note` style — this section has real numbers a reader needs to read comfortably)
+giving context on the 52-week range and the staleness caveat, but the metrics
+themselves belong in the table/bullets, not folded into that closing sentence.
 
-### 14. Promoter / Governance Track Record
+### 15. Promoter / Governance Track Record
 
 Sourced from `scripts/guidance_tracker.py`'s output (see SKILL.md workflow). Show a
 short table or list of the last 2 quarters (6 months — the framework's fixed lookback
@@ -688,31 +872,37 @@ as "resolved" or "closed." Like Fund Raises and Credit Rating, this is not
 lookback-limited — an old case with a live appeal window is exactly the kind of thing
 this section exists to surface, however long ago it originated.
 
-### 15. Investment Thesis Summary
+### 16. Investment Thesis Summary
 
-Plain text (or a `flag_list(..., kind='bull')` in the visual PDF if the claims split
-cleanly into bullets): the specific, falsifiable argument for why this could work,
-synthesized from what's already been gathered above — not a restatement of the whole
-report, and not general enthusiasm. Pull from:
+**Bullet points by default — `flag_list(kind='bull')` in the visual PDF, markdown
+bullets in the `.md`** — not a prose paragraph. Each bullet is one specific, falsifiable
+claim, synthesized from what's already been gathered above — not a restatement of the
+whole report, and not general enthusiasm. A single short lead-in sentence before the
+bullets is fine to frame the overall shape of the case (e.g. "The thesis rests on three
+independently-corroborated pillars:"), but the substance belongs in the bullets, each
+carrying its own source. Pull from:
 - Near/Medium/Long Term bullets currently marked `[On Track]` or `[Delivered]` — these
   are the outlook claims with actual interim evidence behind them, the strongest
   material for a thesis.
-- The Competitive Positioning table, if the reporting company leads peers on IP,
-  certifications, or niche customers.
+- The MOATs section and Competitive Positioning table, if the reporting company leads
+  peers on IP, certifications, entry barriers, or niche customers.
 - Total Addressable Market headroom and the Capacity Utilization before/after-capex gap,
   if both point the same direction.
 - Any independent third-party corroboration surfaced elsewhere (a named customer's own
-  capacity guidance, a credit-rating reaffirmation/upgrade).
+  capacity guidance, a credit-rating reaffirmation/upgrade, export-shipment data).
 
-Each claim keeps its source, the same discipline as every other section — this reads as
+Each bullet keeps its source, the same discipline as every other section — this reads as
 "here is the specific, evidenced case," not marketing copy. **If the research gathered
-above genuinely doesn't support a real thesis, say so plainly here rather than padding
-it out** — a report that concludes "there isn't a well-evidenced thesis here yet" is
-more useful than one that manufactures a story. This applies at the claim level too: if
-there are only one or two genuinely strong claims, write one or two, don't stretch to
-three for the appearance of thoroughness.
+above genuinely doesn't support a real thesis, say so plainly in one or two bullets (or
+a single short paragraph if bullets would be artificial) rather than padding it out** —
+a report that concludes "there isn't a well-evidenced thesis here yet" is more useful
+than one that manufactures a story. This applies at the claim level too: if there are
+only one or two genuinely strong claims, write one or two bullets, don't stretch to
+three or four for the appearance of thoroughness. It's fine to close with one short
+tempering paragraph (not a bullet) naming the factor(s) that keep the thesis from being
+fully de-risked — that synthesis reads more naturally as prose than as a bullet.
 
-### 16. Key Risks (Red Flags / Bear Case)
+### 17. Key Risks (Red Flags / Bear Case)
 
 3-5 bullets (`flag_list(..., kind='bear')` in the visual PDF) covering whichever of
 these actually apply, sourced from the concall, filings, or industry context gathered
@@ -735,10 +925,10 @@ above — never invented:
 
 **This section is mandatory even in a strongly positive report** — a bullish Investment
 Thesis Summary does not excuse a thin Key Risks section. If the company is genuinely
-troubled, this section (not section 15) should dominate the report, and the Verdict
+troubled, this section (not section 16) should dominate the report, and the Verdict
 below should say so plainly.
 
-### 17. Verdict
+### 18. Verdict
 
 `verdict_box()` in the visual PDF (a short highlighted paragraph in the markdown
 deliverable) — one or two honest sentences: the situation classification (see above),
@@ -748,7 +938,7 @@ question or risk. State confidence level honestly — "well-evidenced but early,
 whichever the evidence actually supports, not whichever makes the best-sounding
 closing line.
 
-### 18. Sources
+### 19. Sources
 
 `sources_list()` in the visual PDF (a numbered, hyperlinked list in the markdown
 deliverable) — every URL cited anywhere in the report, numbered, each with a short note
@@ -820,7 +1010,7 @@ itself should stay short (title, ticker, badge, date) — it's an orientation pa
 a page meant to be mostly blank.
 
 **Exactly one `page_break()` call in the whole document** — immediately before section
-15 (Investment Thesis Summary), so the closing thesis/risks/verdict run together on
+16 (Investment Thesis Summary), so the closing thesis/risks/verdict run together on
 a fresh page. Don't add one after Long Term Outlook, after Marquee & Niche Customers,
 or anywhere else "to give the section room" — content flows naturally between sections
 without help, and an extra `page_break()` reliably produces a gap of dead whitespace at
@@ -842,12 +1032,12 @@ body += section('Company Summary')
 body += para('...')
 body += card_grid([('Market cap', 'Rs X Cr', ''), ('Price', 'Rs Y', ''), ...])
 # ... Value Chain Positioning, flow_diagram(), Situation Classification,
-#     Near/Medium/Long Term outlook, sections 1-18 ...
+#     Near/Medium/Long Term outlook, sections 1-19 ...
 body += section('Financial Performance Summary')
 revenue_profit_chart('rp.png', years, revenue, profit)
 body += chart_block('rp.png', 'Annual revenue and net profit. Source: screener.in')
 body += data_table(['Year', 'Revenue', 'YoY %', 'PBT', 'PAT', 'PAT margin %'], rows)
-# ... through section 18 (Sources) ...
+# ... through section 19 (Sources) ...
 
 html = render(body, '<skill_dir>/assets/report_style.css')
 open('report.html', 'w').write(html)

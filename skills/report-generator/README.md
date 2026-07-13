@@ -18,6 +18,7 @@ source of truth.
 - [Setup](#setup)
 - [Usage](#usage)
 - [Accuracy discipline](#accuracy-discipline)
+- [Never drop anything silently](#never-drop-anything-silently)
 
 ## Architecture overview
 
@@ -74,7 +75,7 @@ rendering). The four moving parts:
                                   v
 +------------------------------------------------------------------------+
 |  PDF ASSEMBLY (WeasyPrint via html_helpers.py + assets/report_style.css)|
-|  cover badge -> cards -> outlook -> 18 sections -> thesis -> verdict     |
+|  cover badge -> cards -> outlook -> 19 sections -> thesis -> verdict     |
 +------------------------------------------------------------------------+
                                   |
                                   v
@@ -163,18 +164,27 @@ from anything downstream.
        |
        v
  [7] DRAFT report.md, section by section, per reference/report_format.md:
-     Company Summary -> Value Chain Positioning (+ flow diagram) ->
+     Company Summary -> Value Chain Positioning (+ flow diagram, showing
+     backward integration inside the company box, not upstream) ->
      Situation Classification -> Near/Medium/Long Term outlook (quote-
      verified, status-pointer-tagged) -> Marquee & Niche Customers ->
      Capex/Milestones/Certifications Timeline -> [CDMO Pipeline if
      applicable] -> Financial Performance Summary (+ balance-sheet anomaly
      check) -> Segment-wise Performance -> Order Book -> Manufacturing
-     Locations (+ raw-material import dependency) -> Capacity Utilization
-     & Headroom -> [TAM if disclosed] -> Valuation/Forward PE (+ median PE)
-     -> Industry Tailwinds/Headwinds -> Competitive Positioning (peers,
-     entry barriers, product criticality) -> Technical Snapshot ->
-     Promoter/Governance (shareholding, fund raises, ratings, litigation)
-     -> Investment Thesis Summary -> Key Risks -> Verdict -> Sources.
+     Locations (+ Raw Material Sourcing: domestic/imported %, country-wise
+     breakdown, export-shipment/customs data) -> Capacity Utilization &
+     Headroom (industry-specific physical unit, multi-purpose-plant flag)
+     -> [TAM if disclosed] -> Valuation/Forward PE (+ median PE;
+     third-party broker/agency research -- e.g. Nuvama -- when the user
+     supplies a report, folded inline here or wherever else it's
+     relevant rather than into its own section, every such point tagged
+     `[BROKER_DDMMYYYY]`) -> Industry Tailwinds/Headwinds ->
+     Competitive Positioning: Peer
+     Comparison -> MOATs (entry barriers, IP/technology moat, product
+     criticality, switching costs — bullets) -> Technical Snapshot (table
+     or bullets) -> Promoter/Governance (shareholding, fund raises,
+     ratings, litigation) -> Investment Thesis Summary (bullets) -> Key
+     Risks -> Verdict -> Sources.
      Every quote checked as an exact substring of the source text before
      use; every conditional section either states its finding or says
      explicitly why it's absent.
@@ -214,6 +224,8 @@ skills/report-generator/           (this skill's directory, inside the Research-
 |                                  the 6-month-window and new-quarter-refresh rules
 |-- scripts/                      Local Python -- no network except the tracker
 |   |-- pdf_to_text.py            scripts explicitly noted below
+|   |-- pdf_to_text_parallel.py   multi-core full extraction for large PDFs
+|   |-- semantic_search.py        BM25 relevance search when grep comes up thin
 |   |-- extract_theme_quotes.py
 |   |-- guidance_tracker.py
 |   |-- fundraise_tracker.py
@@ -286,7 +298,9 @@ reset. "From scratch" describes the report content, not the historical fact log.
 
 | Script | Role | Network? |
 |---|---|---|
-| `pdf_to_text.py` | Convert a fetched PDF to plain text | No |
+| `pdf_to_text.py` | Convert a fetched PDF to plain text (full extraction by default; `--pages` only for TOC scouting or re-extracting an already-located range) | No |
+| `pdf_to_text_parallel.py` | Same full-document extraction as `pdf_to_text.py`, split across worker processes for large (150+ page) PDFs — verified byte-identical output, refuses to write a partial file if a worker fails | No |
+| `semantic_search.py` | BM25-ranked relevance search over an extracted `.txt` when a grep keyword guess plausibly missed something due to phrasing | No |
 | `extract_theme_quotes.py` | Bucket transcript lines into near/medium/long-term candidate quotes | No |
 | `guidance_tracker.py` | Log/report outlook items and their status pointers | No |
 | `fundraise_tracker.py` | Log/report fund raises, named allottees, lapse flags | No |
@@ -317,19 +331,30 @@ specific script:
 | Capex/Milestones/Certifications Timeline | Investor presentation, BSE/NSE announcements | — |
 | Financial Performance Summary + balance-sheet anomaly check | screener.in, investor presentation | — |
 | Segment-wise Performance, Order Book | Investor presentation, concall | — |
-| Manufacturing Locations + raw-material import dependency | Annual report PP&E note, investor presentation | — |
-| Capacity Utilization & Headroom | Concall Q&A, investor presentation | `capacity_utilization.py` |
+| Manufacturing Locations + Raw Material Sourcing (domestic/imported %, country-wise, export-shipment data) | Annual report PP&E/raw-material note, investor presentation, shipment-data aggregators | — |
+| Capacity Utilization & Headroom (industry-specific physical unit, multi-purpose-plant flag) | Concall Q&A, investor presentation | `capacity_utilization.py` |
 | Total Addressable Market | Investor presentation (only if disclosed) | — |
 | Valuation — Forward PE (+ median PE) | screener.in, concall guidance, secondary aggregator | `forward_pe.py` |
 | Industry Tailwinds/Headwinds | Peer concalls, sector reports (WebSearch) | — |
-| Competitive Positioning (peers, entry barriers, criticality) | screener.in Peers tab, peer investor presentations | — |
-| Technical Snapshot | Technicals provider (Trendlyne/MoneyControl/etc.) | — |
+| Competitive Positioning: Peer Comparison | screener.in Peers tab, peer investor presentations | — |
+| MOATs (entry barriers, IP/technology moat, product criticality, switching costs) | Concall Q&A, annual report competitive-strengths section | — |
+| Technical Snapshot (table/bullets) | Technicals provider (Trendlyne/MoneyControl/etc.) | — |
 | Promoter/Governance — guidance reliability | Cached history | `guidance_tracker.py` |
 | Promoter/Governance — fund raises | BSE/NSE, credit-rating rationale | `fundraise_tracker.py` |
 | Promoter/Governance — credit ratings | CRISIL/ICRA/CARE/India Ratings/Acuite/Brickwork | `rating_tracker.py` |
 | Promoter/Governance — litigation | Annual report Contingent Liabilities note | `litigation_tracker.py` |
 | Investment Thesis Summary, Key Risks, Verdict | Synthesized from everything above | — |
 | Sources | Every citation used above | — |
+
+**Third-party broker/agency research** (Nuvama, Motilal Oswal, etc.) doesn't have a
+row of its own above because it doesn't have a dedicated section — it's never fetched
+proactively, only used when the user directly uploads a report, and its facts fold
+directly into whichever of the sections above they belong to (a target price into
+Valuation, a sector read into Industry Tailwinds/Headwinds, a thesis point into
+Investment Thesis Summary, a flagged risk into Key Risks). What keeps it distinguishable
+from the pipeline's own independently-sourced numbers is an inline
+`[BROKER_DDMMYYYY]` tag on every such point (e.g. `[NUVAMA_29042026]`), not a
+separate section.
 
 ## Installation
 
@@ -361,19 +386,27 @@ and `~/.report-generator/output/<company_slug>/` as it goes.
   marquee/niche customers (bullet list), capex/milestones/certifications
   timeline, CDMO pipeline (where applicable), multi-year financial trend
   table plus a balance-sheet anomaly check, segment-wise performance,
-  order book, manufacturing locations (bullet list) plus raw-material
-  import dependency where disclosed, capacity utilization and headroom
-  (table), TAM, forward PE (including the company's own historical median
-  PE), industry tailwinds/headwinds, a peer comparison table (IP/
-  technology moat, niche customers, certifications, entry barriers,
-  product criticality), a readable technical snapshot, promoter/
-  governance track record (tabled shareholding trend, fund raises with
-  named allottees where disclosed, credit ratings, litigation), a
-  synthesized Investment Thesis Summary, mandatory Key Risks/Red Flags, a
-  Verdict, and a numbered Sources list. **Every run produces both a
-  Markdown report and a formatted PDF** in `~/.report-generator/output/<company_slug>/` — PDF
-  export is not optional or request-gated, it happens automatically as the
-  last step of every run.
+  order book, manufacturing locations (bullet list) plus Raw Material
+  Sourcing (domestic vs. imported %, country-wise breakdown of any
+  imported portion where disclosed, and an export-shipment/customs-data
+  check), capacity utilization and headroom measured in the industry's own
+  physical unit (table, flagging any shared multi-purpose capacity pool),
+  TAM, forward PE (including the company's own historical median PE;
+  when the user supplies a third-party broker/agency research report —
+  e.g. Nuvama — its facts are folded inline wherever relevant, each
+  tagged `[BROKER_DDMMYYYY]` rather than placed in a separate section),
+  industry tailwinds/headwinds, a peer comparison table (IP/technology
+  moat, niche customers, certifications), a dedicated MOATs section
+  (entry barriers, IP/technology moat, product criticality, switching
+  costs — bullets), a technical snapshot (table or bullets, never prose),
+  promoter/governance track record (tabled shareholding trend, fund raises
+  with named allottees where disclosed, credit ratings, litigation), a
+  synthesized Investment Thesis Summary (bullets), mandatory Key
+  Risks/Red Flags, a Verdict, and a numbered Sources list. **Every run
+  produces both a Markdown report and a formatted PDF** in
+  `~/.report-generator/output/<company_slug>/` — PDF export is not
+  optional or request-gated, it happens automatically as the last step of
+  every run.
 
 ## Setup
 
@@ -521,3 +554,19 @@ unverified management claims are flagged as such, and if the research
 doesn't support a real thesis the report says so plainly instead of padding
 it out. Any directional valuation read stays tied to a specific cited
 comparison (peers, history, growth), never a bare adjective.
+
+## Never drop anything silently
+
+A standing rule that applies at every step of the pipeline above, not just the
+final report: if a source can't be fetched, a fetch times out, a rate limit or
+size/page cap is hit, an extraction comes back empty or garbled, a worker in
+`pdf_to_text_parallel.py` fails and the run falls back to something narrower, a
+tracker section comes back with nothing, or the visual-PDF pipeline falls back
+to the legacy ReportLab renderer — **that gap is stated explicitly, in the
+report section it affects, every time.** Never let a gap read the same as a
+verified "nothing here." A reader should never have to discover independently
+that something was skipped, throttled, capped, or dropped; if in doubt, flag
+it. See `SKILL.md`'s "Never drop anything silently" section for the full rule
+and worked examples (fetch failures, partial extraction, rate limits, empty
+sections, renderer fallbacks, and asymmetric gaps across a multi-company
+batch).

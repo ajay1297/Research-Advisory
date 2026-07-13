@@ -38,7 +38,26 @@ Add a post-capex figure to either mode, e.g.:
           --post-capex-note "large-generator capacity, calendar 2027 completion / 2028 ramp-up"
 
 Pass --capacity-label to record what the capacity is measured in (e.g. "MT/annum",
-"garments/annum", "MW"), purely for the printed output — it isn't used in the math.
+"garments/annum", "MW", "million fiber-km/annum"), purely for the printed output — it
+isn't used in the math for Mode A.
+
+The industry's own physical-unit figures are the primary reader-facing number (a bare
+utilization % without the underlying unit hides real information) — report them
+alongside whichever mode you use:
+  - Mode B already reports the physical figures directly (--installed-capacity-units,
+    --units-produced) since they're the calculation inputs themselves.
+  - In Mode A (utilization % already known from management, revenue-based), also pass
+    --physical-installed-capacity and --physical-produced if the concall/investor
+    presentation separately disclosed the physical installed capacity and
+    production/sales volume (even though they aren't used in the revenue math) —
+    purely so the printed output and the report can lead with the physical unit rather
+    than the % alone.
+
+If the capacity is a shared pool that can be swung across multiple product variants
+rather than each variant having dedicated capacity, pass --multi-purpose-plant (and
+optionally --multi-purpose-note with specifics) — the output then carries an explicit
+flag that the utilization figure describes an aggregate, shared pool, not any single
+product variant's dedicated capacity.
 """
 import argparse
 import json
@@ -60,7 +79,20 @@ def main():
     parser.add_argument("--realization-per-unit-inr", type=float,
                          help="Average realization/selling price per unit, plain INR (Mode B)")
     parser.add_argument("--capacity-label", default="units/annum",
-                         help='What the capacity is measured in, e.g. "MT/annum", "MW" — cosmetic only')
+                         help='What the capacity is measured in, e.g. "MT/annum", "MW", '
+                              '"million fiber-km/annum" — cosmetic only')
+    parser.add_argument("--physical-installed-capacity", type=float,
+                         help="Mode A only: installed capacity in the industry's own physical unit, "
+                              "for display alongside the revenue-based math (not used in the calc)")
+    parser.add_argument("--physical-produced", type=float,
+                         help="Mode A only: actual production/sales volume in the same physical unit, "
+                              "for display alongside the revenue-based math (not used in the calc)")
+    parser.add_argument("--multi-purpose-plant", action="store_true",
+                         help="Flag that this capacity is a shared pool swung across multiple product "
+                              "variants/grades, not dedicated capacity for a single product")
+    parser.add_argument("--multi-purpose-note",
+                         help='e.g. "shared line across standard SMF, Hollow Core Fiber and Multi-Core '
+                              'Fiber depending on order mix"')
     parser.add_argument("--utilization-source",
                          help='e.g. "management commentary, May 2026 concall"')
     parser.add_argument("--post-capex-max-revenue-cr", type=float,
@@ -108,11 +140,24 @@ def main():
         post_capex_basis = f"derived: current full-utilization revenue scaled by +{args.post_capex_capacity_increase_pct:.1f}% capacity increase"
     capex_unlocked_cr = (post_capex_max_revenue_cr - max_revenue_at_full_util_cr) if post_capex_max_revenue_cr is not None else None
 
+    # Physical-unit figures: Mode B already has them as installed_capacity_units/units_produced;
+    # Mode A can optionally carry display-only physical figures alongside the revenue math.
+    if mode.startswith("B"):
+        physical_installed = args.installed_capacity_units
+        physical_produced = args.units_produced
+    else:
+        physical_installed = args.physical_installed_capacity
+        physical_produced = args.physical_produced
+
     result = {
         "mode": mode,
         "current_revenue_cr": round(current_revenue_cr, 2),
         "utilization_pct": round(utilization_pct, 1),
         "capacity_label": args.capacity_label,
+        "physical_installed_capacity": physical_installed,
+        "physical_produced": physical_produced,
+        "multi_purpose_plant": args.multi_purpose_plant,
+        "multi_purpose_note": args.multi_purpose_note or "",
         "before_capex_max_revenue_cr": round(max_revenue_at_full_util_cr, 2),
         "headroom_cr": round(headroom_cr, 2),
         "headroom_pct_of_current_revenue": round(headroom_pct_of_current, 1) if headroom_pct_of_current is not None else None,
@@ -128,8 +173,18 @@ def main():
         print(json.dumps(result, indent=2))
     else:
         print(f"Mode: {mode}")
+        if physical_installed is not None and physical_produced is not None:
+            print(f"Physical capacity: installed {physical_installed:,.0f} {args.capacity_label}, "
+                  f"produced/sold {physical_produced:,.0f} {args.capacity_label} "
+                  f"({utilization_pct:.1f}% utilization).")
         print(f"Current revenue: INR{current_revenue_cr:.1f}cr at {utilization_pct:.1f}% utilization "
               f"of installed capacity ({args.capacity_label}).")
+        if args.multi_purpose_plant:
+            note_bit = f" — {args.multi_purpose_note}" if args.multi_purpose_note else ""
+            print(f"MULTI-PURPOSE PLANT FLAG: this capacity is a shared pool swung across multiple "
+                  f"product variants/grades, not dedicated capacity for a single product{note_bit}. "
+                  f"State this explicitly in the report — the utilization figure above describes the "
+                  f"aggregate pool, not any single variant's own availability.")
         print(f"BEFORE CAPEX — max revenue at 100% utilization of current capacity: "
               f"INR{max_revenue_at_full_util_cr:.1f}cr")
         print(f"Headroom from current capacity alone: INR{headroom_cr:.1f}cr "

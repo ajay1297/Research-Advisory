@@ -15,21 +15,30 @@ description: >
   breakdown where reported, including an exports vs. domestic split where disclosed;
   order book with basis and composition breakdown (including exports vs. domestic where
   disclosed); manufacturing locations and physical assets (plants, buildings, notable
-  machinery) as bullet points, plus raw-material import dependency (% imported and
-  country of origin, where disclosed); capacity utilization with before-and-after-capex
-  revenue potential (tabled); total addressable market where disclosed; forward PE with
-  a summary table (including the company's own historical median PE) and an evidenced
-  directional read against peers/history where supportable; industry tailwinds/
-  headwinds; a peer comparison table on IP/technology moat, niche/marquee customers, and
-  certifications, plus disclosed entry barriers and product criticality; a readable
-  technical snapshot; promoter/governance track record — including a tabled
+  machinery) as bullet points, plus raw material sourcing (domestic vs. imported %,
+  country-wise breakdown of any imported portion where disclosed, and export-shipment/
+  customs data as a corroborating check); capacity utilization measured in the
+  industry's own physical unit (fiber-km, MT, MW, units/annum, etc. — not a bare %),
+  flagging shared multi-purpose capacity pools, with before-and-after-capex potential
+  (tabled); total addressable market where disclosed; forward PE with a summary table
+  (including the company's own historical median PE) and an evidenced directional read
+  against peers/history where supportable; third-party broker/agency research
+  (e.g. Nuvama), when the user supplies a report, folded inline wherever it's
+  relevant rather than into a separate section, every such point carrying an
+  inline `[BROKER_DDMMYYYY]` attribution tag; industry
+  tailwinds/headwinds; a peer
+  comparison table on IP/technology moat, niche/marquee customers, and certifications; a
+  dedicated MOATs section (entry barriers, IP/technology moat, product criticality,
+  switching costs) as bullet points; a technical snapshot rendered as a table or bullet
+  points, never prose; promoter/governance track record — including a tabled
   shareholding-pattern trend, named preferential allottees, warrants, and debt the
   promoter has raised, independent credit-rating actions from CRISIL/ICRA/CARE/India
   Ratings/Acuite/Brickwork, and ongoing or reopenable litigation; a synthesized,
-  evidenced Investment Thesis Summary; a mandatory Key Risks/Red Flags section even in a
-  bullish report; a one-paragraph Verdict on confidence level; and a numbered Sources
-  list) for an Indian listed company from its concall transcript, investor presentation,
-  annual report, and screener.in data. Activate when the user says "research <company>",
+  evidenced Investment Thesis Summary as bullet points; a mandatory Key Risks/Red Flags
+  section even in a bullish report; a one-paragraph Verdict on confidence level; and a
+  numbered Sources list) for an Indian listed company from its concall transcript,
+  investor presentation, annual report, and screener.in data. Activate when the user
+  says "research <company>",
   "generate a report on <company>", "regenerate/update/refresh <company>'s report",
   "analyse <company>'s concall", "what's the story with <company/ticker>", "build a
   thesis on <company>", or shares/references concall transcripts, investor
@@ -56,26 +65,30 @@ Performance Summary (YoY revenue/margin/PBT/PAT table, plus a balance-sheet anom
 check), Segment-wise Performance **(always a table, one table per disclosed basis/
 period if the company discloses more than one)**, Order Book **(always a table, with
 as-of date, basis, and composition breakdown where disclosed)**, Manufacturing
-Locations & Physical Assets **(bullet list, plus raw-material import dependency where
-disclosed)**, Capacity Utilization & Headroom **(table)** (before *and* after planned
-capex, where disclosed), Total Addressable Market (where disclosed), Valuation
-(Forward PE, led by a summary table that also includes the company's own historical
-median PE, with an evidenced directional read against peers/history where
+Locations & Physical Assets **(bullet list, plus Raw Material Sourcing — domestic vs.
+imported %, country-wise breakdown of any imported portion where disclosed, and an
+Export Shipment/Customs Data check)**, Capacity Utilization & Headroom **(table,
+reported in the industry's own physical unit — fiber-km, MT, MW, units/annum, etc.,
+never a bare % alone — flagging any shared multi-purpose capacity pool)** (before *and*
+after planned capex, where disclosed), Total Addressable Market (where disclosed),
+Valuation (Forward PE, led by a summary table that also includes the company's own
+historical median PE, with an evidenced directional read against peers/history where
 supportable), Industry Tailwinds/Headwinds, Competitive Positioning (peer comparison
-table on IP/technology moat, niche/marquee customers, and certifications; disclosed
-entry barriers; product criticality), Technical Snapshot **(readable body-text size,
-not caption-sized)**, Promoter/Governance Track Record (guidance reliability + a
-**tabled** shareholding-pattern trend + promoter fund raises **(table, with named
-allottees where disclosed)**: preferential equity, warrants, NCDs/debt + independent
-credit-rating actions from CRISIL/ICRA/CARE/India Ratings/Acuite/Brickwork + ongoing or
-reopenable litigation), Investment Thesis Summary (a
-synthesized, evidenced bull case — or an honest statement that one doesn't hold up),
+table on IP/technology moat, niche/marquee customers, and certifications), **MOATs
+(bullet points: entry barriers, IP/technology moat, product criticality, switching
+costs)**, Technical Snapshot **(table or bullet points, never prose — readable
+body-text size, not caption-sized)**, Promoter/Governance Track Record (guidance
+reliability + a **tabled** shareholding-pattern trend + promoter fund raises **(table,
+with named allottees where disclosed)**: preferential equity, warrants, NCDs/debt +
+independent credit-rating actions from CRISIL/ICRA/CARE/India Ratings/Acuite/Brickwork +
+ongoing or reopenable litigation), Investment Thesis Summary **(bullet points — a
+synthesized, evidenced bull case — or an honest statement that one doesn't hold up)**,
 Key Risks / Red Flags (mandatory, even in a bullish report), Verdict (one short
 paragraph on confidence level), and Sources (numbered, hyperlinked). See
 `examples/venus_pipes_report.md` for the outlook-section style and
 `reference/report_format.md` for the full spec including the Company Summary, Value
 Chain Positioning, the status-pointer rule, the visual-PDF Assembly pattern, and the
-eighteen sections after the outlook.
+nineteen sections after the outlook.
 
 **The report text itself never names internal scripts/files** (no
 `scripts/guidance_tracker.py`, no `--flag` values) — those belong in this file and in
@@ -117,15 +130,33 @@ works):
 - `rerun for <Company A> and <Company B>` — works for multiple companies in one
   request; each is processed independently through the same pipeline (and each can be
   a new company, an incremental update, or a from-scratch rebuild independently).
+  **Default to sequential execution, one company fully finished (both `.md` and
+  `.pdf` confirmed on disk) before the next starts.** This guarantees every report in
+  the batch renders through the same verified WeasyPrint environment and comes out
+  looking identical — running companies as separate parallel background agents has
+  produced mismatched output before (one agent's environment silently missing
+  WeasyPrint fell back to the plain ReportLab renderer while a sibling agent's didn't,
+  so two reports from the same request looked visually inconsistent). Only run
+  companies in parallel if the user explicitly asks for it ("in parallel", "at the
+  same time") — and if so, verify WeasyPrint is importable in the shared environment
+  *before* dispatching any of them (see the Assembly section below), so a dependency
+  gap can't cause the same silent drift.
 - `what's the story with <Company/Ticker>` / `build me a thesis on <Company Name>` /
   `do a deep dive on <Company Name> — is it a buy?` / `research <Company Name> for a
   turnaround thesis` — informal, non-jargon phrasing also triggers this skill; the user
   doesn't need to say "report" or name a section.
 
-If you've uploaded a concall transcript, investor presentation, or annual report PDF
-directly instead of naming a company, that also triggers this skill — sourcing then
-prefers your uploaded documents over fetching (see "User-uploaded documents" in
-`reference/source_playbook.md`).
+If you've uploaded a concall transcript, investor presentation, annual report PDF, or
+a third-party broker/agency research report (e.g. Nuvama, Motilal Oswal, ICICI
+Securities) directly instead of naming a company, that also triggers this skill —
+sourcing then prefers your uploaded documents over fetching (see "User-uploaded
+documents" in `reference/source_playbook.md`). A broker/agency report specifically has
+no dedicated section of its own — each fact from it gets folded directly into
+whichever existing section it belongs to (Valuation, Industry Tailwinds/Headwinds,
+Investment Thesis Summary, Key Risks, etc.), with every such point carrying an inline
+`[BROKER_DDMMYYYY]` tag (see `reference/report_format.md`'s "Broker / agency research —
+inline-tagged, no dedicated section") so it's never mistaken for the pipeline's own
+independently-sourced numbers even without a physically separate section.
 
 **If no company was named** (e.g. just "research", "generate a report", "update the
 report" with nothing to identify who) — don't guess a company, don't reuse a company
@@ -157,6 +188,17 @@ Concall transcripts run 15-40 pages, investor decks 20-50 slides, annual reports
 100-300 pages. Every step below exists to avoid reading these directly. Always go
 through `scripts/`, never paste a full transcript/PDF into your own reasoning.
 
+## The other core rule: never drop anything silently
+
+Everything below is optimized for token/time efficiency — grepping instead of
+reading, caching instead of refetching, skipping what a freshness check says is
+unchanged. None of that is license to let a fetch failure, timeout, rate limit,
+extraction gap, or skipped section pass without comment. If something couldn't be
+gotten, couldn't be verified, or was cut short for any reason, **that gets stated in
+the report, in the section it affects** — see the dedicated "Never drop anything
+silently" section near the end of this file for the full rule and examples. Keep it
+in mind at every step below, not just when assembling the final report.
+
 ## Token discipline — this pipeline is read-heavy, don't read more than needed
 
 - **Grep before you Read.** Once a PDF is converted to `.txt`, don't `Read()` it
@@ -164,6 +206,24 @@ through `scripts/`, never paste a full transcript/PDF into your own reasoning.
   capex, margin guidance, etc.) and only `Read()` the specific line range that surfaces.
   `extract_theme_quotes.py`'s candidate JSON exists precisely so you never need to read
   the full transcript for the outlook bullets.
+- **When grep comes up thin, use `semantic_search.py` before resorting to a full
+  Read.** Grep only finds exact keyword matches — a section can exist and still be
+  missed because the report phrases it differently than the keyword you guessed (e.g.
+  you grep "backward integration" but the annual report only ever says "manufactures
+  its own preforms in-house"). `python3 scripts/semantic_search.py <text_file>
+  "<natural language query>" --top-k 5` runs a BM25-ranked relevance search over the
+  document and returns the most relevant chunks with their line ranges, so you can
+  `grep`/`Read` that exact range for full context. The index is chunked and cached
+  alongside the source file (`<text_file>.bm25.pkl`), so re-querying the same document
+  — including across a `new_quarter` refresh that reuses cached raw text — costs
+  nothing beyond the first build. This is a lexical relevance ranker (BM25), not a
+  dense-embedding model — it has no external API dependency and nothing to install
+  beyond the lightweight `rank_bm25` package (`pip install rank_bm25
+  --break-system-packages` once if missing), which is why it's the default semantic
+  fallback rather than something heavier. Still prefer grep first when you already
+  know the right keyword — it's faster and exact; reach for `semantic_search.py` when
+  a keyword search plausibly missed something because of phrasing, not as the default
+  first move for every section.
 - **Don't re-fetch what's already in this session.** If screener.in, a concall PDF, or a
   rating rationale was already fetched this run, reuse what you extracted instead of
   fetching it again "to double check" — the sourcing discipline is about citing real
@@ -252,9 +312,35 @@ domains fail with a proxy 403. If the user has uploaded documents, use those ins
 of fetching. Save whatever raw text/PDF you obtain to
 `~/.report-generator/research_cache/<company_slug>/raw/` before processing it.
 
-**Extract text from PDFs.** `python3 scripts/pdf_to_text.py <input.pdf> <output.txt>`
-— local, no network. For annual reports, grep for the MD&A/outlook section heading
-first and only extract that page range instead of the whole 100-300 pages.
+**Extract text from PDFs — always extract the whole document, never just a guessed
+section range.** `python3 scripts/pdf_to_text.py <input.pdf> <output.txt>` — local, no
+network. An annual report's sections you need are scattered across the *entire*
+document (MD&A near the front, but segment/PP&E/litigation/shareholding notes and the
+contingent-liabilities note often sit 100+ pages further back) — extracting only a
+guessed page range risks silently missing something the report needs later, and
+there's no cheap way to notice the gap after the fact. Full extraction, then grepping
+the resulting `.txt`, is the safe default; grep on an already-extracted text file costs
+milliseconds regardless of document length, so narrowing what gets *read* is not where
+the token/time savings should come from.
+
+For a **large annual report (roughly 150+ pages)** where single-process extraction is
+slow (a 380-page report takes ~50s with `pdf_to_text.py`), use
+`python3 scripts/pdf_to_text_parallel.py <input.pdf> <output.txt> [--workers N]`
+instead — it splits the page range into contiguous chunks that together cover every
+page (no gaps, no overlap), extracts them concurrently, and verifies every chunk
+came back before writing anything, so the output is the same full-document text,
+just faster (~45% faster on an 8-core machine for a 380-page report, and bigger wins
+when several of a company's annual reports are extracted in the same run — kick off
+all of them as concurrent background processes rather than one at a time). If it
+ever fails to account for a chunk it refuses to write a partial file and errors
+instead — fall back to `pdf_to_text.py` in that case rather than accepting a gap.
+
+`pdf_to_text.py`'s `--pages START-END` flag still exists for one narrow, safe use:
+a **quick scouting pass** — e.g. extracting just the first 5-10 pages to read a
+table of contents and locate a named section's page number before committing to
+full extraction, or re-extracting one already-located page range at higher fidelity
+after the full-text grep already told you where it is. Never use `--pages` as a
+substitute for the full-document extraction above.
 
 **Pre-filter to candidate quotes.** `python3 scripts/extract_theme_quotes.py
 <transcript.txt> <out.json>` buckets forward-looking lines into near/medium/long-term
@@ -273,11 +359,17 @@ company buys/from whom upstream, what it sells/to whom downstream, and which tie
 occupies (component maker, OEM, brand, distributor, etc.), per
 `reference/report_format.md`. Source from the investor presentation's business-model
 slide, concall descriptions of customers' customers, or the annual report's industry
-overview — never invent a multi-tier chain from a one-line description. **Always
-follow it with a vertical stacked-box flow diagram** in a fenced code block in the
-markdown (ASCII only, for portability), rendered as styled boxes via `html_helpers.
-flow_diagram()` in the visual PDF — see `reference/report_format.md`'s layout and
-width-safety reasoning for why the stack stays vertical either way.
+overview — never invent a multi-tier chain from a one-line description. **Check
+explicitly how far upstream the company's own manufacturing reaches** — a company that
+describes itself as backward-integrated to a raw/semi-processed stage (e.g. "from glass
+preform to finished cable," "from billet to pipe") must show that integration inside
+the "THE COMPANY" box itself, not leave it implied only in the prose while the diagram's
+UPSTREAM box wrongly shows the company buying that stage from outside — see
+`reference/report_format.md`'s backward-integration rule. **Always follow it with a
+vertical stacked-box flow diagram** in a fenced code block in the markdown (ASCII only,
+for portability), rendered as styled boxes via `html_helpers.flow_diagram()` in the
+visual PDF — see `reference/report_format.md`'s layout and width-safety reasoning for
+why the stack stays vertical either way.
 
 **Situation Classification** — right after Value Chain Positioning, before Near Term:
 one short paragraph stating which broad situation the company is in right now
@@ -376,26 +468,54 @@ houses) from the annual report's Property, Plant & Equipment note, the investor
 presentation's facilities slide, and concall Q&A about plant locations. A registered
 office alone is not a manufacturing site — don't infer one from the other. **Always a
 bullet list in the visual PDF, one point per location — never a merged paragraph.**
-While sourcing this section, also check **raw material import dependency**: is the
-company's key input imported, domestic, or mixed, and what % and country if disclosed
-(primary source: the annual report's "indigenous vs. imported raw material consumed"
-note per `reference/source_playbook.md`) — cross-reference to Key Risks if imports are
-material. If the annual report isn't accessible, an export/import shipment-data
-aggregator can show actual inbound shipments as a partial substitute (per
-`reference/source_playbook.md`). Say so explicitly if no company-specific figure was
-found. Also check the investor presentation's "Awards & Accolades" slide (or, quickly,
+
+While sourcing this section, also check **Raw Material Sourcing**: is the company's key
+input imported, domestic, or mixed, and what % (primary source: the annual report's
+"indigenous vs. imported raw material consumed" note per `reference/source_playbook.md`)
+— cross-reference to Key Risks if imports are material. **If any portion is imported,
+also capture the country-wise breakdown** wherever disclosed (e.g. "62% imported: China
+40%, South Korea 15%, others 7%") — a bare aggregate import % without a country split
+understates a genuine single-country concentration risk, so always look for the country
+detail specifically, not just the headline %. If the annual report isn't accessible or
+doesn't break out countries, an export/import shipment-data aggregator can show actual
+inbound shipments (with origin country) as a partial substitute (per
+`reference/source_playbook.md`). Say so explicitly if no company-specific figure —
+or no country breakdown — was found, rather than presenting an aggregate % as if it were
+the complete picture.
+
+**Export Shipment / Customs Data** — for any exporting or importing company, always
+attempt one targeted shipment-data-aggregator check (Volza/Seair/ImportGenius/Zauba/
+Panjiva — per `reference/source_playbook.md`) rather than treating it as optional. Where
+records exist, list the actual shipment-level detail found — consignee/shipper name,
+country, product description, quantity/value if shown — clearly labeled as third-party
+customs data. This feeds two sections at once: corroborating/surfacing names for
+Marquee & Niche Customers, and corroborating/filling the country gap for Raw Material
+Sourcing above. If nothing usable turns up, say so in one line rather than silently
+skipping the attempt.
+
+Also check the investor presentation's "Awards & Accolades" slide (or, quickly,
 a WebSearch) for anything genuinely noteworthy to fold into the Capex/Milestones
 Timeline as an achieved milestone — don't force this if there's nothing there.
 
-**Capacity Utilization & Headroom** — only if a utilization % (or the installed
+**Capacity Utilization & Headroom** — only if a utilization figure (or the installed
 capacity + units-produced inputs to derive one) was disclosed, usually in concall Q&A
-or an investor presentation's operations slide. Run `scripts/capacity_utilization.py`
-and reproduce its high-utilization flag verbatim if utilization is already at/above
-85%. If a post-capex revenue figure already surfaced elsewhere (Capex/Milestones
-timeline or an outlook bullet), pass it via `--post-capex-max-revenue-cr` so the
-section shows before-capex and after-capex figures side by side, plus what the capex
-itself unlocks — don't derive a new number if management already gave one. **Table
-only in the visual PDF — no before/after chart by default.**
+or an investor presentation's operations slide. **Report capacity in the industry's own
+physical unit first** — fiber-km/annum for an optical fiber maker, MT/annum for
+metals/chemicals/cement, MW/MWp for power/renewables, units/annum for a discrete-goods
+manufacturer, etc. — never present a bare % with no unit behind it. If the company
+breaks capacity out by sub-type/grade (e.g. standard vs. specialty fiber), show that
+breakdown rather than one blended figure. **Explicitly flag if the capacity is a
+shared, multi-purpose pool** that can be swung across product variants, since an
+aggregate utilization % then doesn't tell a reader how much of any one variant is
+available — state this plainly rather than presenting a blended number as if it
+described dedicated capacity. Once the physical-unit figures are established, run
+`scripts/capacity_utilization.py` for the optional revenue-headroom lens and reproduce
+its high-utilization flag verbatim if utilization is already at/above 85%. If a
+post-capex revenue figure already surfaced elsewhere (Capex/Milestones timeline or an
+outlook bullet), pass it via `--post-capex-max-revenue-cr` so the section shows
+before-capex and after-capex figures side by side, plus what the capex itself unlocks —
+don't derive a new number if management already gave one. **Table only in the visual
+PDF — no before/after chart by default.**
 
 **Total Addressable Market** — only if an actual TAM figure (not just a growth rate)
 was disclosed, per `reference/report_format.md`. Break it down by segment if
@@ -415,6 +535,27 @@ point, not just a bare number. Lead with the summary table per
 `reference/report_format.md`, followed by one short sentence — not a full paragraph
 restating every input.
 
+**Broker/agency research (Nuvama, etc.) — only if the user has directly uploaded a
+report; no dedicated section.** This pipeline never fetches broker research off the
+web (per `reference/source_playbook.md`'s "Broker/agency research reports" entry —
+these are institutional-distribution products with their own reproduction/
+redistribution restrictions). When a report is supplied, don't wall it off into its
+own section — fold each fact directly into whichever section it belongs to: a target
+price and rating into Valuation, a demand/sector read into Industry Tailwinds/
+Headwinds, a thesis point into Investment Thesis Summary, a flagged risk into Key
+Risks, and so on. What keeps this from blending into the pipeline's own
+independently-sourced numbers is an **inline tag on every single broker-sourced
+point** — `[<BROKER>_<DDMMYYYY>]`, agency name uppercase/no-spaces plus the report's
+own publication date, e.g. `[NUVAMA_29042026]` — appended immediately after the
+sentence, table row, or bullet it supports. Tag every sentence individually, even
+consecutive ones from the same report; don't tag a whole paragraph once. Paraphrase
+thesis/risk points in your own words rather than reproducing paragraphs verbatim (the
+source report's own disclaimer restricts reproduction). If a broker's number and the
+pipeline's own independently-derived number both exist for the same thing (e.g.
+Valuation's Forward PE table already has the pipeline's own forward multiple), show
+both as separate, clearly attributed rows — never average or merge them into one
+figure.
+
 **Industry Tailwinds/Headwinds** — per `reference/source_playbook.md`, search outward
 (peers, sector bodies, rating-agency sector notes), 2-4 bullets, one source each. A
 quick LinkedIn/X check on the company's own official page (per
@@ -425,23 +566,34 @@ Marquee Customers if customer-related, Key Risks if it's a negative development)
 than forcing a dedicated heading — and don't mention the check at all if nothing
 noteworthy turned up.
 
-**Competitive Positioning: Peer Comparison, Entry Barriers & Product Criticality** —
-pull 3-5 direct peers from screener.in's Peers tab or the company's own concall
-references to competitors, per `reference/source_playbook.md`. Build the comparison
-table (IP/technology moat, niche/marquee customers, certifications, other
-differentiator) including the reporting company as its own row, then state plainly
-which side leads on each factor — facts only, no ranking score. Cover entry barriers
-(capital intensity, certification/qualification lead times, customer design-in cycles,
-proprietary know-how, switching costs) and product criticality (safety/mission-critical
-vs. discretionary/substitutable) from the same sources plus the company's own framing
-of its product's role — never invent a barrier or criticality claim the sources don't
-support.
+**Competitive Positioning: Peer Comparison** — pull 3-5 direct peers from screener.in's
+Peers tab or the company's own concall references to competitors, per
+`reference/source_playbook.md`. Build the comparison table (IP/technology moat,
+niche/marquee customers, certifications, other differentiator) including the reporting
+company as its own row, then state plainly which side leads on each factor — facts
+only, no ranking score. If no direct listed pure-play peer exists, say so and use the
+closest adjacent listed comparables, labeled as adjacent rather than direct.
+
+**MOATs** — a dedicated section, kept separate from the Peer Comparison table since a
+moat is about the company's own durable advantages, not how it stacks up against named
+peers. **Always render as bullet points** (`flag_list(kind='bull')` in the visual PDF)
+covering whichever of these actually apply, each with its specific evidence: IP/
+technology moat (patents, proprietary process, in-house R&D, and the backward-
+integration depth already established in Value Chain Positioning — cross-reference,
+don't re-explain), entry barriers (capital intensity, certification/qualification lead
+times — a specific number of years if management gave one, customer design-in cycles,
+proprietary know-how, regulatory barriers that block competitors), product criticality
+(safety/mission-critical vs. discretionary/substitutable), and switching costs. Never
+invent a moat claim the sources don't support — a company can have a real moat on one
+front and a weak one on another; reflect that honestly rather than presenting a
+uniformly strong picture.
 
 **Technical Snapshot** — pull a pre-computed technicals summary (moving averages,
 RSI, support/resistance) from a technicals provider per the playbook; don't compute
-indicators from scraped OHLC data yourself. Timestamp it. **Render as normal body
-text in the visual PDF, not the small italic `.note` style** — this section carries
-real numbers a reader needs to read comfortably, not a one-line caveat.
+indicators from scraped OHLC data yourself. Timestamp it. **Render as a table or
+bullet points in both the `.md` and the visual PDF — never a prose paragraph.** In the
+visual PDF this is normal body text, not the small italic `.note` style — this section
+carries real numbers a reader needs to read comfortably, not a one-line caveat.
 
 **Promoter/Governance Track Record** — this reuses the same `guidance_history.json`
 already populated for the outlook-bullet status pointers above; no separate logging
@@ -498,11 +650,14 @@ Not lookback-limited, same as fund raises and ratings.
 
 **Investment Thesis Summary** — after Promoter/Governance, synthesize the specific,
 falsifiable case from what's already gathered: outlook bullets currently `[On Track]`/
-`[Delivered]`, Competitive Positioning strengths, TAM headroom, capacity headroom,
+`[Delivered]`, MOATs/Competitive Positioning strengths, TAM headroom, capacity headroom,
 independent third-party corroboration (customer guidance, a rating reaffirmation/
-upgrade). Per `reference/report_format.md` — **if the research genuinely doesn't
-support a real thesis, say so plainly instead of padding it out**; that's a legitimate,
-useful conclusion, not a failure to produce one.
+upgrade, export-shipment data). **Always render as bullet points** (`flag_list(kind=
+'bull')` in the visual PDF) — one claim per bullet, each carrying its own source; a
+single short lead-in sentence framing the case is fine, but the substance belongs in
+the bullets, not a merged paragraph. Per `reference/report_format.md` — **if the
+research genuinely doesn't support a real thesis, say so plainly instead of padding it
+out**; that's a legitimate, useful conclusion, not a failure to produce one.
 
 **Key Risks (Red Flags / Bear Case)** — 3-5 bullets pulling from what's already been
 gathered above (business/execution, financial, governance, macro) — never invented.
@@ -540,30 +695,47 @@ the skill's own working state in `~/.report-generator/research_cache/`. Create t
 including a freshness-check-only refresh where the report body is reused
 unchanged)** — never skip it and never treat it as optional or user-request-gated.
 
-**Primary path — visual PDF via WeasyPrint.** Follow
-`reference/report_format.md`'s "Assembly" section: build the HTML body with
-`scripts/html_helpers.py` (cover, cards, tables, timeline, verdict box, sources list —
-`data_table()` is the workhorse here, used far more than any chart) styled by
-`assets/report_style.css`, then render with `python3 -m weasyprint report.html
-<output_dir>/<name>_report.pdf`. `scripts/charts.py` (matplotlib) is available but
-**opt-in, not default** — only call it if the user specifically asks for a visual/
-chart version of a section. Install once if missing: `pip install weasyprint
-matplotlib --break-system-packages`. Verify the rendered PDF before delivering it —
-`pdftoppm -jpeg -r 120 <name>_report.pdf page` and check a few pages for overflowing
-tables, unreadable font sizes, or dead whitespace (a common cause: a chart PNG that
-wasn't saved with tight bounding-box cropping — see `scripts/charts.py`'s
+**All reports use the same visual template — WeasyPrint is not optional-if-convenient,
+it is the required renderer.** Every company's PDF must look like every other
+company's PDF; a batch of reports rendered through two different pipelines (one
+visual, one plain-text ReportLab) reads as broken, not as an acceptable fallback.
+
+**Before building anything, verify WeasyPrint actually works — don't assume from a
+prior run or a different session.** Run `python3 -c "import weasyprint"` first. If
+that fails, run `pip install weasyprint --break-system-packages` (add `matplotlib`
+too if `scripts/charts.py` will be used) and re-check with the same import — do not
+proceed past this step on a guess. Only after that second check still fails is the
+environment considered genuinely unable to run WeasyPrint.
+
+**Primary path — visual PDF via WeasyPrint (required whenever the above check
+passes).** Follow `reference/report_format.md`'s "Assembly" section: build the HTML
+body with `scripts/html_helpers.py` (cover, cards, tables, timeline, verdict box,
+sources list — `data_table()` is the workhorse here, used far more than any chart)
+styled by `assets/report_style.css`, then render with `python3 -m weasyprint
+report.html <output_dir>/<name>_report.pdf`. `scripts/charts.py` (matplotlib) is
+available but **opt-in, not default** — only call it if the user specifically asks
+for a visual/chart version of a section. Verify the rendered PDF before delivering
+it — `pdftoppm -jpeg -r 120 <name>_report.pdf page` and check a few pages for
+overflowing tables, unreadable font sizes, or dead whitespace (a common cause: a
+chart PNG that wasn't saved with tight bounding-box cropping — see `scripts/charts.py`'s
 `bbox_inches='tight'` usage — or a single chart wrongly wrapped in `chart_row()`).
 Delete any intermediate chart PNGs and `report.html` once verified; only the final PDF
 and `report.md` belong in `~/.report-generator/output/<company_slug>/`.
 
-**Legacy fallback — reportlab, text-only.** If WeasyPrint genuinely can't be installed
-in a given environment, run `python3 scripts/report_to_pdf.py <output_dir>/<name>_report.md
+**Legacy fallback — reportlab, text-only. Last resort only, and always flagged.** Use
+this ONLY if the verify-then-install check above genuinely failed twice (import error
+persists after a fresh `pip install`) — never reach for it just because a build step
+errored once; retry the WeasyPrint path before giving up on it. If truly falling back,
+run `python3 scripts/report_to_pdf.py <output_dir>/<name>_report.md
 <output_dir>/<name>_report.pdf --title "<Company Name> - Research Report"` instead —
 markdown-to-PDF with no charts/cards/badges, but it still fixes the ₹-glyph issue and
 strips any internal `scripts/*.py` mention that slipped into the markdown as a backstop.
 Never let a missing dependency block delivery entirely; fall back rather than skip the
-PDF. Confirm both `.md` and `.pdf` exist in `~/.report-generator/output/<company_slug>/` before telling the
-user the report is ready, whichever path was used.
+PDF outright — but **explicitly tell the user in your chat response (not silently)
+that this report used the plain-text fallback renderer and why**, so a mismatched
+look across a multi-company batch is never a surprise discovered after the fact.
+Confirm both `.md` and `.pdf` exist in `~/.report-generator/output/<company_slug>/`
+before telling the user the report is ready, whichever path was used.
 
 Save/update `~/.report-generator/research_cache/<company_slug>/quotes.json`, `bullets.json`,
 `guidance_history.json`, `fundraise_history.json`, `rating_history.json`,
@@ -582,3 +754,51 @@ genuinely doesn't support a real thesis, the Investment Thesis Summary and Verdi
 so plainly rather than padding it out. Any directional read on valuation (Forward PE)
 stays tied to a specific cited comparison (peers, history, growth) rather than floating
 free as a bare adjective — this is about the thesis being real, not about softening it.
+
+## Never drop anything silently
+
+This is a standing rule that overrides convenience everywhere else in this file: if a
+source can't be fetched, a fetch times out, a page/quarter/section is skipped for any
+reason, a rate limit or size limit is hit, a script errors, an extraction comes back
+garbled or empty, a tracker flag can't be verified, or a section is left out — **that
+gap gets stated in the report, in the section it affects, every time.** Silently
+producing a report that reads as complete when a piece of it wasn't actually gathered
+is a worse failure than the gap itself, because the reader has no way to tell a
+verified "nothing here" from an unverified "I didn't check."
+
+This applies everywhere a gap can happen, not just document fetches:
+
+- **Fetch failures** — a concall/investor-presentation/annual-report PDF that 404s,
+  times out, or a screener.in widget that won't populate after one retry (per the
+  Token discipline section's "don't burn more than one retry" rule — stopping the
+  retry is fine, silently moving on without noting it is not). State what was
+  attempted and what failed, in the relevant section (not buried only in a final
+  Sources footnote).
+- **Partial extraction / worker failures** — `pdf_to_text_parallel.py` already
+  refuses to write a partial file and errors instead if a chunk comes back missing;
+  if that error fires and you fall back to something narrower, say so in the report,
+  don't quietly present the narrower extraction as if it were the whole document.
+- **Rate limits / size limits** — a WebSearch/WebFetch call throttled, truncated, or
+  capped by `max_chars`; an aggregator (Volza/Seair/ImportGenius/Zauba/Trendlyne/
+  Tijori/etc.) that returned a thin or paywalled preview instead of full data. Note
+  the limitation next to whatever partial data *was* usable, rather than presenting
+  the partial data as complete.
+- **Sections that come back empty** — a tracker report with no entries, a
+  `semantic_search.py`/grep pass that found nothing for a section you expected to
+  exist. Distinguish explicitly between "checked, genuinely not disclosed" (a
+  legitimate, useful finding — see `reference/report_format.md`'s per-section rules
+  for when a section is expected to state absence rather than being omitted) and
+  "couldn't verify" (a gap, which must say so) — never let the second read like the
+  first.
+- **Renderer/dependency fallbacks** — e.g. the legacy ReportLab PDF fallback used in
+  place of WeasyPrint (see the PDF-assembly rules above) — must be flagged in your
+  chat response to the user, not just left for them to notice from how the PDF looks.
+- **Multi-company batches** — if one company's report in a batch request hits a gap
+  and another's doesn't, that asymmetry itself is worth surfacing in your summary to
+  the user, not just inside each report individually.
+
+The bar is: a reader of the report, or a user reading your chat summary, should never
+have to independently discover that something was skipped, timed out, capped, or
+silently dropped. If in doubt about whether something rises to "worth flagging,"
+flag it — the cost of one extra caveat line is far lower than the cost of a reader
+trusting a gap they were never told about.

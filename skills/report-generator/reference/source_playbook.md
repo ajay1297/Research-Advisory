@@ -22,6 +22,18 @@ material fact "verified" rather than just "found":
    management interview worth checking) but never cite a number from one of these
    without tracing it back to the primary filing or press release it originated from —
    aggregators garble numbers more often than the fetch effort to verify would suggest.
+4. **Third-party broker/agency research** (Nuvama, Motilal Oswal, ICICI Securities,
+   Kotak Institutional, etc.) — a different category entirely from tiers 1-3 above:
+   this is another analyst's *opinion and estimates*, not a filing or a neutral data
+   mirror. Never treated as a primary source and never cited as if it were the
+   pipeline's own finding. Only enters the report at all when the user directly
+   supplies one (see "Broker/agency research reports" below) — this pipeline doesn't
+   go fetch broker research proactively. It has no dedicated section — each fact folds
+   into whichever existing section it belongs to — but every such point carries an
+   inline `[BROKER_DDMMYYYY]` attribution tag (see `reference/report_format.md`'s
+   "Broker / agency research — inline-tagged, no dedicated section"), which is what
+   keeps it distinguishable from the pipeline's own independently-sourced numbers in
+   Valuation, Financial Performance Summary, Investment Thesis Summary, etc.
 
 Flag an unverified management claim explicitly rather than silently upgrading its
 confidence (e.g. "management states X on the concall — not yet corroborated by an
@@ -78,11 +90,24 @@ screener.in Documents tab for the same quarter.
 
 ## Annual reports
 
-Same path, larger PDF (100-300 pages). Only extract the sections relevant to forward
-guidance (Management Discussion & Analysis / Chairman's letter / outlook section) —
-don't run the full report through `extract_theme_quotes.py`; grep the extracted text
-for the MD&A section heading first and slice to that range before further processing,
-to avoid burning tokens on financial statement boilerplate.
+Same path, larger PDF (100-300+ pages) — but always run the **whole** PDF through
+`pdf_to_text.py` (or `pdf_to_text_parallel.py` for a faster multi-core extraction on
+a large report — see `SKILL.md`'s Source pipeline section), never just a guessed page
+range: an annual report's segment note, litigation note, shareholding pattern, and
+PP&E note are typically much further back than the MD&A and are just as required as
+the outlook section is. The "don't read the whole thing" discipline applies to what
+you feed `extract_theme_quotes.py` and what you `Read()` into context, not to what
+gets extracted — grep the already-fully-extracted text for the MD&A section heading
+and only feed *that* slice to `extract_theme_quotes.py` (to avoid burning tokens
+running quote-candidate extraction over financial-statement boilerplate), while the
+full extracted `.txt` stays on disk for every other section's grep/`semantic_search.py`
+pass. If a section you know
+should exist (raw material sourcing note, a value-chain/backward-integration
+description, a specific customer mention) doesn't surface under any keyword you try,
+run `scripts/semantic_search.py <extracted.txt> "<what you're looking for, in plain
+language>"` before giving up on grep — annual reports vary a lot in phrasing between
+companies and a keyword guess that worked for one company's report often doesn't for
+another's.
 
 ## Value chain positioning
 
@@ -163,29 +188,47 @@ inferring a relationship from a photo or a bare LinkedIn mention — shipment re
 a specific, checkable data point (an actual bill of lading/shipping bill), not an
 indirect inference, which is why they get a different treatment.
 
-## Export/import shipment data, awards & social media — supplementary corroboration
+## Export/import shipment data — attempt once, expect it to fail, fall back fast
 
-These are secondary/discovery-tier sources (per the "Source trust hierarchy" above) —
-useful for corroboration and for surfacing leads the primary filings don't mention, but
-never a substitute for the primary source when one exists, and always labeled as coming
-from a third-party record rather than company disclosure.
+These sites are secondary/discovery-tier sources (per the "Source trust hierarchy"
+above) — useful for corroboration when they work, but **verified (2026-07) to be
+unreliable as an automated/free source**: Volza and Zauba both sit behind bot-detection
+challenge pages that block automated fetching outright (not a rate limit or a stale
+page — a "confirm you're not a bot" wall with no way through it programmatically);
+Seair's public page renders a static, years-old teaser sample (unrelated products,
+dated shipments) rather than a queryable, company-specific result, with real querying
+gated behind signup/subscription. ImportGenius and Panjiva are subscription-only with
+no usable free tier. Treat all five the same way: **worth one quick attempt, not worth
+retrying or treating as a dependable source**, and the fallback below is not optional
+when the attempt fails.
 
-**Export/import shipment data** — sites like Volza, Seair Exim Solutions, ImportGenius,
-Zauba Corp, or Panjiva aggregate customs shipping-bill records (shipper, consignee,
-country, sometimes product description/quantity/value) for companies that export or
-import physical goods. Two direct uses in this report:
-- **Marquee & Niche Customers**: search `<company name> export shipments site:volza.com`
-  (or similar) to find actual consignee names/countries — useful both to corroborate a
-  customer the company already named and to surface one it didn't. Label per the rule
-  above.
-- **Raw material import dependency** (see Manufacturing Locations in
-  `report_format.md`): if the annual report's indigenous-vs-imported note isn't
-  accessible, shipment-data sites can show actual *inbound* shipments (raw material
-  imports) with shipper/origin-country — a genuine, if partial, substitute when the
-  primary disclosure can't be reached. Most of these sites gate full records behind a
-  paywall/signup — a few free preview records are usually enough to establish whether
-  imports exist and roughly which countries, even without the complete shipment log;
-  say so if only a partial picture was available.
+**The check, in order:**
+1. Attempt one of the aggregators (a plain web search or direct navigation is enough —
+   don't burn more than one try, per the Token discipline "don't burn more than one
+   retry on a stuck source" rule). If it returns a bot-detection wall, a stale/generic
+   teaser sample unrelated to the company, or a paywall with no usable preview, stop —
+   that's a determined outcome, not an inconclusive one.
+2. **Fall back to what's actually reliable for shipment/trade corroboration:**
+   - The **annual report's own indigenous-vs-imported raw material note** — this is
+     the primary source for Raw Material Sourcing regardless, and should be checked
+     first, not after the aggregator attempt.
+   - **DGFT / Ministry of Commerce trade statistics** (`tradestat.commerce.gov.in`,
+     `data.gov.in`) — genuinely free, no bot-wall, but aggregate/HS-code-level only,
+     not company-specific; useful for sector-level corroboration (e.g. "India's total
+     steel-tube exports to X grew Y%"), not for confirming a specific named customer.
+   - The company's **own investor presentation or concall** — export revenue % and,
+     less often, named export markets, is frequently disclosed there directly and is a
+     first-party source, which beats any third-party aggregator when available.
+3. If the user has their own paid subscription/API key to one of these aggregators,
+   an authenticated fetch can be used instead — but never attempt to sign up for or
+   pay for a subscription on the user's behalf; that's outside what this pipeline can
+   do on its own.
+
+**State the outcome explicitly in the report either way** — per the "Never drop
+anything silently" rule in `SKILL.md`: if the aggregator attempt failed, say so in one
+line (which source was tried and how it failed — bot-walled, stale/paywalled preview,
+subscription-only) rather than omitting the attempt, and lead with whatever the
+fallback sources above actually found instead of leaving the section thin.
 
 **Awards & recognition** — check the investor presentation for an "Awards & Accolades"
 slide (common in Indian small/midcap decks, often listing the awarding body and year)
@@ -323,6 +366,30 @@ investor presentation's operations/manufacturing slide sometimes states installe
 capacity and actual production/sales volume separately, from which
 `scripts/capacity_utilization.py` can derive utilization (Mode B).
 
+**Find the industry's own physical capacity unit, not just a %** — every industry
+reports capacity differently, and the physical unit is the primary figure a reader
+needs, not a derived percentage alone: fiber-km/annum (optical fiber), MT/annum
+(metals, chemicals, cement), MW/MWp (power, renewables), number of units/annum
+(vehicles, cylinders, kegs, looms), bed-days or occupancy % (healthcare), etc. Look for
+this in the same operations/manufacturing slide or concall answer that gives the
+utilization % — management usually states both together ("installed capacity of 50
+million fiber-km, we did about 39 million this year"). If the company breaks capacity
+out by product sub-type or grade (e.g. standard vs. specialty fiber, flat vs. long
+steel products), capture that split too rather than only the blended aggregate — the
+specialty/high-margin sub-type's utilization is often more decision-relevant than the
+aggregate.
+
+**Check whether the capacity is a shared, multi-purpose pool** — ask specifically (via
+a `grep`/targeted read of the concall, or a direct look at the investor presentation's
+operations slide) whether the same production line/plant/asset can be swung across
+multiple product variants, or whether each variant has dedicated capacity. Management
+sometimes states this directly when explaining a product-mix shift ("we can allocate
+the same line between standard and hollow-core fiber depending on order mix"). If nothing
+explicit is found either way, don't assume dedicated capacity by default — say the
+sources reviewed didn't clarify whether the capacity pool is shared or dedicated, rather
+than presenting a blended utilization % as if it necessarily described one dedicated
+line.
+
 **Post-capex revenue potential** — don't do a separate fetch for this: it's almost
 always the same figure already captured in the Capex/Milestones timeline or a Medium/
 Long Term outlook bullet (e.g. "capacity sized for INR3,000-3,200cr sales by FY28").
@@ -379,7 +446,56 @@ points, report the range and cite both rather than picking one arbitrarily. If n
 source publishes it, say so rather than computing your own median from a partial price
 series.
 
-## Raw material import dependency
+## Broker / agency research reports (Nuvama, etc.) — uploaded only, never fetched
+
+Unlike every other source in this playbook, **don't go looking for broker/agency
+research reports (Nuvama, Motilal Oswal, ICICI Securities, Kotak Institutional, Jefferies,
+etc.) on your own.** Two reasons: they're near-universally paywalled/institutional-
+distribution products with no reliable free public copy to fetch, and — more
+importantly — every such report's own disclaimer typically states it is confidential
+and must not be "reproduced or redistributed or passed on directly or indirectly in
+any form to any other person or published, copied, in whole or in part, for any
+purpose." Respect that: this section only activates when the **user directly uploads**
+a broker report (per "User-uploaded documents" below), and even then the *use* of it
+stays narrow — extracting and attributing the factual content (rating, target price,
+estimates, thesis points, risk points) for the user's own personal research report is
+squarely the point of them sharing it, but that doesn't extend to reproducing the
+source document's analysis verbatim at length.
+
+**How to use one once uploaded:**
+1. Extract via `pdf_to_text.py` like any other PDF, save to
+   `~/.report-generator/research_cache/<company_slug>/raw/` (e.g.
+   `Nuvama_Result_Update_2026-04-29.pdf`/`.txt`).
+2. Pull the factual snapshot: agency name, analyst name(s), report date, report type
+   (Result Update/Company Update/Initiation/Visit Note), rating, price at report date,
+   12-month target price, target methodology (e.g. "15x Mar-28E EBITDA"), and the
+   headline estimates table (revenue/EBITDA/PAT/EPS by year) — these are facts, not the
+   report's copyrightable prose, and are fine to state directly, always attributed.
+3. For the thesis/key-risks bullets, **paraphrase in your own words** rather than
+   copying the source report's paragraphs — a one-line factual paraphrase per point
+   ("Nuvama flags [specific risk] as a new headwind") captures the substance without
+   reproducing the analyst's actual written analysis. Do not quote more than a short
+   phrase verbatim from the source document.
+4. **There is no dedicated section for this.** Fold each fact directly into whichever
+   existing report section it belongs to — the target price/rating into Valuation, a
+   sector-demand read into Industry Tailwinds/Headwinds, a thesis point into Investment
+   Thesis Summary, a flagged risk into Key Risks, and so on — per
+   `reference/report_format.md`'s "Broker / agency research — inline-tagged, no
+   dedicated section." What keeps a broker's numbers from blending into the pipeline's
+   own independently-sourced Valuation/Financial Performance Summary/Investment Thesis
+   figures is an **inline tag on every single point**: `[<BROKER>_<DDMMYYYY>]`
+   (agency name uppercase/no-spaces, then the report's own publication date), appended
+   immediately after the sentence, table row, or bullet it supports — e.g. a Nuvama
+   Result Update dated 29 April 2026 tags every point it contributes as
+   `[NUVAMA_29042026]`. Tag every sentence individually, even consecutive ones from the
+   same report.
+5. If the user later uploads a newer report from the same or a different agency on a
+   regeneration, its points get their own tag with the new report's date — don't
+   overwrite an earlier broker-sourced point with a newer one under the same tag; both
+   coexist, distinguished by their own dates, same principle as the tracker histories
+   elsewhere in this pipeline.
+
+## Raw material sourcing — domestic vs. imported, country-wise
 
 A standard Companies Act/Ind AS disclosure, but one easy to miss because it isn't in
 the concall or investor presentation — it lives in the **annual report's Notes to
@@ -387,13 +503,113 @@ Accounts**, usually under a heading like "Value of raw materials, components and
 parts consumed" or "Additional Information pursuant to Schedule III," broken into
 indigenous vs. imported ₹ value and %. Fetch the latest available annual report (per
 "Annual reports" below) and search its extracted text for "imported" / "indigenous" /
-"raw material consumed." If the annual report genuinely isn't accessible this run,
-fall back to concall Q&A about raw-material sourcing or supply-chain risk (management
-sometimes volunteers directional color — e.g. "we import our nickel content" — without
-a hard %) and report that as qualitative color, explicitly labeled as such rather than
-presented as a quantified figure. Don't substitute generic industry knowledge (e.g.
-"India imports most of its nickel") for a company-specific disclosure — if the
-company's own number isn't found, say so.
+"raw material consumed."
+
+**Don't stop at the aggregate %** — if any portion is imported, look specifically for a
+country-of-origin breakdown, which sometimes sits in the same note or nearby in the
+MD&A (e.g. "62% imported: China 40%, South Korea 15%, others 7%"). A single blended
+"imported" % without a country split hides a real difference in exposure — a
+single-country dependency is a materially different geopolitical/FX risk than a
+diversified import basket at the same aggregate %. If the annual report gives the
+aggregate % but not the country split, say so explicitly rather than treating the
+aggregate as the complete picture, and try one of the following before giving up:
+
+- **Annual report MD&A / risk-factors section** — sometimes names key sourcing
+  countries qualitatively even without a hard % (e.g. "primarily sourced from China and
+  South Korea").
+- **Concall Q&A about raw-material sourcing or supply-chain risk** — management
+  sometimes volunteers directional color (e.g. "we import our nickel content from
+  Indonesia") without a hard %; report this as qualitative color, explicitly labeled as
+  such rather than presented as a quantified figure.
+- **An import-shipment-data aggregator** (see "Export/import shipment data" below) —
+  actual inbound customs records showing shipper name and origin country are a genuine,
+  checkable partial substitute for both the % and the country split when the annual
+  report doesn't give one; say explicitly if only a partial picture was available this
+  way (these sites usually gate full records behind a paywall).
+
+Don't substitute generic industry knowledge (e.g. "India imports most of its nickel")
+for a company-specific disclosure — if the company's own number or country breakdown
+isn't found anywhere reviewed, say so plainly rather than guessing.
+
+**Important: this specific breakdown is no longer universally mandatory, and may
+genuinely not exist in the filing** — the indigenous-vs-imported raw-material split was
+a standard Schedule VI disclosure under the Companies Act 1956, but is not a required
+line item under the current Schedule III/Ind AS regime the way "Cost of Materials
+Consumed" itself (a single aggregate figure, always present) is. Many companies now
+disclose only the aggregate consumption note and omit the indigenous/imported split
+entirely, even in a fully-read, successfully-fetched annual report. Once you have
+actually located and read the "Cost of Materials Consumed" note (or equivalent) and it
+contains no indigenous/imported breakdown, that is a **definitive finding** — "the
+company's FY26 annual report discloses total raw material consumption of ₹Xcr but does
+not break this out by indigenous vs. imported source" — not an unresolved fetch
+failure. Don't keep searching once you've actually read the note itself and confirmed
+the split isn't there; that's a different (and stronger) conclusion than "couldn't
+fetch the document."
+
+**A useful fallback, once you've confirmed no direct breakdown exists**: the Board's
+Report annexure on "Conservation of Energy, Technology Absorption and Foreign Exchange
+Earnings and Outgo" (a mandatory disclosure under Section 134(3)(m) of the Companies
+Act, present in every annual report regardless of the Schedule III raw-material note)
+gives an aggregate **Foreign Exchange Earnings and Outgo** figure for the year. This
+isn't a substitute for a raw-material-specific import % — the "outgo" figure includes
+imports of capital goods, travel, and other foreign-currency spend alongside raw
+material — but it's a real, citable aggregate forex-exposure figure worth reporting
+alongside an honest note that it isn't raw-material-specific. The same annexure's
+"technology absorption" section sometimes separately discloses an **imported
+technology** item (name of the technology, source country, year of import) — cite this
+too if present, labeled as a technology import, not a raw-material one.
+
+**If a target annual report PDF is too large to fetch in one shot** (a common failure
+mode for 100-300 page reports — direct `web_fetch`/`WebFetch` on the full PDF can time
+out or exceed the tool's content-size limit): don't give up on the section entirely.
+Instead:
+1. `WebSearch` for the specific note by name first — e.g. `"<company name>" "raw
+   material consumed" indigenous imported annual report` or `"<company name>"
+   "contingent liabilities" annual report crore` — search snippets or secondary
+   aggregator summaries (Screener's "documents" excerpts, equity-research annual-report
+   analyses, Trendlyne) sometimes quote the exact note's figures directly without
+   needing the full PDF.
+2. If a direct BSE/NSE-hosted copy of the same annual report exists at a different
+   (sometimes smaller/differently-encoded) URL than the company's own IR-site copy, try
+   that second URL — file size and encoding can differ between mirrors of the same
+   filing, and a fetch that times out on one mirror sometimes succeeds on another.
+3. If the annual report is genuinely only available as one large file with no smaller
+   mirror, this is one of the few cases worth a second attempt (contrary to the general
+   "don't burn more than one retry" rule) specifically because this note is a real,
+   recurring reporting requirement, not a one-off fact — try Claude in Chrome
+   (`navigate` to the PDF URL, then `get_page_text`) as a genuinely different fetch path
+   than `WebFetch`/`web_fetch`, since Chrome renders the PDF natively rather than
+   proxying the raw bytes through the tool's own size-limited fetch. Note that some
+   sites block the browser tool entirely (policy-blocked domains) or force a download
+   dialog rather than an in-browser-renderable page for direct PDF links — if either
+   happens, that path is genuinely closed, not worth a second attempt on the same URL.
+4. **If steps 1-3 all fail, ask the user to download and share/upload the PDF
+   directly** rather than continuing to retry automated fetches — once a large PDF is a
+   local file (via upload), it can be read page-range by page-range with no size limit
+   or timeout at all, which resolves the entire class of "file too large to fetch"
+   failures in one step. This is the single most reliable escalation for a large annual
+   report specifically, and should be offered proactively once 2-3 fetch paths have
+   failed, rather than treated as a last resort after many more attempts.
+5. Only after exhausting the above should the report state the figure couldn't be
+   verified this run — and even then, prefer reporting whatever qualitative color the
+   concall/investor presentation gave (per the bullet above) over a bare "not found"
+   line, so the section still carries some signal.
+
+**Once a large annual report PDF has been supplied locally (uploaded), reading it
+efficiently still matters** — a 250-300 page annual report exceeds a single read, so
+page-range reads are required (see the platform's own PDF-paging guidance). Don't
+guess which page range holds a given note — the Standalone/Consolidated Financial
+Statements section usually starts well past the halfway point of the document (Table of
+Contents gives exact page numbers), and printed footer page numbers rarely match the
+PDF's raw page index one-for-one (divider pages between major sections are usually
+unnumbered) — sample a 15-20 page range near your estimate, note the footer-to-physical
+offset from what comes back, and adjust the next read accordingly rather than assuming
+a fixed offset holds across the whole document. The two notes worth targeting directly
+by name via the Table of Contents/note index: "Cost of Materials Consumed" (or "Cost of
+Raw Materials Consumed") for the raw-material figure itself, and "Contingent
+Liabilities" (usually 1-3 notes later) for litigation/tax-dispute amounts — both are
+usually within a few pages of each other, late in the Notes to Accounts, so one
+well-targeted read often surfaces both at once.
 
 ## Manufacturing locations
 
@@ -659,3 +875,11 @@ of an unchanged history.
 If the user has already uploaded the concall transcript / investor PPT / annual report
 (they said they'd share templates and source documents directly), always prefer those
 over fetching — check the uploads/workspace folder first before doing any web research.
+
+A user-uploaded **broker/agency research report** (Nuvama, Motilal Oswal, etc.) is a
+distinct case from the three above — it doesn't get its own section; its facts fold
+into whichever existing sections they belong to, each carrying an inline
+`[BROKER_DDMMYYYY]` attribution tag (see "Broker / agency research reports" above).
+Treat any file that carries a broker/agency letterhead, a rating (Buy/Hold/Reduce/
+Sell), and a 12-month target price as this type rather than as an investor
+presentation or annual report.
