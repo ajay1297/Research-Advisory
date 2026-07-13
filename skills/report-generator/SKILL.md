@@ -7,8 +7,11 @@ description: >
   structural growth/structural decline — up front; Near/Medium/Long Term outlook backed
   by sourced management quotes, each tagged with a status pointer — Pending/On Track/
   Delivered/Delayed/Missed — tracked across concalls; marquee/niche customers plus their
-  own disclosed guidance where corroborating, corroborated where relevant by export-
-  shipment data; a capex, milestones (including awards) and certifications
+  own disclosed guidance where corroborating — including, for a marquee customer that
+  is itself publicly listed on any exchange (India, US, UK, EU, or elsewhere), the last
+  4 quarters of that customer's own concalls/earnings calls for capacity/demand
+  corroboration — and corroborated where relevant by export-shipment data; a capex,
+  milestones (including awards) and certifications
   timeline that also rolls up every other future-dated commitment disclosed elsewhere in
   the report; a CDMO molecule-pipeline snapshot where applicable; multi-year YoY revenue/
   margin/PBT/PAT trend table plus a balance-sheet anomaly check; segment-wise revenue
@@ -280,7 +283,7 @@ report you've already generated for this company.
      anything else.
    - `new_quarter` → only fetch and parse the new concall/results (steps 1-3 of the
      source pipeline below). Do NOT reprocess transcripts already sitting in
-     `~/.report-generator/research_cache/<company_slug>/raw/`. Update the Near/Medium/Long Term bullets
+     `~/.report-generator/sources/<company_slug>/`. Update the Near/Medium/Long Term bullets
      from the new quarter (they supersede the old ones — this is a forward outlook,
      not a running log), but only *append* one new entry to
      `guidance_history.json` via `scripts/guidance_tracker.py` rather than rebuilding
@@ -291,12 +294,23 @@ report you've already generated for this company.
      unchanged from the cached `report.md`** (manufacturing locations, certifications,
      TAM, entry barriers, peer identities, value chain description — none of that
      changes quarter to quarter, so don't re-derive it).
-   - **Lookback window is fixed at 6 months (last 2 quarters) for every query, always**
-     — this is a standing framework default, not a per-report decision. It applies to
-     `guidance_tracker.py report` (its default `--lookback` is already 2) and to
-     `check_freshness.py`'s `--lookback-months` (already defaults to 6). Only change
-     either value if the user explicitly asks for a longer or shorter history in that
-     specific request — never default to anything else.
+   - **Standard sourcing depth is the last 2 annual reports and last 6 quarters of
+     concalls — this is the default for every `research <company>` / first-time run,
+     not a special request.** This applies to `guidance_tracker.py report` (default
+     `--lookback` is 6) and to `check_freshness.py`'s `--lookback-months` (default 18,
+     ≈6 quarters). It exists specifically so the Promoter/Governance Track Record and
+     Situation Classification sections have real multi-quarter evidence for "does
+     management walk the talk" and "what has genuinely changed about this business"
+     rather than 1-2 isolated data points — see `reference/source_playbook.md`'s
+     "Standard sourcing depth" section for exactly what to fetch and why. The
+     Near/Medium/Long Term outlook bullets themselves still reflect *current* forward
+     guidance regardless — this depth feeds the historical/governance read, not the
+     forward-looking bullets. **On a `new_quarter` refresh, this does not mean
+     re-fetching 6 quarters again** — per the incremental-regeneration rule below,
+     only the new quarter gets fetched; the rolling 6-quarter window is maintained by
+     what's already cached in `sources/` from prior runs plus the new addition. Only
+     go narrower than this default if the user explicitly asks for something
+     lighter/faster in that specific request.
 3. After finishing a run (full or incremental), call
    `python3 scripts/check_freshness.py <company_slug> --mark-processed "<label>" --price <price>`.
 
@@ -310,7 +324,7 @@ JS-rendered and web_fetch returns an empty shell. Never write a raw `curl`/`requ
 fetch script — this sandbox's network is allowlisted and direct calls to arbitrary
 domains fail with a proxy 403. If the user has uploaded documents, use those instead
 of fetching. Save whatever raw text/PDF you obtain to
-`~/.report-generator/research_cache/<company_slug>/raw/` before processing it.
+`~/.report-generator/sources/<company_slug>/` before processing it.
 
 **Extract text from PDFs — always extract the whole document, never just a guessed
 section range.** `python3 scripts/pdf_to_text.py <input.pdf> <output.txt>` — local, no
@@ -346,6 +360,23 @@ substitute for the full-document extraction above.
 <transcript.txt> <out.json>` buckets forward-looking lines into near/medium/long-term
 candidates. Read `out.json`, not the transcript. If a bucket looks thin, `grep -n -C3`
 the transcript for more context around one candidate instead of reading the whole file.
+
+**Naming and placement note — don't confuse this per-transcript output with the
+curated `quotes.json` in `research_cache/`.** Name this script's output
+`<label>_candidate_quotes.json` (e.g. `q4fy26_candidate_quotes.json`) — it's a raw,
+over-inclusive, unfiltered dump straight from one document (heuristic on purpose; the
+model does the real curation afterward). Unlike the `.txt`/`.pdf` extraction it's
+derived from (which stays in `sources/<company_slug>/` since a full annual report's
+text alone can run 1MB+), this candidate-quotes JSON is genuinely small (tens of KB
+even across several quarters) — save it to
+`~/.report-generator/research_cache/<company_slug>/candidate_quotes/<label>_candidate_quotes.json`
+instead, so it travels with the rest of the lean, shareable state rather than the
+bulky `sources/` material. This is a **different file** from the single `quotes.json`
+(no per-quarter label, no `candidate_quotes/` subfolder) also in `research_cache/<company_slug>/`
+per "Save and cache" below — that one is the *curated* set of quotes that actually
+made it into the drafted report, mapped back to their source for the Sources section.
+The `_candidate_` infix and the `candidate_quotes/` subfolder are both what keep the
+two from being mistaken for each other.
 
 ## Building each section
 
@@ -404,12 +435,26 @@ customer slide, annual report business overview, or explicit concall mentions pe
 Capture any disclosed customer-concentration % here too. Then, per named customer, do
 one targeted search for that customer's own public guidance/capacity plans that would
 corroborate future demand (per `reference/source_playbook.md`) — state plainly, per
-customer, whether anything was found. For an exporting company, a quick check of an
-export-shipment-data aggregator (Volza/Seair/ImportGenius/Zauba — per
-`reference/source_playbook.md`) can corroborate a named customer or surface one the
-company hasn't itself named — label anything found this way as third-party shipment
-data, distinct from company disclosure. **Always a bullet list in the visual PDF, one
-point per customer — never a merged paragraph.**
+customer, whether anything was found. **If a named marquee customer turns out to be
+itself publicly listed — on any exchange, not just Indian ones (e.g. Rossell
+Techsys's customer Lam Research, confirmed listed on NASDAQ)** — go beyond the
+one-off search and analyze its **last 4 quarterly concalls/earnings calls** for
+capacity/demand-relevant commentary, per `reference/source_playbook.md`'s "Checking a
+named customer's own guidance" section. **Verify listed status before assuming
+it** — don't guess an exchange for a large-sounding customer name; a named customer
+can easily turn out to be a private/PE-owned subsidiary with no listing at all.
+Check fast via Google Finance (`https://www.google.com/finance/quote/<TICKER>:<EXCHANGE>`
+— works across NASDAQ/NYSE/LON/XETR/NSE/BSE/etc. via Claude in Chrome, and its
+Earnings tab often has the transcript directly), falling back to the customer's own
+IR page, then SEC EDGAR/Motley Fool/Seeking Alpha for US-specific gaps. Save those
+transcripts under `~/.report-generator/sources/<company_slug>/customers/<customer_slug>/`,
+not `research_cache/` (bulky raw material, same rule as the reporting company's own
+concalls). For an exporting company, a quick check of an export-shipment-data
+aggregator (Volza/Seair/ImportGenius/Zauba — per `reference/source_playbook.md`) can
+corroborate a named customer or surface one the company hasn't itself named — label
+anything found this way as third-party shipment data, distinct from company
+disclosure. **Always a bullet list in the visual PDF, one point per customer — never
+a merged paragraph.**
 
 **Capex, Milestones & Certifications Timeline** — build a chronological table (achieved
 first, then planned) from the investor presentation's capex slide, concall Q&A timing
@@ -431,8 +476,8 @@ silently absent, since it's simply not applicable rather than data that's missin
 
 **Financial Performance Summary** — build the YoY revenue/margin/PBT/PAT table
 straight from the screener.in quarterly/annual results tables already fetched; this is
-a multi-year trend and is explicitly exempt from the 6-month lookback default that
-applies elsewhere in the report. **Table only in the visual PDF — no revenue/profit
+a multi-year trend and is explicitly exempt from the standard 18-month/6-quarter
+lookback default that applies elsewhere in the report. **Table only in the visual PDF — no revenue/profit
 chart by default** (see `reference/report_format.md`'s Assembly section). While the
 balance sheet is in front of you for this section, also run the **balance sheet
 anomaly check**: compute debtor days per year (receivables ÷ revenue × 365) and look
@@ -599,9 +644,9 @@ carries real numbers a reader needs to read comfortably, not a one-line caveat.
 already populated for the outlook-bullet status pointers above; no separate logging
 step needed here beyond adding this quarter's actual-vs-prior-guidance via
 `add-actual` if this quarter's results closed out a previously guided numeric metric.
-Run `scripts/guidance_tracker.py <company_slug> report` (default lookback is 2
-quarters / 6 months for the guidance-vs-actual comparisons — the standing default,
-don't override it) and reproduce its flag verbatim if it found a pattern of misses.
+Run `scripts/guidance_tracker.py <company_slug> report` (default lookback is 6
+quarters for the guidance-vs-actual comparisons — the standing default, don't
+override it) and reproduce its flag verbatim if it found a pattern of misses.
 Add promoter holding trend / pledge / auditor flags from the screener.in fetch —
 **render the shareholding-pattern trend as a `data_table()` in the visual PDF, no
 chart by default.**
@@ -620,7 +665,7 @@ price vs. current price) and reproduce its output — and any LAPSED-warrant fla
 verbatim — in the Promoter Fund Raises sub-section per `reference/report_format.md`.
 **Table only in the visual PDF, including the named-investor column — no donut chart
 by default.** Unlike guidance, this is not lookback-limited: show every raise on
-record, not just the last 6 months.
+record, not just what falls inside the standard 18-month window.
 
 Then check **credit ratings** for every report (not only companies with visible debt —
 see `reference/source_playbook.md`'s "Credit rating agencies" section for exactly which
@@ -709,18 +754,85 @@ environment considered genuinely unable to run WeasyPrint.
 
 **Primary path — visual PDF via WeasyPrint (required whenever the above check
 passes).** Follow `reference/report_format.md`'s "Assembly" section: build the HTML
-body with `scripts/html_helpers.py` (cover, cards, tables, timeline, verdict box,
-sources list — `data_table()` is the workhorse here, used far more than any chart)
-styled by `assets/report_style.css`, then render with `python3 -m weasyprint
+body **by calling `scripts/html_helpers.py`'s actual functions** — `cover()`,
+`badge()`, `card_grid()`, `flow_diagram()`, `data_table()`, `timeline()`,
+`flag_list()`, `verdict_box()`, `sources_list()` — never by hand-writing raw HTML
+tables/divs/ASCII-art dumps that merely resemble what those functions would produce.
+A report built by hand-writing plain HTML instead of calling these functions will
+still render through WeasyPrint without error (the render step has no way to know the
+content is unstyled), which is exactly why "the PDF exists and WeasyPrint didn't
+error" is not sufficient verification on its own — see the mandatory check below.
+Style with `assets/report_style.css`, then render with `python3 -m weasyprint
 report.html <output_dir>/<name>_report.pdf`. `scripts/charts.py` (matplotlib) is
 available but **opt-in, not default** — only call it if the user specifically asks
-for a visual/chart version of a section. Verify the rendered PDF before delivering
-it — `pdftoppm -jpeg -r 120 <name>_report.pdf page` and check a few pages for
-overflowing tables, unreadable font sizes, or dead whitespace (a common cause: a
-chart PNG that wasn't saved with tight bounding-box cropping — see `scripts/charts.py`'s
-`bbox_inches='tight'` usage — or a single chart wrongly wrapped in `chart_row()`).
-Delete any intermediate chart PNGs and `report.html` once verified; only the final PDF
-and `report.md` belong in `~/.report-generator/output/<company_slug>/`.
+for a visual/chart version of a section.
+
+**Verify before delivering — run `scripts/verify_report.py`, don't rely on your own
+judgment call for this.** This script exists specifically because "the PDF exists
+and WeasyPrint didn't error" has already once looked like success while the report
+was actually built with hand-written HTML missing every styled element. Run, in
+order:
+
+1. `python3 scripts/verify_report.py html <report.html>` — **before deleting
+   `report.html`, before rendering the PDF.** Checks for the CSS classes only
+   `html_helpers.py`'s functions emit (`card-grid`, `flow-diagram`/`flow-box`,
+   `data`, `timeline`, `flags`, `verdict-box`, `cover`). A FAIL here means the HTML
+   was hand-written instead of built through the helper functions — stop, rebuild it
+   through the correct function calls (`cover()`, `card_grid()`, `flow_diagram()`,
+   `data_table()`, `timeline()`, `flag_list()`, `verdict_box()`), and re-run this
+   check before proceeding to render.
+2. `python3 scripts/verify_report.py pdf <output_dir>/<name>_report.pdf` — after
+   rendering. Confirms the PDF's actual `Producer` metadata (don't assume WeasyPrint
+   from memory of what command you ran — check the file). A WARN for ReportLab means
+   you must state that explicitly in your chat response to the user, not silently
+   proceed. A FAIL (missing/corrupt PDF, too few pages) means the render didn't
+   actually work regardless of what the render command's own exit code said.
+3. `python3 scripts/verify_report.py report <output_dir>/<name>_report.md --brokers
+   <TAG1,TAG2,...>` — pass every broker tag for any broker/agency report supplied
+   this run (e.g. `NUVAMA_29042026,CLSA_24052026`). Confirms every canonical section
+   is present AND, critically, that every broker's tag actually appears in the
+   drafted text at least once — catching the case where a broker PDF was read and
+   summarized to yourself but its facts never actually made it into the report.
+4. `python3 scripts/verify_report.py sources <company_slug>` — confirms the
+   `sources/`/`research_cache/` split (see Directory structure in README.md) wasn't
+   violated: no bulky `.pdf`/`.txt`/`.bm25.pkl` leaked into `research_cache/`, no
+   candidate-quotes JSON left loose in `sources/` instead of
+   `research_cache/<slug>/candidate_quotes/`.
+5. `python3 scripts/verify_report.py freshness <company_slug>` — confirms
+   `check_freshness.py --mark-processed` was actually called at the end of this run
+   (checks `state.json`'s `last_processed_at` is today), not just intended.
+6. `python3 scripts/verify_report.py extraction <source.pdf> <extracted.txt>` — run
+   this for every annual report extracted this run, **before** deleting/losing the
+   source PDF. Confirms the extraction actually starts at page 1 and reaches the
+   document's real final page — catches a scouting/partial-range extraction being
+   mistaken for the full-document extraction the "always extract the whole
+   document" rule requires. This only works if the source PDF is still on disk, so
+   **always save a fetched annual report PDF to `sources/<company_slug>/` before
+   extracting it**, per the source-fetch rule — don't extract-then-discard.
+7. `python3 scripts/verify_report.py depth <company_slug>` — counts concall and
+   annual-report `.txt` files actually present in `sources/<company_slug>/` against
+   the standard depth (6 quarters, 2 annual reports). A WARN here isn't automatically
+   a blocker — a newly-listed company can genuinely lack 6 quarters of history — but
+   the shortfall must then be stated explicitly in the report per the "Never drop
+   anything silently" rule, not silently delivered as if standard depth was met.
+
+**Also still do a visual spot-check** via `pdftoppm -jpeg -r 120 <name>_report.pdf
+page` and `Read()` the cover, Company Summary, Value Chain Positioning, and one
+table-heavy page — the script catches missing structural elements, not visual bugs
+like overflowing tables, unreadable font sizes, or dead whitespace (a common cause: a
+chart PNG saved without tight bounding-box cropping — see `scripts/charts.py`'s
+`bbox_inches='tight'` usage — or a chart wrongly wrapped in `chart_row()`). If
+regenerating/fixing an existing company, comparing side-by-side against another
+company's already-correct PDF from earlier in the same session is a fast way to
+catch anything the script and a solo skim would both miss.
+
+**Any FAIL from the script is a stop-and-fix, not a note-and-continue** — same
+standing as the "Never drop anything silently" rule below, because a deterministic
+check that's allowed to fail without consequence isn't actually deterministic in
+effect, it's just another thing to skim past.
+
+Delete any intermediate chart PNGs and `report.html` only after both checks pass;
+only the final PDF and `report.md` belong in `~/.report-generator/output/<company_slug>/`.
 
 **Legacy fallback — reportlab, text-only. Last resort only, and always flagged.** Use
 this ONLY if the verify-then-install check above genuinely failed twice (import error
@@ -766,6 +878,18 @@ producing a report that reads as complete when a piece of it wasn't actually gat
 is a worse failure than the gap itself, because the reader has no way to tell a
 verified "nothing here" from an unverified "I didn't check."
 
+**This rule has a second half that matters just as much: don't just intend to catch
+gaps, mechanically check for the specific ones this pipeline has actually hit.**
+`scripts/verify_report.py` (see "Verify before delivering" above) exists because
+several of the gaps below have already slipped through on judgment/memory alone in
+practice — a hand-written HTML report that still rendered fine through WeasyPrint, an
+annual report extraction that silently started at page 40 instead of page 1, a broker
+PDF whose facts were read but never actually made it into the drafted text. Wherever
+a check below has a scriptable, grep-able signature, run the script; reserve judgment
+calls for the gaps that genuinely can't be mechanically checked (e.g. whether a
+"Colt-style" customer-listing explanation is specific enough — see the Marquee &
+Niche Customers section of `reference/source_playbook.md`).
+
 This applies everywhere a gap can happen, not just document fetches:
 
 - **Fetch failures** — a concall/investor-presentation/annual-report PDF that 404s,
@@ -802,3 +926,129 @@ have to independently discover that something was skipped, timed out, capped, or
 silently dropped. If in doubt about whether something rises to "worth flagging,"
 flag it — the cost of one extra caveat line is far lower than the cost of a reader
 trusting a gap they were never told about.
+
+## Deterministic Guardrails
+
+Everything above states rules; this section is the enforcement layer —
+`scripts/verify_report.py` (see its own docstring for exact usage) implements every
+check named below, tested against real report runs, not written and left
+unverified. Three tiers, matching where in the pipeline each one runs:
+
+### 1. Input Guardrails (the gatekeepers) — run before real processing starts
+
+Catch a bad input before it corrupts everything built on top of it:
+
+- **`sniff <file.pdf>`** — classifies an uploaded PDF's likely type (annual report /
+  concall transcript / investor presentation / broker research report) from
+  first-page keyword signals. Run this on any user-uploaded document before routing
+  it into a section-specific pipeline — catches, for example, a broker PDF being
+  processed as if it were an annual report.
+- **`slug <company_slug>`** — validates a derived company slug is safe to use in
+  filesystem paths (`[a-z0-9_]+` only) before it's used to construct any path under
+  `~/.report-generator/`.
+- **Company/ticker existence** — before running the full pipeline, the Step 0
+  freshness check's screener.in fetch already serves as an implicit input gate: if
+  the company can't be found there at all, that's the signal to ask the user to
+  confirm the name/ticker rather than proceeding to build a report for a company
+  that may not exist or may be misspelled.
+
+### 2. Execution Guardrails (the boundaries) — run during / immediately after a run
+
+Bound what the pipeline is allowed to do while it's running, independent of what
+it's trying to accomplish:
+
+- **`scope <plugin_skill_dir> [--minutes N]`** — confirms no file under the skill's
+  own install directory (`skills/report-generator/`) was created or modified
+  recently. This skill must only ever write under `~/.report-generator/` — never
+  inside its own plugin directory (a standing rule since the "Directory structure"
+  section of `README.md`); this check makes that mechanically verifiable instead of
+  just stated.
+- **`reproduction <source.txt> <report.md> [--ngram N]`** — checks no N-consecutive-
+  word sequence (default 12) from a broker/agency source document was copied
+  verbatim into the drafted report. Run this against every broker source used this
+  run before delivery — enforces the "paraphrase, don't reproduce at length" rule
+  from the Broker/agency research reports section mechanically.
+- **Sandbox network boundary** — no raw `curl`/`requests`/`urllib` against arbitrary
+  domains (see "Important sandbox constraint" in `reference/source_playbook.md`);
+  all fetching goes through the platform's own web tools. This is enforced by the
+  sandbox itself (a real call will 403), not by this script — it's an execution
+  boundary that doesn't need a separate deterministic check because the environment
+  already refuses it.
+- **One-retry-per-stuck-source limit** — bounds runaway retry loops against a
+  source that isn't going to resolve (Token discipline section) — a judgment-call
+  boundary, not separately scriptable, but stated here as an execution guardrail
+  alongside the two that are.
+
+### 3. Output Guardrails (the filters) — run right before delivery
+
+Nothing reaches the user without passing these — this is where "Never drop anything
+silently" above gets mechanically enforced rather than left to memory:
+
+- **`html <report.html>`** — required `html_helpers.py` CSS markers present (catches
+  hand-written HTML that renders fine but is unstyled — see "Verify before
+  delivering" above for the full list of markers).
+- **`pdf <report.pdf>`** — producer metadata (flags a silent ReportLab fallback) and
+  page-count sanity.
+- **`report <report.md> [--brokers TAGS]`** — all canonical sections present; every
+  supplied broker's tag actually appears in the drafted text.
+- **`quotes <report.md> <sources_dir>`** — every double-quoted string in the Near/
+  Medium/Long Term outlook sections is an exact (whitespace-normalized) substring of
+  at least one source `.txt` — mechanically enforces `report_format.md`'s "every
+  quote is verbatim" rule instead of relying on review alone to catch a fabricated
+  or subtly-altered quote.
+- **`disclaimer <report.md>`** — the required "not investment advice" language is
+  present.
+- **`sources <company_slug>`** — the `sources/`/`research_cache/` split wasn't
+  violated.
+- **`freshness <company_slug>`** — `check_freshness.py --mark-processed` was
+  actually called this run, not just intended.
+- **`extraction <source.pdf> <extracted.txt>`** — an annual report's extraction
+  actually covers page 1 through the real last page.
+- **`depth <company_slug>`** — concall/annual-report counts against the standard
+  6-quarter/2-annual-report sourcing depth.
+- **`whitespace <pdf> [--ratio 0.5]`** — every interior page (not the cover, not the
+  final page) must have a word count at or above the given fraction of the
+  interior-page median; the last page gets a lower but still-nonzero floor (a
+  near-blank final page from a one-line overflow is dead space too). **Only the
+  cover page is allowed to be sparse/mostly blank — every other page must be
+  reasonably filled.** Catches dead whitespace from a forced page break or any
+  other layout mistake. Confirmed in practice twice: a `page_break()` call landing
+  mid-document produces exactly this signature (one page at ~30% of the
+  surrounding pages' density) — which is why `page_break()` is now banned outright
+  in `reference/report_format.md`'s Assembly section — and a near-blank final page
+  from a small content overflow, which the original last-page exemption missed
+  until tightened.
+- **`depth <company_slug>`** now also counts **investor presentations** (standard
+  depth: 6 quarters, same as concalls), not just concalls and annual reports —
+  confirmed in practice that a missing investor presentation isn't just a thinner
+  report, it can be factually wrong (Segment-wise Performance, Total Addressable
+  Market, and Manufacturing Locations lean heavily on it, and a report built
+  without it once incorrectly claimed no TAM was disclosed when the investor
+  presentation had one all along). Annual reports are grouped by document identity
+  (stripping page-range chunk suffixes) rather than counted per file, so 6 chunks
+  of one document correctly count as 1 report, not 6.
+- **`ratings <company_slug> [--months 6]`** — checks `rating_history.json`'s most
+  recent logged entry is within the last 6 months. This is a **recency-of-check**
+  guardrail, not a lookback limit on what gets *shown* (the Promoter/Governance
+  section still shows the full rating history, unchanged) — an old cached entry
+  isn't evidence nothing happened since; every run should actively re-check each
+  covering agency's site for the last 6 months, not just trust a stale cache.
+  Always informational (WARN, never FAILs the run) since an old entry could
+  legitimately mean nothing changed, not that the check was skipped.
+- **`paragraphs <report.md> [--max-words 160]`** — flags any paragraph exceeding
+  ~10 rendered lines (approximated as 160 words) anywhere in the report, by
+  section. Per `reference/report_format.md`'s "Paragraph length limit" rule, a
+  paragraph this long should become bullet points instead — the same pattern
+  already mandatory for MOATs, Investment Thesis Summary, and Key Risks, now
+  applied report-wide. **One exception baked into the check's own guidance**: a
+  flagged Verdict paragraph gets "trim it" advice, not "convert to bullets" advice
+  — the Verdict section stays a short paragraph by its own spec even when other
+  sections default to bullets, so exceeding the limit there means evidence-
+  recapping crept in, not that it needs bulleting.
+
+**Every guardrail above that returns FAIL is a stop-and-fix, not a note-and-continue
+— a deterministic check with no consequence for failing isn't actually a guardrail,
+it's decoration.** WARN-level results (sourcing-depth shortfalls, a ReportLab
+fallback) don't block delivery but must be stated explicitly to the user per "Never
+drop anything silently" above — the distinction between FAIL and WARN is "must be
+fixed before delivery" vs. "must be disclosed at delivery," never "can be ignored."

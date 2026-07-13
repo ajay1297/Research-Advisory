@@ -12,7 +12,7 @@ state.json and tells Claude exactly what to do next:
   - "up_to_date": nothing changed, reuse the cached report.md as-is (or just rerun
     forward_pe.py if the user supplied a new price — that alone doesn't need a refetch).
   - "new_quarter": exactly one thing to fetch/parse — the new concall/results — nothing
-    else. Old transcripts already in research_cache/ are NOT reprocessed.
+    else. Old transcripts already in sources/ are NOT reprocessed.
   - "no_state": first time for this company, full pipeline runs, then call
     --mark-processed to write initial state.
   - "force_full": the user explicitly asked to regenerate this company's report *from
@@ -64,10 +64,12 @@ def main():
                               "return force_full regardless of --latest-seen")
     parser.add_argument("--mark-processed", help="record this label as now fully processed")
     parser.add_argument("--price", type=float, help="price to record alongside --mark-processed")
-    parser.add_argument("--lookback-months", type=int, default=6,
+    parser.add_argument("--lookback-months", type=int, default=18,
                          help="how far back guidance-tracker/report windows should look on "
-                              "refresh. Fixed framework default: 6 months. Do not override "
-                              "unless the user explicitly asks for a longer/shorter history.")
+                              "refresh. Fixed framework default: 18 months (~6 quarters), "
+                              "matching the standard 2-annual-report/6-quarter sourcing depth. "
+                              "Do not override unless the user explicitly asks for a "
+                              "longer/shorter history.")
     args = parser.parse_args()
 
     path = state_path(args.company_slug)
@@ -128,7 +130,7 @@ def main():
             "now_seen_label": args.latest_seen,
             "lookback_months": args.lookback_months,
             "note": "Fetch and parse only the new concall/results. Do not reprocess earlier "
-                    "transcripts already under ~/.report-generator/research_cache/<company>/raw/. Append one new "
+                    "transcripts already under ~/.report-generator/sources/<company>/. Append one new "
                     "guidance_tracker.py entry rather than rebuilding the whole guidance history.",
         }, indent=2))
 

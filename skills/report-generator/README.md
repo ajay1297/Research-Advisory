@@ -65,10 +65,18 @@ rendering). The four moving parts:
                 |                                  |
                 v                                  v
 +------------------------------------------------------------------------+
+|  ~/.report-generator/sources/<company_slug>/  (OUTSIDE the plugin)       |
+|  *.txt / *.pdf / *.bm25.pkl -- fetched source documents + search index  |
+|  (bulky, regenerable by refetching -- not part of research_cache below, |
+|   so research_cache/ stays small and shareable on its own)              |
++------------------------------------------------------------------------+
+                                  |
+                                  v
++------------------------------------------------------------------------+
 |  ~/.report-generator/research_cache/<company_slug>/  (OUTSIDE the plugin)|
-|  raw/*.txt|*.pdf   -- fetched source documents                          |
 |  *_history.json    -- durable, append-only fact logs (see below)        |
 |  state.json         -- freshness marker (last quarter processed)        |
+|  quotes.json, bullets.json -- synthesized outlook-quote extracts        |
 |  report.md          -- the drafted report, source of truth              |
 +------------------------------------------------------------------------+
                                   |
@@ -147,7 +155,7 @@ from anything downstream.
        Brickwork/Infomerics)
      - BSE/NSE announcements (fund raises, litigation, certifications)
      - Peer companies + technicals provider
-     Every fetched document is saved to ~/.report-generator/research_cache/<slug>/raw/ first.
+     Every fetched document is saved to ~/.report-generator/sources/<slug>/ first.
        |
        v
  [6] LOCAL PROCESSING (no model context spent reading raw documents)
@@ -221,11 +229,15 @@ skills/report-generator/           (this skill's directory, inside the Research-
 |   |                             contains, table vs. bullet vs. chart defaults,
 |   |                             the Assembly pattern for the visual PDF
 |   |-- source_playbook.md        Which tool/site for which fact, fallback paths,
-|                                  the 6-month-window and new-quarter-refresh rules
+|                                  the 18-month-window and new-quarter-refresh rules
 |-- scripts/                      Local Python -- no network except the tracker
 |   |-- pdf_to_text.py            scripts explicitly noted below
 |   |-- pdf_to_text_parallel.py   multi-core full extraction for large PDFs
 |   |-- semantic_search.py        BM25 relevance search when grep comes up thin
+|   |-- verify_report.py          mandatory deterministic pre-delivery checks
+|   |                             (html markers, PDF producer, broker tags,
+|   |                             sources/cache split, freshness, extraction
+|   |                             coverage, sourcing depth -- see below)
 |   |-- extract_theme_quotes.py
 |   |-- guidance_tracker.py
 |   |-- fundraise_tracker.py
@@ -245,13 +257,35 @@ skills/report-generator/           (this skill's directory, inside the Research-
 
 ~/.report-generator/                 (OUTSIDE the plugin, in your home directory --
                                        see the repo-level README's Plugin structure)
-|-- research_cache/<company_slug>/   Working state, one folder per company, created
-|   |                                locally the first time you research it
-|   |-- raw/                      Fetched PDFs/text, source documents
+|-- sources/<company_slug>/          Bulky raw source material, one folder per
+|   |                                company -- regenerable by refetching, not
+|   |                                meant to be backed up or shared. A single
+|   |                                annual report's extracted text alone can run
+|   |                                1MB+, which is why this stays separate from
+|   |                                research_cache/ below.
+|   |-- *.pdf / *.txt             Fetched concalls, investor presentations,
+|   |                             annual reports (extracted, full documents)
+|   |-- *.bm25.pkl                semantic_search.py's cached relevance index
+|   `-- customers/<customer_slug>/  Last 4 quarters of a marquee customer's own
+|                                    concalls, if it's itself publicly listed
+|                                    (any exchange) -- for demand corroboration only
+|-- research_cache/<company_slug>/   Small, synthesized working state -- this is
+|   |                                the part worth backing up or sharing; safe
+|   |                                to zip/copy on its own without sources/
 |   |-- guidance_history.json     Every outlook item ever logged + status
 |   |-- fundraise_history.json    Every fund raise + named allottees
 |   |-- rating_history.json       Every rating action, every agency
 |   |-- litigation_history.json   Every case, reopen-risk flagged
+|   |-- candidate_quotes/         extract_theme_quotes.py's raw, per-transcript,
+|   |   `-- <label>_candidate_quotes.json  heuristic (over-inclusive) candidate
+|   |                             dumps -- kept here (not sources/) because each
+|   |                             one is only tens of KB, unlike the .txt/.pdf
+|   |                             it's derived from. NOT the same file as the
+|   |                             curated quotes.json below.
+|   |-- quotes.json               The CURATED quotes that actually made it into
+|   |                             the drafted report, mapped to their source --
+|   |                             distinct from candidate_quotes/ above
+|   |-- bullets.json              Synthesized outlook bullets built from quotes.json
 |   |-- state.json                Last quarter processed, last price used
 |   `-- report.md                 The drafted report (source of truth)
 `-- output/<company_slug>/           User-facing deliverables only, created
@@ -260,13 +294,16 @@ skills/report-generator/           (this skill's directory, inside the Research-
     `-- <Company>_report.pdf
 ```
 
-`research_cache/` and `output/` are **not part of this skill or the plugin** —
-neither exists on a fresh clone, and using the skill never adds, modifies, or
-deletes anything under `skills/report-generator/` itself; both directories
-live under `~/.report-generator/` instead and are pure local state.
-`research_cache/` is working memory (safe to regenerate from scratch, never
-delivered to you); `output/` is the deliverable (never overwritten with
-intermediate state).
+`sources/`, `research_cache/`, and `output/` are **not part of this skill or the
+plugin** — none exists on a fresh clone, and using the skill never adds, modifies, or
+deletes anything under `skills/report-generator/` itself; all three directories live
+under `~/.report-generator/` instead and are pure local state. `sources/` is bulky raw
+material (safe to delete and refetch, never delivered to you and not worth backing
+up); `research_cache/<company_slug>/` deliberately excludes `sources/`'s raw PDFs/text
+so the whole folder stays small — copy or share just that one folder (e.g. `cp -R
+~/.report-generator/research_cache/<company_slug> ~/backup/`) to preserve or hand off
+a company's full analysis history without the bulky source documents; `output/` is
+the deliverable (never overwritten with intermediate state).
 
 ## Persistent state — how regeneration stays cheap
 
@@ -301,6 +338,7 @@ reset. "From scratch" describes the report content, not the historical fact log.
 | `pdf_to_text.py` | Convert a fetched PDF to plain text (full extraction by default; `--pages` only for TOC scouting or re-extracting an already-located range) | No |
 | `pdf_to_text_parallel.py` | Same full-document extraction as `pdf_to_text.py`, split across worker processes for large (150+ page) PDFs — verified byte-identical output, refuses to write a partial file if a worker fails | No |
 | `semantic_search.py` | BM25-ranked relevance search over an extracted `.txt` when a grep keyword guess plausibly missed something due to phrasing | No |
+| `verify_report.py` | **Mandatory** deterministic guardrails, 16 subcommands in 3 tiers — see `SKILL.md`'s "Deterministic Guardrails" section: **Input** (`sniff` classifies an uploaded PDF's type before routing it; `slug` validates a company slug is filesystem-safe) — **Execution** (`scope` confirms no file was written inside the plugin's own directory; `reproduction` confirms no verbatim multi-word copy from a broker source) — **Output** (`html` confirms report.html has the required html_helpers.py CSS markers; `pdf` confirms producer/page-count; `report` confirms sections present + broker tags appear; `quotes` confirms every quoted outlook string is verbatim against a source `.txt`; `disclaimer` confirms the required disclaimer language; `sources` confirms the sources/research_cache split; `freshness` confirms `--mark-processed` was called; `extraction` confirms an annual report's extraction covers page 1 through the real last page; `depth` confirms the standard 6-quarter/2-AR/6-investor-presentation sourcing depth, grouping chunked annual-report extractions by document identity; `whitespace` confirms no interior or final page is dead/mostly-blank — only the cover page may be sparse; `ratings` confirms a rating-agency recency check within the last 6 months, informational only; `paragraphs` flags any paragraph exceeding ~10 rendered lines report-wide, with Verdict-specific "trim, don't bullet" guidance) | No |
 | `extract_theme_quotes.py` | Bucket transcript lines into near/medium/long-term candidate quotes | No |
 | `guidance_tracker.py` | Log/report outlook items and their status pointers | No |
 | `fundraise_tracker.py` | Log/report fund raises, named allottees, lapse flags | No |
@@ -315,7 +353,7 @@ reset. "From scratch" describes the report content, not the historical fact log.
 
 All fetching (screener.in, BSE/NSE, PDFs, WebSearch) happens through the platform's own
 `WebFetch`/`WebSearch`/browser tools, never through a script — the scripts above only
-ever touch local files already saved to `~/.report-generator/research_cache/<slug>/raw/`.
+ever touch local files already saved to `~/.report-generator/sources/<slug>/`.
 
 ## Report section pipeline
 
@@ -327,7 +365,7 @@ specific script:
 | Company Summary, Value Chain Positioning | screener.in About, concall opening remarks, annual report | — |
 | Situation Classification | Synthesized from everything gathered | — |
 | Near/Medium/Long Term outlook | Concall transcript | `extract_theme_quotes.py`, `guidance_tracker.py` |
-| Marquee & Niche Customers | Investor presentation, annual report | — |
+| Marquee & Niche Customers | Investor presentation, annual report; last 4 quarters of a marquee customer's own concalls if it's itself publicly listed — checked via Google Finance's universal `TICKER:EXCHANGE` lookup first (works across NASDAQ/NYSE/LON/XETR/NSE/BSE/etc.), then the customer's own IR page | — |
 | Capex/Milestones/Certifications Timeline | Investor presentation, BSE/NSE announcements | — |
 | Financial Performance Summary + balance-sheet anomaly check | screener.in, investor presentation | — |
 | Segment-wise Performance, Order Book | Investor presentation, concall | — |

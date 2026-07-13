@@ -47,9 +47,10 @@ Usage:
         --metric assembly_business_revenue --status on_track --supersedes-id 3 \
         --note "Revised to Rs250-350cr over a 2-3 year period"
 
-    # print the tracked history: last N guidance-vs-actual comparisons (default 2 = 6
-    # months, the framework's standing lookback) AND the full status/evolution chain
-    # for every tracked item (not lookback-limited — an item's whole history matters)
+    # print the tracked history: last N guidance-vs-actual comparisons (default 6 =
+    # 6 quarters, the framework's standing lookback) AND the full status/evolution
+    # chain for every tracked item (not lookback-limited — an item's whole history
+    # matters)
     python3 guidance_tracker.py <slug> report
 """
 import argparse
@@ -247,11 +248,12 @@ def main():
     p4.set_defaults(func=link_entry)
 
     p3 = sub.add_parser("report")
-    p3.add_argument("--lookback", type=int, default=2,
-                     help="how many tracked guidance-vs-actual quarters to show (default 2 = "
-                          "6 months, the standing default; override only if the user explicitly "
-                          "asks for a longer history). Status-tracked outlook items are always "
-                          "shown in full regardless of this setting.")
+    p3.add_argument("--lookback", type=int, default=6,
+                     help="how many tracked guidance-vs-actual quarters to show (default 6, "
+                          "the standing default as of the 2-annual-reports/6-quarters sourcing "
+                          "depth; override only if the user explicitly asks for a shorter "
+                          "window). Status-tracked outlook items are always shown in full "
+                          "regardless of this setting.")
     p3.set_defaults(func=report)
 
     args = parser.parse_args()

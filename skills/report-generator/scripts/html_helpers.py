@@ -162,6 +162,12 @@ def flow_diagram(stages):
 
 
 def page_break():
+    # Deliberately unused by report_format.md's Assembly rules — a forced break
+    # guarantees a dead-whitespace gap on whatever page it interrupts, and only
+    # the cover page is allowed to be sparse. Kept only for a rare, explicit,
+    # user-requested exception; never called during normal report assembly.
+    # If you're about to call this, re-read "Never call page_break() anywhere
+    # in the document" in reference/report_format.md's Assembly section first.
     return '<div class="page-break"></div>'
 
 

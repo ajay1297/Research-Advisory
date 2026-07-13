@@ -78,7 +78,7 @@ aggregators.
 1. Get the direct PDF URL (from screener.in Documents tab or `WebSearch` for
    `<company name> concall transcript <quarter> filetype:pdf`).
 2. `mcp__workspace__web_fetch` the PDF URL — if the tool returns the PDF content, save it
-   directly to `~/.report-generator/research_cache/<COMPANY_SLUG>/raw/<file>.pdf`.
+   directly to `~/.report-generator/sources/<COMPANY_SLUG>/<file>.pdf`.
 3. If web_fetch can't retrieve a binary PDF cleanly, ask the user to download and drop it
    in the workspace folder instead, or use Chrome to navigate + download.
 4. Run `scripts/pdf_to_text.py` on the saved PDF (local, no network).
@@ -95,7 +95,15 @@ Same path, larger PDF (100-300+ pages) — but always run the **whole** PDF thro
 a large report — see `SKILL.md`'s Source pipeline section), never just a guessed page
 range: an annual report's segment note, litigation note, shareholding pattern, and
 PP&E note are typically much further back than the MD&A and are just as required as
-the outlook section is. The "don't read the whole thing" discipline applies to what
+the outlook section is. **Save the fetched PDF itself to
+`~/.report-generator/sources/<company_slug>/` before extracting it — don't
+extract-then-discard.** This isn't optional bookkeeping: `scripts/verify_report.py
+extraction <pdf> <txt>` is the deterministic check that confirms extraction actually
+covered page 1 through the document's real last page (catching a scouting/partial
+range mistaken for the full extraction), and it needs the source PDF still on disk
+to compare against. If the PDF isn't saved, that check can't run at all, and a
+partial extraction can slip through unnoticed — which has already happened once in
+practice. The "don't read the whole thing" discipline applies to what
 you feed `extract_theme_quotes.py` and what you `Read()` into context, not to what
 gets extracted — grep the already-fully-extracted text for the MD&A section heading
 and only feed *that* slice to `extract_theme_quotes.py` (to avoid burning tokens
@@ -175,7 +183,120 @@ for the reporting company's products (a capacity doubling, a store-rollout targe
 new-plant announcement). This is quick to skip when there's nothing (many customers,
 especially private ones, disclose nothing public) — in that case state plainly that no
 independent guidance was found for that customer, rather than leaving the check out
-entirely. Don't over-search; one or two queries per named customer is enough.
+entirely. Don't over-search; one or two queries per named customer is enough for a
+customer that turns out to be private/unlisted.
+
+**If a named marquee customer is itself a publicly listed company — Indian or
+foreign, any exchange — go further than a one-off search: analyze its last 4
+quarterly concalls/earnings calls.** A one-off search only catches whatever a news
+aggregator already wrote up; the customer's own quarterly earnings calls are where
+they actually discuss capacity plans, supplier relationships, and demand outlook in
+their own words — the same kind of primary-source evidence this pipeline insists on
+for the reporting company itself, just applied one hop downstream. The kind of
+relationship this applies to: e.g. Rossell Techsys's customer Lam Research, which is
+confirmed listed on NASDAQ (LRCX) — a genuinely material, named marquee customer that
+itself files quarterly results and holds earnings calls, not a niche one-off buyer.
+**Verify listed status before assuming it** — don't assert a customer is listed on a
+given exchange without checking; a named customer described as a large multinational
+is not automatically public (e.g. a customer that turns out to be a private-equity-owned
+subsidiary has no listing at all, and no amount of searching will find one — confirm
+via step 1 below rather than guessing an exchange).
+
+1. **Confirm the customer is actually listed, fast: try Google Finance first.**
+   `https://www.google.com/finance/quote/<TICKER>:<EXCHANGE>` (exchange codes like
+   `NASDAQ`, `NYSE`, `LON`, `XETR`, `NSE`, `BSE`, etc.) works as a **universal,
+   cross-exchange company lookup** — verified in this sandbox to render real content
+   (not JS-blocked) via Claude in Chrome, including live price, an Earnings tab with
+   **actual embedded call transcripts** and EPS/revenue actuals-vs-estimates by
+   quarter, going back several quarters. If you don't already know the ticker/exchange,
+   a plain `WebSearch` for `<customer name> stock ticker` usually surfaces it quickly.
+   A "Page Not Found" result on a reasonable ticker guess is itself a useful signal —
+   not proof of being private, but a prompt to verify with one more search before
+   concluding the customer isn't listed at all. This single lookup often replaces both
+   the "is it listed" check and the transcript fetch in one step when it works.
+
+   **If Google Finance comes back "Page Not Found" on a reasonable ticker guess,
+   don't stop there — that alone isn't proof of being private.** Fall back in this
+   order before concluding not-listed:
+   1. `WebSearch` for `<customer name> stock ticker exchange` — you may have simply
+      guessed the wrong ticker or exchange code the first time; retry Google Finance
+      with whatever ticker/exchange this search surfaces.
+   2. A general financial-data site check — Yahoo Finance
+      (`finance.yahoo.com/quote/<TICKER>`) or the exchange's own listing search (e.g.
+      the LSE's or NASDAQ's own company-lookup page) as a second independent lookup,
+      since Google Finance occasionally lacks coverage for a smaller-cap or
+      less-common-exchange listing that another aggregator does carry.
+   3. `WebSearch` for `<customer name> investor relations` or `<customer name>
+      annual report` — a company with genuine IR materials/annual reports is
+      listed somewhere even if neither lookup above found the right ticker; a
+      company with nothing but a corporate "About Us" page and no investor-facing
+      material at all is a strong (though not certain) signal it's genuinely
+      private.
+   Only after this fallback chain comes up empty should you conclude "not listed" —
+   and even then, state which of the three fallback steps you actually tried, per the
+   "write down why" rule below, rather than a bare "not found."
+
+   **When the answer comes back "not listed," write down *why*, not just "no
+   guidance found."** These are different findings and must not be blended into the
+   same vague sentence: (a) **confirmed never public** — no listing history found
+   anywhere; (b) **confirmed formerly listed, now private** — state the exchange it
+   was delisted from, the year, and the acquirer if found (e.g. "was listed on the
+   London Stock Exchange/FTSE 250 until Fidelity Investments acquired it in August
+   2015; privately held since, no current earnings calls exist to check"); (c)
+   **genuinely inconclusive** — a real search was made and didn't resolve either way,
+   say that plainly rather than implying (a) or (b). Writing "no independently
+   disclosed guidance was found for this customer" when the real situation is (b) —
+   a company that used to be listed and has a clear, findable delisting history —
+   reads as an inconclusive search when it's actually a confirmed, citable fact; a
+   reader can't tell the difference between "I checked and there's nothing to find"
+   and "I didn't check thoroughly enough to find it." This is the same discipline as
+   the "Never drop anything silently" rule in `SKILL.md`, applied specifically to
+   customer-listing checks since it's a recurring place the distinction gets blurred.
+
+   This step is what separates "worth 4 quarters of analysis" from "quick guidance
+   search is enough" above. Most named customers are private/subsidiaries/unlisted;
+   only listed ones get this deeper treatment.
+2. **This is not India-specific — the pipeline overall is, but a foreign customer's
+   own disclosures are fair game regardless of exchange** (US, UK, EU, or elsewhere).
+   If Google Finance's Earnings tab doesn't have the transcript for a given quarter,
+   fall back in this order:
+   - The customer's own **investor relations page** (search `<customer name> investor
+     relations earnings call transcript` or `<customer name> quarterly results
+     presentation`) — almost every listed company globally publishes its own earnings
+     call transcripts, press releases, or webcast replays there; this is the most
+     reliable path regardless of exchange, since it doesn't depend on a
+     regional-specific aggregator existing.
+   - For US-listed customers specifically: SEC EDGAR (8-K filings often attach the
+     earnings press release/prepared remarks) as a secondary check, and Motley
+     Fool/Seeking Alpha as free-tier transcript aggregators if the IR page doesn't
+     have the transcript itself.
+   - For UK/EU-listed customers: Google Finance (step 1 above) already covers these
+     exchanges via the same URL pattern (e.g. `:LON` for London, `:XETR` for
+     Frankfurt) — try it there first before falling back to the customer's own IR
+     page. Beyond those two, treat any other regional aggregator as unverified until
+     you've confirmed it actually returns usable content, same discipline as the
+     shipment-data-aggregator lesson above.
+   - **Only one retry per source, same as any other stuck-source rule** — if a
+     customer's transcripts genuinely aren't fetchable (paywalled investor portal, no
+     public transcript for that market), say so explicitly rather than silently
+     skipping the check or presenting an incomplete picture as complete.
+3. **Pull the last 4 quarters** (not just the latest), extract each via
+   `pdf_to_text.py`, save under `~/.report-generator/sources/<company_slug>/customers/<customer_slug>/`
+   (this is bulky raw material, same as the reporting company's own concalls — it
+   belongs in `sources/`, not `research_cache/`, per the directory split above), and
+   run `extract_theme_quotes.py` or `semantic_search.py` on each looking specifically
+   for language relevant to *the reporting company's* business — capacity expansion,
+   supplier/sourcing commentary, capex plans, new-plant or JV activity, order growth —
+   not for building out the customer's own investment thesis, which is out of scope
+   here.
+4. **Write the finding as 2-4 bullets under that customer's entry in Marquee & Niche
+   Customers**, each one clearly attributed to the customer's own call, not the
+   reporting company's: `"<Customer> reiterated on its Q<N> FY<year> earnings call
+   that it plans to <capacity/demand-relevant claim>, which corroborates <reporting
+   company>'s <specific claim/section>."` Cite the quarter and date for each of the 4
+   calls checked, even the ones that turned up nothing relevant — the point is showing
+   the check was done across 4 quarters, not just cherry-picking the one call that
+   happened to be favorable.
 
 **Discovering additional customers via export-shipment data** (for an exporting
 company — see "Export/import shipment data" below): this is a legitimate way to
@@ -335,9 +456,9 @@ This is already sitting in the screener.in fetch done in step 1 above — the qu
 and annual results tables give revenue, PBT, and PAT directly for at least the last
 5 years (and gross margin or EBITDA margin, whichever the company discloses). No
 separate fetch needed; just don't discard these columns when you scope the rest of the
-report to the 6-month lookback window (see "Filtering to a 6-month window" below) —
-this section is explicitly a multi-year trend, not a recent-quarter snapshot, and is
-exempt from that lookback default.
+report to the standard 18-month/6-quarter lookback window (see "Filtering to an
+18-month window" below) — this section is explicitly a multi-year trend, not a
+recent-quarter snapshot, and is exempt from that lookback default.
 
 ## Segment-wise performance, order book composition & exports vs. domestic split
 
@@ -464,7 +585,7 @@ source document's analysis verbatim at length.
 
 **How to use one once uploaded:**
 1. Extract via `pdf_to_text.py` like any other PDF, save to
-   `~/.report-generator/research_cache/<company_slug>/raw/` (e.g.
+   `~/.report-generator/sources/<company_slug>/` (e.g.
    `Nuvama_Result_Update_2026-04-29.pdf`/`.txt`).
 2. Pull the factual snapshot: agency name, analyst name(s), report date, report type
    (Result Update/Company Update/Initiation/Visit Note), rating, price at report date,
@@ -721,6 +842,19 @@ screener.in, which aggregates public filings without an opinion on them).
   currently-in-force rating on any instrument is a downgrade or carries a negative/
   watch-negative outlook — this belongs in both the Promoter/Governance section and, if
   material, the Key Risks section, not softened into a passing mention.
+- **Always actively check for a rating action within the last 6 months, every run —
+  not just on a regeneration where something else changed.** This is a check-recency
+  requirement, distinct from the "not lookback-limited, show the full history" rule
+  above for what gets *displayed*: `rating_history.json` showing an old entry from
+  a year ago is not evidence that nothing happened since — agencies review ratings on
+  their own schedule (annual surveillance reviews, event-driven reviews after a
+  material development), so an old cached entry can go stale silently if a run just
+  reuses it without a fresh check. On every run (`no_state`, `new_quarter`, or a
+  from-scratch rebuild), re-run the agency searches above for each agency already
+  known to cover the company, scoped to the last 6 months, even if
+  `rating_history.json` already has an entry — if nothing new is found, that's a
+  legitimate "checked, no action in the last 6 months" finding, not a reason to skip
+  the check.
 - **Rating rationales are point-in-time**, usually issued once or twice a year (annual
   surveillance, or on a trigger event like a fund raise) — state the rationale's own
   date next to the rating, the same staleness discipline as the Technical Snapshot.
@@ -783,6 +917,72 @@ Three separate things to check:
      current price) and reproduce its output/flags in the Promoter Fund Raises
      sub-section per `reference/report_format.md`.
 
+## Standard sourcing depth — last 2 annual reports, last 6 quarters of concalls and investor presentations
+
+**This is the default for every `research <company>` / first-time (`no_state`) run,
+not a special request the user has to ask for.** The question this depth exists to
+answer: **can this promoter actually be trusted — does management walk the talk, and
+what has genuinely changed about the business over time?** That needs more history
+than a single quarter's tone can show, so it's built into the standard pipeline
+rather than gated behind trigger phrasing:
+
+- **Annual reports: the last 2 fiscal years**, not just the latest one — e.g. if the
+  current fiscal year is FY27, fetch and fully extract (`pdf_to_text.py`/
+  `pdf_to_text_parallel.py`, per the "always extract the whole document" rule) the FY25
+  and FY26 annual reports. Two consecutive years lets you read the Chairman's
+  letter/MD&A narrative *change* year over year — did the stated strategy actually
+  shift, did a previously-flagged risk get addressed, does this year's framing
+  contradict or confirm last year's — which a single year's report can't show on its
+  own.
+- **Concall transcripts: the last 6 quarters.** This is specifically to give
+  `guidance_history.json` enough successive data points to show a genuine track record
+  rather than 1-2 isolated entries — a promoter who guided X in quarter 1, revised to Y
+  in quarter 3, and delivered Z in quarter 6 tells you something 1-2 quarters can't.
+  Extract each transcript and run `extract_theme_quotes.py` on it as usual, then log
+  each quarter's guidance items via `guidance_tracker.py add-guidance` (using
+  `--supersedes-id` wherever a later quarter revises an earlier one) so the evolution
+  is reconstructable, not just the latest snapshot.
+- **Investor presentations: also the last 6 quarters, same depth as concalls — this
+  is not optional or secondary.** Confirmed in practice on a real report: the investor
+  presentation is frequently the *only* source for the segment-wise revenue split, the
+  geographic/exports split, and the company's own disclosed TAM figure — a report built
+  from the concall transcript and screener.in alone can be genuinely wrong (not just
+  thin) on these sections, having incorrectly claimed "no TAM disclosed" when the
+  investor presentation had one all along. Fetch and fully extract each quarter's
+  investor presentation alongside its concall — they're normally published together on
+  screener.in's Documents tab, so this shouldn't require a separate search. If a
+  quarter's investor presentation genuinely isn't available (some companies don't
+  publish one every quarter), say so explicitly rather than silently having only the
+  concall for that quarter.
+- This depth feeds the **Situation Classification** (a transformation/turnaround call
+  needs multi-year evidence, not one quarter's tone), the **Promoter/Governance Track
+  Record** section's guidance-reliability read, the **Segment-wise Performance**/
+  **Total Addressable Market**/**Manufacturing Locations** sections (which lean heavily
+  on investor presentations specifically), and the **Investment Thesis Summary**/
+  **Verdict** — it does not change what goes into the Near/Medium/Long Term outlook
+  bullets themselves, which still reflect *current* forward guidance.
+- **Check this was actually done, don't just intend it**: `scripts/verify_report.py
+  depth <company_slug>` counts both concall and investor-presentation files actually
+  sitting in `sources/<company_slug>/` and WARNs if either is short of 6 — the same
+  mechanism that would have caught the investor-presentation gap above before delivery
+  rather than after a user had to point it out.
+- **On a `new_quarter` refresh, this does not mean re-fetching all 6 quarters again**
+  — per the incremental-regeneration rule, only the new quarter gets fetched; earlier
+  quarters already sitting in `sources/<company_slug>/` from prior runs are reused
+  untouched, so the rolling 6-quarter window stays maintained cheaply over successive
+  regenerations rather than being rebuilt from scratch each time.
+- **Only go narrower than this** if the user explicitly asks for something
+  lighter/faster in that specific request (e.g. "just give me a quick take," "don't
+  need the full history"). State plainly which fiscal years and quarters were
+  actually pulled either way — this is exactly the kind of scope decision the "Never
+  drop anything silently" rule in `SKILL.md` expects to be stated, not left implicit.
+- **Check this depth was actually met before delivering, don't just intend it**:
+  `python3 scripts/verify_report.py depth <company_slug>` counts the concall/annual-
+  report `.txt` files actually sitting in `sources/<company_slug>/` and flags a
+  shortfall — a WARN there is the prompt to either fetch what's missing or state the
+  shortfall explicitly in the report, not something to notice only if someone asks
+  later why a run came up short.
+
 ## YouTube (supplementary, optional — not a primary source)
 
 Some concalls are only available as a recording, not a written transcript (screener.in's
@@ -804,31 +1004,33 @@ industry/company color, not as the primary near/medium/long-term source.
 - If Chrome is connected: prefer the exact YouTube link screener.in already ties to
   the quarter you need (the "REC" link) over an open-ended YouTube search — this
   guarantees you're watching the right, already-dated recording instead of having to
-  filter search results by upload date yourself (see the "Filtering to a 6-month
+  filter search results by upload date yourself (see the "Filtering to an 18-month
   window" section below for why this matters).
 - If no transcript panel exists for a given video (auto-captions off), don't try to
   transcribe audio — there's no audio-transcription tool in this environment. Skip it
   and note the gap rather than fabricating quotes.
 
-## Filtering to a 6-month window — how it actually works
+## Filtering to an 18-month window — how it actually works
 
-There's no server-side "give me the last 6 months only" parameter on either
-screener.in or YouTube/WebSearch. The 6-month lookback (the framework's fixed default
-— see SKILL.md) is enforced by what gets *used and cached*, not by what gets fetched:
+There's no server-side "give me the last 18 months only" parameter on either
+screener.in or YouTube/WebSearch. The 18-month/6-quarter lookback (the framework's
+standard sourcing depth — see SKILL.md and "Standard sourcing depth" above) is
+enforced by what gets *used and cached*, not by what gets fetched:
 
 - **screener.in**: one `web_fetch` always returns the entire page — the full
   multi-year quarterly table, full P&L/balance sheet history, full shareholding
   history back to 2015-17, and the full concalls list back to whenever the company
   started disclosing them. There is no URL parameter or lighter endpoint that returns
-  only recent data. The 6-month filter happens after the fetch: read only the last 1-2
-  columns of the quarterly table, only the top 1-2 entries of the Concalls list, and
-  only the most recent shareholding-pattern column. Don't cache or carry forward the
-  older columns/entries into `~/.report-generator/research_cache/` — leave them in the one-time fetch and
-  discard them once you've pulled what you need. This means the fetch itself isn't
-  smaller, but the tokens spent reasoning over the result, and what persists in the
-  cache, are scoped to 6 months.
+  only recent data. The window filter happens after the fetch: read only the last 6
+  columns of the quarterly table, the top 6 entries of the Concalls list, and the
+  recent shareholding-pattern columns spanning the same window. Don't cache or carry
+  forward older columns/entries beyond that window into
+  `~/.report-generator/research_cache/` — leave them in the one-time fetch and discard
+  them once you've pulled what you need. This means the fetch itself isn't smaller,
+  but the tokens spent reasoning over the result, and what persists in the cache, are
+  scoped to the standard window.
 - **YouTube / WebSearch**: `WebSearch`'s schema has no date-range parameter, so you
-  can't ask it for "concalls from the last 6 months" directly. Two ways to stay
+  can't ask it for "concalls from the last 18 months" directly. Two ways to stay
   scoped: (1) prefer the quarter-linked link from screener.in as above, which is
   already dated by construction; (2) if doing a genuinely open search (e.g. industry
   commentary, not a specific concall), phrase the query with the specific
@@ -845,8 +1047,10 @@ under-use by "just re-running everything to be safe." When `check_freshness.py` 
 - The new quarter's **concall transcript** and **investor presentation** (the two
   documents that actually changed).
 - **screener.in's last 1-2 columns** of the quarterly/annual results table and the most
-  recent shareholding-pattern column — not the full history, per "Filtering to a
-  6-month window" above.
+  recent shareholding-pattern column — not the full history, per "Filtering to an
+  18-month window" above (this incremental fetch stays narrow even though the
+  standard *sourcing depth* is 6 quarters — a `new_quarter` refresh only needs
+  what's new, since earlier quarters are already cached).
 - Any **new** BSE/NSE announcement, rating action, or litigation development since the
   last run — check dates against what's already logged in `guidance_history.json`/
   `fundraise_history.json`/`rating_history.json`/`litigation_history.json` and only

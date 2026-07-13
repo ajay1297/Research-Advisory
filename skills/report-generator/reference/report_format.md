@@ -48,7 +48,13 @@ Before drafting the outlook sections, state plainly — from the evidence gather
 far, not from assumption — which broad situation the company is actually in right now.
 This single classification drives the cover badge above and should be revisited (not
 just carried forward unchanged) on every regeneration, since a company's situation can
-shift between refreshes. One short paragraph, with the evidence for the classification:
+shift between refreshes. **Render this as bullet points, not a paragraph** — one
+opening bullet stating the classification itself, followed by one bullet per
+supporting piece of evidence (a specific number, an independent corroborating source,
+a named risk that keeps it from being fully de-risked) — per the general "no long
+paragraphs" rule below. A short lead-in clause naming the classification is fine, but
+the substance (the evidence) belongs in the bullets, same pattern as Investment Thesis
+Summary and MOATs elsewhere in this spec.
 
 - **Distress recovery / turnaround** — real financial trouble (debt default, NCLT
   resolution, negative net worth, trade-to-trade classification) with a documented
@@ -213,6 +219,29 @@ evolution history from there — this is not lookback-limited to 6 months, since
 item's full guidance history is exactly what determines whether it's genuinely
 "on track" or just freshly asserted. If a bullet is being drafted for the first time
 with no prior mention anywhere, its status is almost always `[Pending]`.
+
+## Paragraph length limit — no paragraph longer than 10 lines
+
+**Applies everywhere in the report, not just the sections already specified as
+bullet lists.** If a paragraph (Company Summary, Value Chain Positioning, Situation
+Classification, the narrative portions of Segment-wise Performance, Manufacturing
+Locations, Promoter/Governance, or any other section) runs longer than 10 lines at
+normal body-text width, break it into bullet points instead — one bullet per
+distinct fact/claim, the same pattern already mandatory for MOATs, Investment Thesis
+Summary, and Key Risks. A wall of text that long is hard to scan regardless of how
+well-evidenced it is, and a reader shouldn't have to parse a dense paragraph to find
+the one number or claim that matters to them.
+
+This is a hint to restructure, not to cut content — don't shorten a genuinely
+well-evidenced paragraph just to dodge the line count; convert its sentences into
+bullets and keep the substance. A short lead-in sentence or clause framing the
+bullets that follow is fine (as already established for Investment Thesis Summary
+and MOATs) — the rule is about the *body* of the explanation, not about banning
+every sentence of prose.
+
+**Check this before delivering**: `scripts/verify_report.py paragraphs
+<report.md>` scans for any paragraph exceeding this length and flags it by section,
+so this doesn't rely on eyeballing a 60+KB markdown file for one overlong block.
 
 ## Sourcing discipline
 
@@ -804,8 +833,8 @@ themselves belong in the table/bullets, not folded into that closing sentence.
 ### 15. Promoter / Governance Track Record
 
 Sourced from `scripts/guidance_tracker.py`'s output (see SKILL.md workflow). Show a
-short table or list of the last 2 quarters (6 months — the framework's fixed lookback
-default for every query, not a per-report choice): guidance given vs. actual delivered,
+short table or list of the last 6 quarters (the framework's standard sourcing-depth
+lookback, not a per-report choice): guidance given vs. actual delivered,
 and whether it was a beat/met/miss. If 2 or more of the last 4 tracked guidance calls
 were missed by a meaningful margin, say so plainly — this is exactly the kind of
 pattern the section exists to surface, not to soften. Also note, if visible from
@@ -820,8 +849,9 @@ tracking script needed for this one, unlike guidance/fund-raises/ratings/litigat
 a promoter-pledge `card_grid()` metric alongside it if a pledge % is disclosed.
 
 **Promoter Fund Raises** (sub-section, always included once any raise is on record —
-unlike guidance, this is not lookback-limited to 6 months; a preferential/warrant/debt
-raise from several years ago is still relevant governance context). Sourced from
+unlike guidance, this is not lookback-limited to the standard 18-month window; a
+preferential/warrant/debt raise from several years ago is still relevant governance
+context). Sourced from
 `scripts/fundraise_tracker.py report`. List every preferential equity issue, warrant
 allotment, NCD/debenture issue, term loan, or promoter loan/guarantee on record, each
 with: date, instrument, amount (INR crore), allottee category (promoter/promoter
@@ -936,7 +966,14 @@ the single strongest piece of evidence for the thesis, and the single biggest op
 question or risk. State confidence level honestly — "well-evidenced but early,"
 "speculative," and "not enough here for a real thesis" are all legitimate verdicts; pick
 whichever the evidence actually supports, not whichever makes the best-sounding
-closing line.
+closing line. **"One or two sentences" means genuinely short** — if drafting this
+section pulls in enough supporting detail to exceed the report-wide 10-line paragraph
+limit (see "Paragraph length limit" above), that's a sign too much evidence-recapping
+crept in here rather than staying in the sections that already carry it (Investment
+Thesis Summary, Key Risks); trim back to the actual verdict rather than converting an
+overlong paragraph into bullets here — a bulleted Verdict undermines the one-line,
+closing-statement purpose this section exists for, unlike every other section where
+bullets are the default.
 
 ### 19. Sources
 
@@ -1009,14 +1046,23 @@ donut) wider than intended, leaving an oddly empty-looking block. The cover page
 itself should stay short (title, ticker, badge, date) — it's an orientation page, not
 a page meant to be mostly blank.
 
-**Exactly one `page_break()` call in the whole document** — immediately before section
-16 (Investment Thesis Summary), so the closing thesis/risks/verdict run together on
-a fresh page. Don't add one after Long Term Outlook, after Marquee & Niche Customers,
-or anywhere else "to give the section room" — content flows naturally between sections
-without help, and an extra `page_break()` reliably produces a gap of dead whitespace at
-the bottom of whatever page it interrupts, which is worse than a section spanning a
-page boundary normally would be. If you find yourself adding a second `page_break()`
-call, that's a signal to remove it, not a sign the layout needs it.
+**Never call `page_break()` anywhere in the document — zero calls, not one.** An
+earlier version of this rule called for exactly one `page_break()` immediately before
+Investment Thesis Summary, so the closing thesis/risks/verdict would run together on
+a fresh page. That traded away too much: it **always** produces a gap of dead
+whitespace at the bottom of whatever page it interrupts — confirmed in practice (a
+page landing at ~30% of the surrounding pages' word density is the direct, guaranteed
+result whenever the preceding section doesn't happen to end exactly at a page
+boundary, which is most of the time). **Only the cover page is allowed to be
+sparse/mostly blank** — every other page must be reasonably filled; a forced page
+break is the single most common cause of a violation of that rule, so it's banned
+outright rather than limited to one "safe" use. Let content flow naturally between
+every section instead, relying on the CSS rules already in `report_style.css`
+(`page-break-after: avoid` on headings, `page-break-inside: avoid` on table rows/
+timeline items) to prevent an orphaned heading or a split table row — a section
+spanning a page boundary normally is preferable to guaranteed dead space, every time.
+`scripts/verify_report.py whitespace <pdf>` checks this mechanically before delivery
+— see "Deterministic Guardrails" in `SKILL.md`.
 
 ```python
 import sys
