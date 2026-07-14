@@ -25,16 +25,14 @@ confirmed" question specifically.
 
 Runs entirely locally, no network required.
 
-Usage:
-    # log a document immediately after fetching + extracting it (while the
-    # source PDF is still on disk, so page counts are accurate)
+Usage (log immediately after fetching + extracting, while the source PDF is still on
+disk, so page counts are accurate):
     python3 source_manifest.py <company_slug> add-document \\
         --type concall --label "Q4 FY26" --date "2026-04-29" \\
         --filename q4fy26_concall_may2026.txt --pages-total 34 \\
         --pages-extracted-start 1 --pages-extracted-end 34 \\
         --source-url "https://..." --extraction-verified
 
-    # print a summary: counts by type, any gaps
     python3 source_manifest.py <company_slug> report
 """
 import argparse
@@ -42,6 +40,9 @@ import json
 import os
 import sys
 from datetime import datetime, timezone
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from run_context import get_run_id  # noqa: E402
 
 DOC_TYPES = ["concall", "investor_presentation", "annual_report", "broker_report",
              "rating_rationale", "announcement_sweep", "social_media_check", "other"]
@@ -68,6 +69,30 @@ def _save(slug, data):
 
 
 def add_document(args):
+    # --status/--evidence/--reason exist specifically for the announcement_sweep and
+    # social_media_check doc types (see SKILL.md's `announcements`/`social` guardrails,
+    # which verify_report.py FAILs if a "performed" entry has no real evidence, or if
+    # the most recent entry is a disclosed "skipped"). This was previously documented
+    # in SKILL.md but not actually implemented here — a real spec/script mismatch that
+    # meant those two guardrails could never have worked as described.
+    if args.status == "performed":
+        if not args.evidence or not args.evidence.strip():
+            print("ERROR: --status performed requires non-empty --evidence describing what "
+                  "was actually searched and found (or 'nothing new'). A placeholder like "
+                  "'done'/'checked' does not count — this check exists specifically to stop "
+                  "a logged sweep from looking the same as real work when it wasn't.",
+                  file=sys.stderr)
+            sys.exit(1)
+        placeholder_evidence = {"done", "checked", "completed", "ok", "yes", "performed"}
+        if args.evidence.strip().lower() in placeholder_evidence:
+            print(f"ERROR: --evidence '{args.evidence}' reads as a placeholder, not a real "
+                  f"finding. Describe what was actually searched and what was found.",
+                  file=sys.stderr)
+            sys.exit(1)
+    if args.status == "skipped" and not args.reason:
+        print("ERROR: --status skipped requires --reason.", file=sys.stderr)
+        sys.exit(1)
+
     data = _load(args.slug)
     next_id = max([d.get("id", -1) for d in data["documents"]], default=-1) + 1
 
@@ -88,7 +113,11 @@ def add_document(args):
         "pages_extracted_end": args.pages_extracted_end,
         "full_page_coverage": fully_covered,
         "extraction_verified": bool(args.extraction_verified),
+        "status": args.status,
+        "evidence": args.evidence,
+        "reason": args.reason,
         "logged_at": datetime.now(timezone.utc).isoformat(),
+        "run_id": get_run_id(),
     }
     data["documents"].append(entry)
     _save(args.slug, data)
@@ -153,6 +182,14 @@ def main():
     p1.add_argument("--user-uploaded", action="store_true")
     p1.add_argument("--extraction-verified", action="store_true",
                      help="pass this if scripts/verify_report.py extraction was run and passed")
+    p1.add_argument("--status", choices=["performed", "skipped"],
+                     help="for announcement_sweep/social_media_check doc types: was the sweep "
+                          "actually performed this run, or explicitly skipped")
+    p1.add_argument("--evidence",
+                     help="required if --status performed: what was actually searched and found "
+                          "(or 'nothing new') — a real finding, not a placeholder")
+    p1.add_argument("--reason",
+                     help="required if --status skipped: why the sweep couldn't be done this run")
     p1.set_defaults(func=add_document)
 
     p2 = sub.add_parser("report")

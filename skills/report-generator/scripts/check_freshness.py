@@ -31,19 +31,70 @@ Runs entirely locally, no network required — the actual "what's the latest qua
 check is a WebSearch/web_fetch call Claude makes separately and passes in here.
 
 Usage:
-    # check (full date, not "May 2026")
-    python3 check_freshness.py <company_slug> --latest-seen "2026-04-29"
-
-    # force a from-scratch rebuild regardless of cached state
+    python3 check_freshness.py <company_slug> --latest-seen "2026-04-29" (full date, not "May 2026")
     python3 check_freshness.py <company_slug> --force
-
-    # after finishing processing, record what's now current
     python3 check_freshness.py <company_slug> --mark-processed "2026-04-29" --price 1235
 """
 import argparse
 import json
 import os
 from datetime import datetime, timezone
+
+STANDARD_LOOKBACK_MONTHS = 18  # ~6 quarters — the default sourcing-depth assumption
+
+
+def _cadence_from_dates(dates_csv: str, today: datetime = None) -> dict:
+    """Classify concall cadence from a comma-separated list of ISO dates so the
+    standard "6 quarters / 2 annual reports" depth assumption can be flagged as a
+    poor fit *before* an agent spends fetch/verification effort discovering that
+    itself. A company with only sporadic concalls (multi-year gaps) needs the
+    "doesn't hold concalls" fallback path (see source_playbook.md) from the start,
+    not as a late correction."""
+    today = today or datetime.now(timezone.utc)
+    if not dates_csv:
+        return {"concall_cadence": "unknown", "recommended_sourcing_mode": "standard",
+                "note": "No concall dates supplied — pass --concall-dates to get an "
+                        "explicit cadence read before assuming standard depth applies."}
+    parsed = []
+    for d in dates_csv.split(","):
+        d = d.strip()
+        if not d:
+            continue
+        try:
+            parsed.append(datetime.strptime(d, "%Y-%m-%d").replace(tzinfo=timezone.utc))
+        except ValueError:
+            continue
+    if not parsed:
+        return {"concall_cadence": "unknown", "recommended_sourcing_mode": "standard"}
+    parsed.sort()
+    within_18mo = [d for d in parsed if (today - d).days <= STANDARD_LOOKBACK_MONTHS * 30]
+    if len(within_18mo) >= 5:
+        cadence = "regular"
+        mode = "standard"
+    elif len(within_18mo) >= 1:
+        cadence = "irregular"
+        mode = "reduced_depth_disclose_gap"
+    else:
+        cadence = "sparse_or_none"
+        mode = "no_concall_fallback"
+    return {
+        "concall_cadence": cadence,
+        "concalls_within_18mo": len(within_18mo),
+        "most_recent_concall": parsed[-1].strftime("%Y-%m-%d"),
+        "recommended_sourcing_mode": mode,
+        "note": {
+            "standard": "Cadence supports the default 6-quarter/2-annual-report depth.",
+            "reduced_depth_disclose_gap": "Concall cadence is sparse — don't wait to "
+                "discover this later. Use whatever concalls exist plus results filings/"
+                "investor presentations for the outlook sections, and state the sparse "
+                "cadence explicitly in the report per source_playbook.md's "
+                "\"If the company doesn't hold concalls\" section (it applies here too, "
+                "even though at least one concall exists).",
+            "no_concall_fallback": "No concall within 18 months (or none at all). Use "
+                "results filing dates for freshness and follow source_playbook.md's "
+                "\"If the company doesn't hold concalls\" section from the start.",
+        }[mode],
+    }
 
 
 def state_path(company_slug: str) -> str:
@@ -87,10 +138,17 @@ def main():
                               "matching the standard 2-annual-report/6-quarter sourcing depth. "
                               "Do not override unless the user explicitly asks for a "
                               "longer/shorter history.")
+    parser.add_argument("--concall-dates",
+                         help="comma-separated ISO dates (YYYY-MM-DD) of every concall found "
+                              "on screener.in's Documents/Concalls tab — cheap to pass (already "
+                              "fetched for --latest-seen), and lets this script flag a sparse/"
+                              "irregular cadence upfront instead of an agent discovering it only "
+                              "after attempting standard-depth sourcing.")
     args = parser.parse_args()
 
     path = state_path(args.company_slug)
     state = load(path)
+    cadence = _cadence_from_dates(args.concall_dates) if args.concall_dates else None
 
     if args.mark_processed:
         state = state or {}
@@ -115,6 +173,7 @@ def main():
                     "forward from the cached report.md. Tracker histories (guidance/fundraise/"
                     "rating/litigation JSON) are cumulative real-world records, not stale "
                     "cache — do not wipe or rebuild them from scratch, keep appending as usual.",
+            **({"cadence": cadence} if cadence else {}),
         }, indent=2))
         return
 
@@ -123,6 +182,7 @@ def main():
             "status": "no_state",
             "action": "run_full_pipeline",
             "lookback_months": args.lookback_months,
+            **({"cadence": cadence} if cadence else {}),
         }, indent=2))
         return
 
@@ -138,6 +198,7 @@ def main():
             "last_processed_at": state.get("last_processed_at"),
             "note": "No new concall/results since last run. Reuse ~/.report-generator/research_cache/<company>/report.md. "
                     "If the user gave a new price, only rerun forward_pe.py — don't refetch anything.",
+            **({"cadence": cadence} if cadence else {}),
         }, indent=2))
     else:
         print(json.dumps({
@@ -149,6 +210,7 @@ def main():
             "note": "Fetch and parse only the new concall/results. Do not reprocess earlier "
                     "transcripts already under ~/.report-generator/sources/<company>/. Append one new "
                     "guidance_tracker.py entry rather than rebuilding the whole guidance history.",
+            **({"cadence": cadence} if cadence else {}),
         }, indent=2))
 
 

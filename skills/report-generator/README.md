@@ -39,9 +39,10 @@ rendering). The four moving parts:
                                      v
 +------------------------------------------------------------------------------+
 |  CLAUDE -- orchestrates every step, owns every judgment call                 |
-|  Reads: SKILL.md (the pipeline) + reference/report_format.md (what to        |
-|  write, section by section) + reference/source_playbook.md (where to get     |
-|  each fact, and the fallback path if a source is stuck)                      |
+|  Reads: SKILL.md (the pipeline) + reference/report_format.md +               |
+|  report_sections.md + report_assembly.md (what to write and how to build     |
+|  it) + reference/source_playbook.md + data_sources.md (where to get each     |
+|  fact, and the fallback path if a source is stuck)                           |
 |  Decides: what to fetch, which source to trust, what a guidance status       |
 |  means, what belongs in the report -- see "Claude vs. Python" above for      |
 |  the full division of labor                                                  |
@@ -244,7 +245,8 @@ from anything downstream.
      forward_pe.py             -- forward EPS/PE arithmetic
        |
        v
- [7] DRAFT report.md, section by section, per reference/report_format.md:
+ [7] DRAFT report.md, section by section, per reference/report_format.md +
+     reference/report_sections.md:
      Company Summary -> Value Chain Positioning (+ flow diagram, showing
      backward integration inside the company box, not upstream) ->
      Situation Classification -> Near/Medium/Long Term outlook (quote-
@@ -298,11 +300,26 @@ skills/report-generator/           (this skill's directory, inside the Research-
 |-- SKILL.md                      Trigger phrases, the numbered pipeline above,
 |                                  Step 0 freshness logic, token-discipline rules
 |-- reference/
-|   |-- report_format.md          Section-by-section spec: what each section
-|   |                             contains, table vs. bullet vs. chart defaults,
-|   |                             the Assembly pattern for the visual PDF
-|   |-- source_playbook.md        Which tool/site for which fact, fallback paths,
-|                                  the 18-month-window and new-quarter-refresh rules
+|   |-- report_format.md          The report's opening (cover, Company Summary,
+|   |                             Value Chain Positioning, Situation Classification)
+|   |                             and rules that apply everywhere (bullet format,
+|   |                             status pointers, paragraph length limit)
+|   |-- report_sections.md        Section-by-section spec for the nineteen sections
+|   |                             after the outlook: what each contains, table vs.
+|   |                             bullet defaults, conditional-vs-mandatory rules
+|   |-- report_assembly.md        PDF build mechanics: which html_helpers.py
+|   |                             function renders which section, chart-vs-table
+|   |                             defaults, the WeasyPrint/reportlab fallback
+|   |-- source_playbook.md        What to pull for each report section and from
+|   |                             which primary source; the 18-month-window and
+|   |                             new-quarter-refresh rules
+|   |-- data_sources.md           Where and how to fetch each source type (tool,
+|   |                             URL pattern, fallback chain) and how a
+|   |                             user-uploaded document changes the picture --
+|   |                             source_playbook.md's sections point back here
+|   |-- guardrails.md             The deterministic verify_report.py checks in
+|                                  full: three tiers (Input/Execution/Output),
+|                                  what each one catches, FAIL vs. WARN
 |-- scripts/                      Local Python -- no network except the tracker
 |   |-- pdf_to_text.py            scripts explicitly noted below
 |   |-- pdf_to_text_parallel.py   multi-core full extraction for large PDFs
@@ -312,6 +329,7 @@ skills/report-generator/           (this skill's directory, inside the Research-
 |   |                             sources/cache split, freshness, extraction
 |   |                             coverage, sourcing depth -- see below)
 |   |-- extract_theme_quotes.py
+|   |-- run_context.py            per-slug run lock + run_id provenance stamping
 |   |-- guidance_tracker.py
 |   |-- fundraise_tracker.py
 |   |-- rating_tracker.py
@@ -326,7 +344,8 @@ skills/report-generator/           (this skill's directory, inside the Research-
 |-- assets/
 |   `-- report_style.css          Visual styling for the WeasyPrint PDF
 `-- examples/
-    `-- venus_pipes_report.md     Outlook-section style reference
+    `-- Sterlite_Technologies_report.md   Full-report style reference (outlook,
+                                          broker-tag usage, refresh-note pattern)
 
 ~/.report-generator/                 (OUTSIDE the plugin, in your home directory --
                                        see the repo-level README's Plugin structure)
@@ -364,6 +383,13 @@ skills/report-generator/           (this skill's directory, inside the Research-
 |   |                             type, label, date, page coverage -- survives
 |   |                             sources/ being deleted, so depth/coverage
 |   |                             guardrails keep working after cleanup
+|   |-- .lock                     Present only while a run is actively in progress
+|   |                             (run_context.py acquire/release) -- holds the PID,
+|   |                             run_id, and acquire timestamp of the holding agent.
+|   |                             Absent between runs; auto-reclaimed if the holder
+|   |                             process is dead or the lock is 2h+ old. Exists to
+|   |                             stop two agents processing the same company slug
+|   |                             concurrently -- see SKILL.md Step 0.
 |   `-- report.md                 The drafted report (source of truth)
 `-- output/<company_slug>/           User-facing deliverables only, created
     |                                locally on your first run
@@ -424,7 +450,8 @@ reset. "From scratch" describes the report content, not the historical fact log.
 | `litigation_tracker.py` | Log/report litigation, reopen-risk flags | No |
 | `capacity_utilization.py` | Before/after-capex revenue-headroom arithmetic | No |
 | `forward_pe.py` | Forward EPS/PE arithmetic | No |
-| `check_freshness.py` | Decide `no_state`/`up_to_date`/`new_quarter`/`force_full` (`--force`), mark state | No |
+| `check_freshness.py` | Decide `no_state`/`up_to_date`/`new_quarter`/`force_full` (`--force`), mark state; with `--concall-dates`, also classifies concall cadence (`regular`/`irregular`/`sparse_or_none`) and returns a `recommended_sourcing_mode` so a sparse-disclosure company is flagged before standard-depth sourcing is attempted, not after | No |
+| `run_context.py` | Per-company-slug run lock (`acquire`/`release`/`status`) to stop two agents processing the same company concurrently, plus `get_run_id()` — every `*_tracker.py`/`source_manifest.py` entry is stamped with the acquiring run's id so a later collision between concurrent runs is mechanically detectable instead of requiring manual judgment | No |
 | `charts.py` | matplotlib chart generators — **opt-in only**, not called by default | No |
 | `html_helpers.py` | HTML builders (cover, cards, tables, timeline, verdict box) for the visual PDF | No |
 | `report_to_pdf.py` | Legacy markdown→PDF via reportlab, text-only fallback if WeasyPrint is unavailable | No |

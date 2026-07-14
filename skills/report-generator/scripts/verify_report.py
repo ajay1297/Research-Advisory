@@ -10,12 +10,12 @@ during drafting, a run can finish without ever calling --mark-processed. None of
 these are caught by "the PDF exists" or "the script didn't error." This script
 greps/counts the actual artifacts on disk instead of trusting a self-report.
 
-Run the relevant subcommand(s) before declaring a report done — see SKILL.md's
-"Deterministic Guardrails" section for when each one applies. Exits non-zero and
+Run the relevant subcommand(s) before declaring a report done — see
+reference/guardrails.md for when each one applies. Exits non-zero and
 prints FAIL lines if a required check doesn't pass; exits 0 with PASS lines
 otherwise. A FAIL is a stop-and-fix, not a note-and-continue.
 
-Organized into three tiers (see SKILL.md for the full rationale of each):
+Organized into three tiers (see reference/guardrails.md for the full rationale of each):
 
 --- 1. INPUT GUARDRAILS (the gatekeepers — run before real processing starts) ---
 

@@ -1,97 +1,14 @@
 # Source Playbook
 
-Which tool to use for which source. Read this once per report, not per source.
+**Where and how to fetch each source (tool, URL pattern, fallback chain, uploads)
+lives in `reference/data_sources.md` — read it once per report.** This file tells
+you what to pull for each part of the report; each section below names its primary
+source and points back to `data_sources.md` for the mechanics of getting it.
 
-## Source trust hierarchy
+## Concalls, investor presentations, annual reports
 
-Every section below already names its own primary source, but keep this ordering in
-mind whenever a claim could be pulled from more than one place — it's what makes a
-material fact "verified" rather than just "found":
-
-1. **Primary sources** — exchange filings (BSE/NSE Regulation 30 disclosures, annual
-   reports, investor presentations as filed), NCLT/court orders, credit-rating agency
-   rationales, and the company's own concall transcripts/press releases as filed. These
-   are citable as-is.
-2. **Structured financial data** — screener.in (P&L, balance sheet, cash flow, ratios,
-   shareholding-pattern history) or an equivalent aggregator that mirrors filed data
-   without editorializing on it. Reliable for numbers; still worth a primary-source
-   cross-check for anything that ends up in a Key Risks or Investment Thesis Summary
-   claim.
-3. **Discovery-only sources** — news aggregators, PR-syndicated releases, Trendlyne/
-   Moneycontrol-style sites. Fine for finding leads (a contract win, a rating action, a
-   management interview worth checking) but never cite a number from one of these
-   without tracing it back to the primary filing or press release it originated from —
-   aggregators garble numbers more often than the fetch effort to verify would suggest.
-4. **Third-party broker/agency research** (Nuvama, Motilal Oswal, ICICI Securities,
-   Kotak Institutional, etc.) — a different category entirely from tiers 1-3 above:
-   this is another analyst's *opinion and estimates*, not a filing or a neutral data
-   mirror. Never treated as a primary source and never cited as if it were the
-   pipeline's own finding. Only enters the report at all when the user directly
-   supplies one (see "Broker/agency research reports" below) — this pipeline doesn't
-   go fetch broker research proactively. It has no dedicated section — each fact folds
-   into whichever existing section it belongs to — but every such point carries an
-   inline `[BROKER_DDMMYYYY]` attribution tag (see `reference/report_format.md`'s
-   "Broker / agency research — inline-tagged, no dedicated section"), which is what
-   keeps it distinguishable from the pipeline's own independently-sourced numbers in
-   Valuation, Financial Performance Summary, Investment Thesis Summary, etc.
-
-Flag an unverified management claim explicitly rather than silently upgrading its
-confidence (e.g. "management states X on the concall — not yet corroborated by an
-independent filing") — this is the same discipline as the "customer's own guidance"
-corroboration check below, just stated as a general rule.
-
-## Important sandbox constraint
-
-The shell sandbox's outbound network is allowlisted — raw `curl`/`requests`/`urllib`
-calls to arbitrary domains (screener.in, bseindia.com, nseindia.com, company IR pages)
-will fail with a proxy 403. This is expected, not a bug. **Never write or run a Python
-fetch script against these domains.** All fetching goes through the platform's own web
-tools (`WebSearch`, `mcp__workspace__web_fetch`, and Claude in Chrome as fallback), which
-route through an approved path. Scripts in `scripts/` only ever touch local files.
-
-## Primary source: screener.in
-
-screener.in is the fastest single source for an Indian listed company — it aggregates:
-- Key ratios, quarterly/annual financials, shareholding pattern (structured, no PDF
-  parsing needed)
-- A "Documents" tab linking the company's BSE/NSE-filed annual reports, credit rating
-  reports, and (for many companies) concall transcripts and investor presentations
-
-Steps:
-1. `WebSearch` for `site:screener.in <company name>` to find the exact company page
-   (or construct `https://www.screener.in/company/<BSE_OR_NSE_SYMBOL>/consolidated/`
-   if the symbol is already known).
-2. `mcp__workspace__web_fetch` the page. screener.in is mostly server-rendered, so
-   web_fetch should return real content — ratios table, quarterly results, and the
-   Documents section with links.
-3. If the fetch returns a mostly-empty shell (JS-rendered widgets like the
-   price chart won't matter, but if the *data tables* are missing), escalate to Claude
-   in Chrome (`navigate` + `get_page_text`) per the platform's escalation rule.
-4. Pull the direct links to the latest concall transcript, investor presentation, and
-   annual report from the Documents tab, then fetch/download those individually (see below).
-
-## Concall transcripts
-
-Usually PDFs hosted on BSE announcements, the company's own investor relations page, or
-linked from screener.in's Documents tab. Some are also summarized/hosted by third-party
-aggregators.
-1. Get the direct PDF URL (from screener.in Documents tab or `WebSearch` for
-   `<company name> concall transcript <quarter> filetype:pdf`).
-2. `mcp__workspace__web_fetch` the PDF URL — if the tool returns the PDF content, save it
-   directly to `~/.report-generator/sources/<COMPANY_SLUG>/<file>.pdf`.
-3. If web_fetch can't retrieve a binary PDF cleanly, ask the user to download and drop it
-   in the workspace folder instead, or use Chrome to navigate + download.
-4. Run `scripts/pdf_to_text.py` on the saved PDF (local, no network).
-5. Log it: `python3 scripts/source_manifest.py <company_slug> add-document --type
-   concall --label "<e.g. Q4 FY26>" --date "<call date>" --filename <name.txt>` —
-   see "Annual reports" below for why this matters (it's what lets sourcing depth
-   stay verifiable even after `sources/` is later deleted).
-
-## Investor presentations
-
-Same path as concall transcripts — usually a PDF from the same BSE filing/IR page/
-screener.in Documents tab for the same quarter. Log it the same way, with
-`--type investor_presentation`.
+Fetch/extract/log mechanics in `reference/data_sources.md`. Annual-report-specific
+processing beyond the generic fetch pattern:
 
 ## If the company doesn't hold concalls
 
@@ -141,51 +58,27 @@ than retrying repeatedly — one check is enough to establish the pattern.
   kind of scope fact the "Never drop anything silently" rule in `SKILL.md` expects
   stated, not left implicit.
 
-## Annual reports
+## Annual reports — processing, beyond the generic fetch pattern
 
-Same path, larger PDF (100-300+ pages) — but always run the **whole** PDF through
-`pdf_to_text.py` (or `pdf_to_text_parallel.py` for a faster multi-core extraction on
-a large report — see `SKILL.md`'s Source pipeline section), never just a guessed page
-range: an annual report's segment note, litigation note, shareholding pattern, and
-PP&E note are typically much further back than the MD&A and are just as required as
-the outlook section is. **Save the fetched PDF itself to
-`~/.report-generator/sources/<company_slug>/` before extracting it — don't
-extract-then-discard.** This isn't optional bookkeeping: `scripts/verify_report.py
-extraction <pdf> <txt>` is the deterministic check that confirms extraction actually
-covered page 1 through the document's real last page (catching a scouting/partial
-range mistaken for the full extraction), and it needs the source PDF still on disk
-to compare against. If the PDF isn't saved, that check can't run at all, and a
-partial extraction can slip through unnoticed — which has already happened once in
-practice.
+Larger PDF (100-300+ pages) — always run the **whole** thing through
+`pdf_to_text.py`/`pdf_to_text_parallel.py`, never a guessed page range: the segment
+note, litigation note, shareholding pattern, and PP&E note typically sit much
+further back than the MD&A and are just as required as the outlook section.
+`verify_report.py extraction` needs the source PDF still on disk to confirm
+full-page coverage — save it before extracting, don't extract-then-discard.
 
-**Log every fetched-and-extracted document to `source_manifest.py`, not just annual
-reports — concalls and investor presentations too.** Immediately after extraction
-(and, for annual reports, right after running the `extraction` coverage check above),
-run `python3 scripts/source_manifest.py <company_slug> add-document --type
-<concall|investor_presentation|annual_report> --label "<e.g. Q4 FY26>" --date
-"<the document's own date>" --filename <name.txt> [--pages-total N
---pages-extracted-start N --pages-extracted-end N --extraction-verified]`. This is
-what lets `scripts/verify_report.py depth` (and, implicitly, any future audit of
-"was this company's sourcing depth ever actually confirmed") keep working **even
-after `sources/<company_slug>/` is later deleted** — the manifest lives in
-`research_cache/<company_slug>/`, which is the small, kept-around state, not the
-bulky regenerable state. It does not substitute for `sources/` entirely — a deleted
-`sources/` still means `scripts/verify_report.py quotes` can no longer re-verify a
-quote's exact wording against the original text, since that needs the real content,
-not just metadata about it — but it does mean the depth/coverage story survives.
-The "don't read the whole thing" discipline applies to what
-you feed `extract_theme_quotes.py` and what you `Read()` into context, not to what
-gets extracted — grep the already-fully-extracted text for the MD&A section heading
-and only feed *that* slice to `extract_theme_quotes.py` (to avoid burning tokens
-running quote-candidate extraction over financial-statement boilerplate), while the
-full extracted `.txt` stays on disk for every other section's grep/`semantic_search.py`
-pass. If a section you know
-should exist (raw material sourcing note, a value-chain/backward-integration
-description, a specific customer mention) doesn't surface under any keyword you try,
-run `scripts/semantic_search.py <extracted.txt> "<what you're looking for, in plain
-language>"` before giving up on grep — annual reports vary a lot in phrasing between
-companies and a keyword guess that worked for one company's report often doesn't for
-another's.
+The "don't read the whole thing" discipline applies to what you feed
+`extract_theme_quotes.py` and what you `Read()` into context, not to what gets
+extracted — grep the already-fully-extracted text for the MD&A section heading and
+only feed *that* slice to `extract_theme_quotes.py` (avoids burning tokens running
+quote-candidate extraction over financial-statement boilerplate), while the full
+extracted `.txt` stays on disk for every other section's grep/`semantic_search.py`
+pass. If a section you know should exist (raw material sourcing note, a value-chain/
+backward-integration description, a specific customer mention) doesn't surface under
+any keyword you try, run `scripts/semantic_search.py <extracted.txt> "<what you're
+looking for, in plain language>"` before giving up on grep — annual reports vary a
+lot in phrasing between companies and a keyword guess that worked for one company's
+report often doesn't for another's.
 
 ## Value chain positioning
 
@@ -379,47 +272,13 @@ inferring a relationship from a photo or a bare LinkedIn mention — shipment re
 a specific, checkable data point (an actual bill of lading/shipping bill), not an
 indirect inference, which is why they get a different treatment.
 
-## Export/import shipment data — attempt once, expect it to fail, fall back fast
+## Export/import shipment data
 
-These sites are secondary/discovery-tier sources (per the "Source trust hierarchy"
-above) — useful for corroboration when they work, but **verified (2026-07) to be
-unreliable as an automated/free source**: Volza and Zauba both sit behind bot-detection
-challenge pages that block automated fetching outright (not a rate limit or a stale
-page — a "confirm you're not a bot" wall with no way through it programmatically);
-Seair's public page renders a static, years-old teaser sample (unrelated products,
-dated shipments) rather than a queryable, company-specific result, with real querying
-gated behind signup/subscription. ImportGenius and Panjiva are subscription-only with
-no usable free tier. Treat all five the same way: **worth one quick attempt, not worth
-retrying or treating as a dependable source**, and the fallback below is not optional
-when the attempt fails.
-
-**The check, in order:**
-1. Attempt one of the aggregators (a plain web search or direct navigation is enough —
-   don't burn more than one try, per the Token discipline "don't burn more than one
-   retry on a stuck source" rule). If it returns a bot-detection wall, a stale/generic
-   teaser sample unrelated to the company, or a paywall with no usable preview, stop —
-   that's a determined outcome, not an inconclusive one.
-2. **Fall back to what's actually reliable for shipment/trade corroboration:**
-   - The **annual report's own indigenous-vs-imported raw material note** — this is
-     the primary source for Raw Material Sourcing regardless, and should be checked
-     first, not after the aggregator attempt.
-   - **DGFT / Ministry of Commerce trade statistics** (`tradestat.commerce.gov.in`,
-     `data.gov.in`) — genuinely free, no bot-wall, but aggregate/HS-code-level only,
-     not company-specific; useful for sector-level corroboration (e.g. "India's total
-     steel-tube exports to X grew Y%"), not for confirming a specific named customer.
-   - The company's **own investor presentation or concall** — export revenue % and,
-     less often, named export markets, is frequently disclosed there directly and is a
-     first-party source, which beats any third-party aggregator when available.
-3. If the user has their own paid subscription/API key to one of these aggregators,
-   an authenticated fetch can be used instead — but never attempt to sign up for or
-   pay for a subscription on the user's behalf; that's outside what this pipeline can
-   do on its own.
-
-**State the outcome explicitly in the report either way** — per the "Never drop
-anything silently" rule in `SKILL.md`: if the aggregator attempt failed, say so in one
-line (which source was tried and how it failed — bot-walled, stale/paywalled preview,
-subscription-only) rather than omitting the attempt, and lead with whatever the
-fallback sources above actually found instead of leaving the section thin.
+Which aggregators, their reliability, and the fallback chain (raw material note →
+DGFT stats → investor presentation/concall) are in `reference/data_sources.md`. Feeds
+two report sections at once: corroborating/surfacing names for Marquee & Niche
+Customers, and corroborating/filling the country gap for Raw Material Sourcing. State
+the outcome explicitly either way per SKILL.md's "Never drop anything silently" rule.
 
 **Awards & recognition** — check the investor presentation for an "Awards & Accolades"
 slide (common in Indian small/midcap decks, often listing the awarding body and year)
@@ -431,29 +290,8 @@ worth a line in Marquee & Niche Customers or the Capex/Milestones/Certifications
 Timeline (treat it as an achieved milestone) — a generic self-nominated award list
 adds little and isn't worth chasing hard.
 
-**LinkedIn / X (Twitter) — verified (2026-07) that access is page-type-dependent, not
-platform-dependent; check what kind of URL you actually have before deciding whether
-it's usable.**
-
-- **LinkedIn's listing pages are login-walled** — `linkedin.com/company/<name>/posts/`
-  redirects straight to a sign-up/sign-in page with no visible content underneath,
-  confirmed via direct navigation. There is no way to browse a company's LinkedIn feed
-  without an account, so don't try to discover posts this way.
-- **LinkedIn's individual post permalinks work without login** — a direct
-  `linkedin.com/posts/<company>-...-activity-<id>-...` URL (the kind returned by a
-  web search, or pasted by the user) loads the full post content — text, author,
-  timestamp, engagement counts — with no sign-in prompt, confirmed via direct
-  navigation on a real STL post. So: if you already have a specific post URL, fetch
-  it directly, it will work; if you only have the company name, don't try to browse
-  their LinkedIn page for one — run `WebSearch("<company name> linkedin")`, it
-  returns a mix of `linkedin.com/company/<name>` results (login-walled — skip these,
-  don't open them) and `linkedin.com/posts/<name>-...-activity-<id>-...` results
-  (open these directly). Confirmed on a real search: the same query surfaced both
-  types side by side, and every `/posts/.../activity-.../` link opened cleanly while
-  the `/company/...` links redirect to sign-up.
-- **X (Twitter) works** — a public company profile's recent posts load directly via
-  Claude in Chrome with no login required, confirmed via direct navigation (real,
-  current post content rendered).
+**LinkedIn / X (Twitter)** — access mechanics (which URL types work, escalation
+pattern) are in `reference/data_sources.md`.
 
 **Lookback window: 3 months.** Only surface posts dated within the last 3 months —
 older posts are either already reflected in a subsequent filing/concall or are stale
@@ -622,36 +460,8 @@ re-searching for a number management already gave.
 
 ## BSE / NSE filings (fallback / verification)
 
-- BSE: `https://www.bseindia.com/stock-share-price/<company>/<code>/corp-announcements/`
-- NSE: `https://www.nseindia.com/companies-listing/corporate-filings-announcements`
-
-Use this whenever screener.in is giving trouble, not only for a missing filing —
-covers two distinct failure modes seen in practice:
-
-1. **A specific filing is missing** — screener.in's Documents tab hasn't indexed a very
-   recent announcement yet. Go straight to the exchange's own announcements page.
-2. **screener.in's numeric widgets won't populate** — the price ticker, market cap,
-   quarterly/annual P&L, or balance sheet tables come back masked (`x`/`xx`/`xxx`) or
-   blank in both `WebFetch` and Claude Browser, even after a wait. This happens
-   occasionally (a client-side widget failing to load real data, sometimes
-   bot-detection-related) and is not worth repeatedly retrying. When it does:
-   - **BSE/NSE directly** for the raw financial results filing (quarterly/annual
-     results are filed as a Regulation 33/30 disclosure, often with the full P&L as a
-     PDF or structured table) — this is a primary source anyway, a step up from
-     screener.in's aggregation, not just a workaround.
-   - **The concall transcript and investor presentation** (already being fetched for
-     the outlook sections) usually restate the full P&L, balance sheet, and segment
-     splits directly — check there first before making a special trip to BSE/NSE, since
-     it's a document you're fetching regardless and often has more detail (segment/
-     geography splits, multi-year history) than screener.in shows anyway.
-   - **A secondary quote aggregator** (Tickertape, Trendlyne, etc.) for just the
-     live price/market cap/52-week range if that's the only piece screener.in won't
-     give you — no need to solve the whole screener.in problem just to get one number.
-   Don't burn more than one retry on screener.in itself before falling back — the
-   fallback sources are usually faster than debugging why a widget won't load.
-
-Same web_fetch → Chrome fallback pattern applies to BSE/NSE directly; NSE in particular
-is heavily JS-rendered and often needs Chrome.
+URL patterns and the two failure modes this covers (missing filing, screener.in
+widgets not populating) are in `reference/data_sources.md`.
 
 ## Forward PE inputs
 
@@ -659,16 +469,10 @@ From screener.in's summary block: current market price, shares outstanding (Equi
 Capital ÷ Face Value, both shown on the page), and trailing PAT/revenue (for a
 fallback margin assumption if management didn't guide one). Revenue guidance itself
 comes from the concall, not screener.in. If the user gives their own price, use that
-instead and label it "user-supplied" per `reference/report_format.md`.
+instead and label it "user-supplied" per `reference/report_sections.md`'s Forward PE section.
 
-**Median PE**: this is a computed historical statistic, not something management
-discloses, so it comes from a secondary aggregator rather than a filing — check
-screener.in first (occasionally shown directly), then Trendlyne, Tijori Finance, or
-MoneyWorks4Me (`<company name> median PE 5 year`). These sources don't always agree
-exactly (different lookback windows) — if two sources diverge by more than a couple of
-points, report the range and cite both rather than picking one arbitrarily. If no
-source publishes it, say so rather than computing your own median from a partial price
-series.
+**Median PE** comes from a secondary aggregator, not a filing — sourcing mechanics
+and the divergent-sources rule are in `reference/data_sources.md`.
 
 ## Broker / agency research reports (Nuvama, etc.) — uploaded only, never fetched
 
@@ -704,7 +508,7 @@ source document's analysis verbatim at length.
    existing report section it belongs to — the target price/rating into Valuation, a
    sector-demand read into Industry Tailwinds/Headwinds, a thesis point into Investment
    Thesis Summary, a flagged risk into Key Risks, and so on — per
-   `reference/report_format.md`'s "Broker / agency research — inline-tagged, no
+   `reference/report_sections.md`'s "Broker / agency research — inline-tagged, no
    dedicated section." What keeps a broker's numbers from blending into the pipeline's
    own independently-sourced Valuation/Financial Performance Summary/Investment Thesis
    figures is an **inline tag on every single point**: `[<BROKER>_<DDMMYYYY>]`
@@ -894,39 +698,19 @@ relevant than an arbitrary screener.in peer-set cutoff.
 
 ## Technical snapshot
 
-Get a pre-computed technicals summary rather than fetching raw daily OHLC data and
-calculating indicators yourself — no reliable free historical-price API is reachable
-from this sandbox, and hand-rolling RSI/moving averages from scraped data is a poor
-use of tokens for what's meant to be a one-line snapshot.
-- `WebSearch`/`mcp__workspace__web_fetch` a technicals page for the ticker — Trendlyne,
-  MoneyControl's technicals tab, or Screener AI's technical widgets often list
-  moving averages, RSI, and support/resistance directly.
-- If the page is JS-rendered and web_fetch returns a shell, escalate to Claude in
-  Chrome per the platform's own escalation rule.
-- Always record the as-of date next to the numbers — this section goes stale fast.
+Fetch mechanics (which sites, escalation pattern) in `reference/data_sources.md`.
+Always record the as-of date next to the numbers — this section goes stale fast.
 
 ## Credit rating agencies (CRISIL / ICRA / CARE / India Ratings / Acuite / Brickwork)
 
 Check this for every report, not just when the company has visibly raised debt — a
 rating rationale is one of the few genuinely independent, professionally-underwritten
 views in the whole pipeline (unlike the concall, which is management's own words, or
-screener.in, which aggregates public filings without an opinion on them).
+screener.in, which aggregates public filings without an opinion on them). Which
+agencies to search and where rationales live are in `reference/data_sources.md` —
+don't assume no result means "unrated," a different agency may cover the company; if
+genuinely none is found anywhere, say so explicitly.
 
-- **Which agencies cover the company**: not every listed company is rated by all four
-  major agencies — many SME-listed companies use only one, sometimes CRISIL, ICRA, CARE,
-  India Ratings & Research, or (common for smaller issuers) Acuite Ratings or Brickwork
-  Ratings. Search `<company name> CRISIL rating rationale`, `<company name> ICRA rating
-  rationale`, `<company name> CARE rating rationale`, `<company name> India Ratings
-  rationale`, `<company name> Acuite rating rationale` — don't assume absence of a
-  result means "unrated"; it may just mean a different agency covers them. If genuinely
-  no rating rationale is found anywhere, say so explicitly rather than silently omitting
-  the section.
-- **Where rationales live**: each agency publishes free rating-rationale documents
-  (PDF or webpage) on its own site whenever a rating is assigned, reviewed, or revised;
-  for listed companies these are also frequently mirrored on BSE/NSE as a disclosure
-  under SEBI LODR. `WebSearch`/`mcp__workspace__web_fetch` the agency's own site first;
-  fall back to the BSE/NSE-mirrored copy if the agency's own page is paywalled or
-  JS-gated.
 - **What to extract from the rationale**: current rating and outlook (e.g. "CRISIL
   A-/Stable"), the instrument it applies to (bank facilities, NCD, commercial paper —
   a company can carry different ratings for different instruments), the date of the
@@ -977,7 +761,7 @@ Three separate things to check:
    announcement explains it, cite that; don't speculate.
 
    **For the visual PDF's shareholding-pattern chart** (`charts.shareholding_chart()` —
-   see report_format.md), screener.in's Shareholding Pattern table already returns the
+   see reference/report_sections.md's Promoter/Governance section), screener.in's Shareholding Pattern table already returns the
    full multi-quarter history (Promoter/FII/DII/Public %, typically 8-12 quarters back)
    in the one page fetch already done — no separate tracking script or extra fetch
    needed, unlike guidance/fund-raises/ratings/litigation, which persist across runs in
@@ -1018,7 +802,7 @@ Three separate things to check:
      per-quarter one like guidance). Then run `fundraise_tracker.py <slug> report`
      (optionally with `--cmp <price>` to show issue price as a premium/discount to the
      current price) and reproduce its output/flags in the Promoter Fund Raises
-     sub-section per `reference/report_format.md`.
+     sub-section per `reference/report_sections.md`.
 
 ## Standard sourcing depth — last 2 annual reports, last 6 quarters of concalls and investor presentations
 
@@ -1149,29 +933,11 @@ silently" discipline applied to a sweep that legitimately came up empty.
 ## YouTube (supplementary, optional — not a primary source)
 
 Some concalls are only available as a recording, not a written transcript (screener.in's
-Concalls section links these as "REC" against the relevant quarter, alongside the
-Transcript/PPT links). YouTube is also occasionally useful for a management interview
-(CNBC/ET Now/ETMarkets) that adds outlook color beyond the concall — treat that as
-industry/company color, not as the primary near/medium/long-term source.
-
-**What actually works here, tested in this sandbox:**
-- `mcp__workspace__web_fetch` on a `youtube.com/watch?v=...` URL returns nothing usable
-  — YouTube is fully JS-rendered, so a plain fetch gets an empty shell, not the video
-  transcript. Don't rely on it.
-- Reading the actual transcript requires Claude in Chrome (`navigate` to the video,
-  open the "Show transcript" panel via `find`/`computer`, then `get_page_text`). This
-  is a real path but depends on the Chrome extension being installed and connected —
-  it was **not connected** when this was last tested. If it's unavailable when you need
-  it, say so explicitly and skip the YouTube source rather than guessing at content
-  from the video title/description alone.
-- If Chrome is connected: prefer the exact YouTube link screener.in already ties to
-  the quarter you need (the "REC" link) over an open-ended YouTube search — this
-  guarantees you're watching the right, already-dated recording instead of having to
-  filter search results by upload date yourself (see the "Filtering to an 18-month
-  window" section below for why this matters).
-- If no transcript panel exists for a given video (auto-captions off), don't try to
-  transcribe audio — there's no audio-transcription tool in this environment. Skip it
-  and note the gap rather than fabricating quotes.
+Concalls section links these as "REC" against the relevant quarter). Also occasionally
+useful for a management interview (CNBC/ET Now/ETMarkets) that adds outlook color
+beyond the concall — treat that as industry/company color, not the primary near/
+medium/long-term source. Access mechanics and known limitations (Chrome-dependent,
+no audio transcription) are in `reference/data_sources.md`.
 
 ## Filtering to an 18-month window — how it actually works
 
@@ -1239,14 +1005,5 @@ of an unchanged history.
 
 ## User-uploaded documents
 
-If the user has already uploaded the concall transcript / investor PPT / annual report
-(they said they'd share templates and source documents directly), always prefer those
-over fetching — check the uploads/workspace folder first before doing any web research.
-
-A user-uploaded **broker/agency research report** (Nuvama, Motilal Oswal, etc.) is a
-distinct case from the three above — it doesn't get its own section; its facts fold
-into whichever existing sections they belong to, each carrying an inline
-`[BROKER_DDMMYYYY]` attribution tag (see "Broker / agency research reports" above).
-Treat any file that carries a broker/agency letterhead, a rating (Buy/Hold/Reduce/
-Sell), and a 12-month target price as this type rather than as an investor
-presentation or annual report.
+See `reference/data_sources.md`'s "User-uploaded documents" section — always prefer
+an upload over fetching for that document type.

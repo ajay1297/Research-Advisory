@@ -17,8 +17,6 @@ across refreshes, not to re-derive it from scratch each time.
 Runs entirely locally, no network required.
 
 Usage:
-    # log a case found in an annual report's contingent-liabilities note,
-    # a BSE/NSE Regulation 30 disclosure, or news coverage
     python3 litigation_tracker.py <company_slug> add-case \
         --case-ref "GST demand FY19-20" --forum "GST Appellate Tribunal" \
         --case-type tax_dispute --parties "Company vs GST Department" \
@@ -26,17 +24,19 @@ Usage:
         --note "Demand relates to input tax credit disallowance" \
         --source "FY26 Annual Report, Note 34 - Contingent Liabilities"
 
-    # update status once an outcome or appeal is known
     python3 litigation_tracker.py <company_slug> update-status --id 0 \
         --status dismissed_appealable \
         --note "Tribunal ruled in company's favor Mar 2026; department has 90 days to appeal to High Court"
 
-    # print the full case list with flags
     python3 litigation_tracker.py <company_slug> report
 """
 import argparse
 import json
 import os
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from run_context import get_run_id  # noqa: E402
 
 CASE_TYPES = ["tax_dispute", "customer_vendor_dispute", "regulatory", "labor",
               "ip", "criminal", "arbitration", "consumer", "promoter_related", "other"]
@@ -77,6 +77,7 @@ def add_case(args):
         "appeal_window": args.appeal_window or "",
         "note": args.note or "",
         "source": args.source or "",
+        "run_id": get_run_id(),
     }
     data["cases"].append(entry)
     save(path, data)

@@ -24,20 +24,21 @@ history and flag the current state plainly.
 Runs entirely locally, no network required.
 
 Usage:
-    # log a rating action found in a rationale document
     python3 rating_tracker.py <company_slug> add-rating \
         --agency crisil --date "2026-03-15" --instrument "long-term bank facilities" \
         --rating "A-" --outlook stable --action reaffirmed \
         --note "Liquidity assessed as adequate; no promoter guarantee flagged." \
         --source "CRISIL Ratings rationale, 15 Mar 2026"
 
-    # print the full rating history, most recent per agency+instrument first,
-    # and flag any downgrade / negative outlook / rating watch currently in force
     python3 rating_tracker.py <company_slug> report
 """
 import argparse
 import json
 import os
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from run_context import get_run_id  # noqa: E402
 
 AGENCIES = ["crisil", "icra", "care", "india_ratings", "acuite", "brickwork", "other"]
 OUTLOOKS = ["stable", "positive", "negative", "watch_developing",
@@ -79,6 +80,7 @@ def add_rating(args):
         "action": args.action,
         "note": args.note or "",
         "source": args.source or "",
+        "run_id": get_run_id(),
     }
     data["ratings"].append(entry)
     save(path, data)

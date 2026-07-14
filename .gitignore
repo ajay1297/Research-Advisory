@@ -4,6 +4,7 @@
 # Python
 __pycache__/
 *.pyc
+.idea/
 
 # Per-company working state and deliverables live outside the plugin
 # entirely, under ~/.report-generator/ (see skills/report-generator/SKILL.md) —

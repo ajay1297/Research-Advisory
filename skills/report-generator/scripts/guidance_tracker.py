@@ -31,31 +31,28 @@ Two ways an entry gets used:
 Runs entirely locally, no network required.
 
 Usage:
-    # numeric metric vs. actual (unchanged from before)
     python3 guidance_tracker.py <slug> add-guidance --given-in "Q4 FY26" --for-period "FY27" \
         --metric revenue --value-cr 2400 --status pending \
         --note "revised FY27 guidance, high probability of further upward revision"
     python3 guidance_tracker.py <slug> add-actual --period "FY27" --metric revenue --value-cr 2510
 
-    # status-tracked outlook item, first mention
     python3 guidance_tracker.py <slug> add-guidance --given-in "Q3 FY26" --for-period "FY27-FY29" \
         --metric assembly_business_revenue --status pending \
         --note "New assembly business over 3 years: Rs250-300cr (FY27 Rs70-75cr, FY28 Rs150-200cr, FY29 Rs250-300cr)"
 
-    # the same item revised at a later call — link it so `report` shows the evolution
     python3 guidance_tracker.py <slug> add-guidance --given-in "Q4 FY26" --for-period "2-3 years" \
         --metric assembly_business_revenue --status on_track --supersedes-id 3 \
         --note "Revised to Rs250-350cr over a 2-3 year period"
 
-    # print the tracked history: last N guidance-vs-actual comparisons (default 6 =
-    # 6 quarters, the framework's standing lookback) AND the full status/evolution
-    # chain for every tracked item (not lookback-limited — an item's whole history
-    # matters)
     python3 guidance_tracker.py <slug> report
 """
 import argparse
 import json
 import os
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from run_context import get_run_id  # noqa: E402
 
 MISS_THRESHOLD_PCT = 10.0  # actual more than this % below guidance counts as a miss
 STATUSES = ["pending", "on_track", "delivered", "delayed", "missed"]
@@ -101,6 +98,7 @@ def add_guidance(args):
         "status": args.status,
         "supersedes_id": args.supersedes_id,
         "note": args.note or "",
+        "run_id": get_run_id(),
     }
     data["guidances"].append(entry)
     save(path, data)
@@ -113,8 +111,7 @@ def add_guidance(args):
 def add_actual(args):
     path = cache_path(args.company_slug)
     data = load(path)
-    entry = {"period": args.period, "metric": args.metric, "value_cr": args.value_cr}
-    # auto-compare against any prior guidance for the same period+metric
+    entry = {"period": args.period, "metric": args.metric, "value_cr": args.value_cr, "run_id": get_run_id()}
     match = next((g for g in data["guidances"]
                   if g["for_period"] == args.period and g["metric"] == args.metric), None)
     if match:

@@ -10,18 +10,9 @@ built" as distinct from the Capex/Milestones timeline's "what's being added."
 Report both together: current-capacity headroom is the near-term growth lever;
 the capex timeline is what unlocks growth beyond it.
 
-Optionally also states a POST-CAPEX revenue potential, so the report can show
-both numbers side by side: "before capex" (current installed capacity, fully
-utilized) vs. "after capex" (once planned capacity additions are online).
-Prefer passing management's own disclosed post-capex revenue figure directly
-(--post-capex-max-revenue-cr) when they gave one (e.g. "capacity to support
-INR3,000-3,200cr sales by FY28") — that's a management estimate, not something
-to re-derive. Only use --post-capex-capacity-increase-pct as a fallback when no
-such figure was given but a capacity-increase % was.
-
 Runs entirely locally, no network required.
 
-Two input modes for the CURRENT (pre-capex) figure:
+Two input modes for the CURRENT (pre-capex) figure — pick one, don't mix:
 
   Mode A — utilization % already known (most common; management usually states
   this directly on the concall):
@@ -37,27 +28,11 @@ Add a post-capex figure to either mode, e.g.:
           --post-capex-max-revenue-cr 3100 \
           --post-capex-note "large-generator capacity, calendar 2027 completion / 2028 ramp-up"
 
-Pass --capacity-label to record what the capacity is measured in (e.g. "MT/annum",
-"garments/annum", "MW", "million fiber-km/annum"), purely for the printed output — it
-isn't used in the math for Mode A.
-
-The industry's own physical-unit figures are the primary reader-facing number (a bare
-utilization % without the underlying unit hides real information) — report them
-alongside whichever mode you use:
-  - Mode B already reports the physical figures directly (--installed-capacity-units,
-    --units-produced) since they're the calculation inputs themselves.
-  - In Mode A (utilization % already known from management, revenue-based), also pass
-    --physical-installed-capacity and --physical-produced if the concall/investor
-    presentation separately disclosed the physical installed capacity and
-    production/sales volume (even though they aren't used in the revenue math) —
-    purely so the printed output and the report can lead with the physical unit rather
-    than the % alone.
-
-If the capacity is a shared pool that can be swung across multiple product variants
-rather than each variant having dedicated capacity, pass --multi-purpose-plant (and
-optionally --multi-purpose-note with specifics) — the output then carries an explicit
-flag that the utilization figure describes an aggregate, shared pool, not any single
-product variant's dedicated capacity.
+See --help for the full flag list (physical-unit display flags, multi-purpose-plant
+flag, post-capex fallback). One preference rule not obvious from the flag names alone:
+prefer --post-capex-max-revenue-cr (a management-disclosed figure) over
+--post-capex-capacity-increase-pct (a derived fallback) whenever management gave a
+direct number — don't re-derive one they already stated.
 """
 import argparse
 import json

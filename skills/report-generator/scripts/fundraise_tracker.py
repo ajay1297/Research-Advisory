@@ -22,24 +22,24 @@ allotment. That is a fact worth stating plainly, not softening.
 Runs entirely locally, no network required.
 
 Usage:
-    # log a fresh raise
     python3 fundraise_tracker.py <company_slug> add-raise \
         --date "2025-11-15" --instrument warrants --allottee promoter \
         --amount-cr 127.5 --units 1500000 --price-per-unit 850 \
         --upfront-pct 25 --purpose "capex expansion" \
         --source "BSE announcement 15 Nov 2025"
 
-    # update status once the outcome is known (warrants convert or lapse;
-    # debt gets repaid/refinanced)
     python3 fundraise_tracker.py <company_slug> update-status --id 0 \
         --status lapsed --note "Promoter did not pay remaining 75% within the 18-month window"
 
-    # print the full raise history with flags
     python3 fundraise_tracker.py <company_slug> report [--cmp 910]
 """
 import argparse
 import json
 import os
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from run_context import get_run_id  # noqa: E402
 
 INSTRUMENTS = [
     "preferential_equity", "warrants", "ncd", "term_loan",
@@ -89,6 +89,7 @@ def add_raise(args):
         "status": args.status or default_status,
         "note": args.note or "",
         "investors": args.investors or "",
+        "run_id": get_run_id(),
     }
     data["raises"].append(entry)
     save(path, data)

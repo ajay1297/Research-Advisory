@@ -51,6 +51,12 @@ def main():
     parser.add_argument("output_txt")
     parser.add_argument("--workers", type=int, default=None,
                          help="Default: min(8, cpu_count())")
+    parser.add_argument("--expect-name",
+                         help="cheap identity check: verify this string appears "
+                              "(case-insensitive) in the first 2 pages before running "
+                              "the full parallel extraction. See pdf_to_text.py for why "
+                              "this matters — a wrong-company PDF fetched from a search "
+                              "result is otherwise only caught after the full extraction.")
     args = parser.parse_args()
 
     try:
@@ -62,6 +68,14 @@ def main():
 
     with pdfplumber.open(args.input_pdf) as pdf:
         total = len(pdf.pages)
+        if args.expect_name:
+            scout_pages = pdf.pages[:min(2, total)]
+            scout_text = "\n".join((p.extract_text() or "") for p in scout_pages).lower()
+            if args.expect_name.lower() not in scout_text:
+                print(f"IDENTITY CHECK FAILED: '{args.expect_name}' not found in the first "
+                      f"2 pages of {args.input_pdf}. Refusing to run the full parallel "
+                      f"extraction on what looks like the wrong document.", file=sys.stderr)
+                sys.exit(2)
 
     workers = args.workers or min(8, os.cpu_count() or 4)
     workers = max(1, min(workers, total))
@@ -91,7 +105,15 @@ def main():
         sys.exit(1)
 
     ordered_text = "\n".join(results[lo] for lo in expected_los)
+    header = (
+        "=== DO NOT Read() THIS FILE DIRECTLY — grep it instead ===\n"
+        "This is a full-document text extraction and may run to thousands of lines.\n"
+        "Per SKILL.md's token-discipline rule: grep -n \"<keyword>\" -C3 this file for the\n"
+        "section you need, then Read() only the specific line range that surfaces.\n"
+        "===========================================================\n"
+    )
     with open(args.output_txt, "w", encoding="utf-8") as f:
+        f.write(header)
         f.write(ordered_text)
 
     print(f"Wrote {args.output_txt} ({total} pages of {total} total, "
