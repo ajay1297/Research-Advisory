@@ -263,13 +263,19 @@ This is the step that makes regeneration cheap. Never re-run the full pipeline o
 report you've already generated for this company.
 
 1. Fetch screener.in's Documents/Concalls tab only (not the transcript itself yet) to
-   see the latest concall label (e.g. "May 2026").
+   find the latest quarter's **full date** — e.g. `2026-04-29`, not "May 2026" or
+   "Q4 FY26." A month/quarter label is genuinely ambiguous for the string-equality
+   comparison `check_freshness.py` does (two results announced in the same month
+   collide; screener.in's own label wording can drift) — always resolve to the
+   actual filing/call date before passing it in. If the company doesn't hold a
+   concall at all, use the results filing date instead — see
+   `reference/source_playbook.md`'s "If the company doesn't hold concalls" section.
 2. If the user's request explicitly asked for a from-scratch rebuild (see "How to
    trigger" above), skip straight to running
    `python3 scripts/check_freshness.py <company_slug> --force` — this returns
-   `force_full` regardless of the label, and every source gets refetched/rebuilt as
+   `force_full` regardless of the date, and every source gets refetched/rebuilt as
    described there. Otherwise run
-   `python3 scripts/check_freshness.py <company_slug> --latest-seen "<label>"`.
+   `python3 scripts/check_freshness.py <company_slug> --latest-seen "<YYYY-MM-DD>"`.
    - `no_state` → this is the first run for this company. Do the full pipeline below.
    - `force_full` → user explicitly asked to rebuild from scratch. Refetch every
      source document and rebuild every section — do not reuse anything from the
@@ -312,7 +318,9 @@ report you've already generated for this company.
      go narrower than this default if the user explicitly asks for something
      lighter/faster in that specific request.
 3. After finishing a run (full or incremental), call
-   `python3 scripts/check_freshness.py <company_slug> --mark-processed "<label>" --price <price>`.
+   `python3 scripts/check_freshness.py <company_slug> --mark-processed "<YYYY-MM-DD>"
+   --price <price>` — same full-date requirement as step 1, since this is exactly
+   what a future run's `--latest-seen` gets string-compared against.
 
 ## Source pipeline (only run the parts Step 0 says are needed)
 
@@ -603,7 +611,8 @@ figure.
 
 **Industry Tailwinds/Headwinds** — per `reference/source_playbook.md`, search outward
 (peers, sector bodies, rating-agency sector notes), 2-4 bullets, one source each. A
-quick LinkedIn/X check on the company's own official page (per
+quick X (Twitter) check on the company's own official page — LinkedIn is
+login-walled and not usable — (per
 `reference/source_playbook.md`) can also surface something genuinely noteworthy not
 yet in any filing — a leadership hire, an order win, a facility inauguration. Fold a
 real finding into whichever section it actually belongs to (this one if sector-wide,
@@ -1026,7 +1035,17 @@ silently" above gets mechanically enforced rather than left to memory:
   without it once incorrectly claimed no TAM was disclosed when the investor
   presentation had one all along). Annual reports are grouped by document identity
   (stripping page-range chunk suffixes) rather than counted per file, so 6 chunks
-  of one document correctly count as 1 report, not 6.
+  of one document correctly count as 1 report, not 6. **Survives `sources/` being
+  deleted**: it now falls back to `research_cache/<slug>/source_manifest.json` —
+  a small, durable log of every document ever fetched/extracted, logged via
+  `scripts/source_manifest.py add-document` right after each fetch (see
+  `reference/source_playbook.md`'s "Concall transcripts" and "Annual reports"
+  sections). If both `sources/` and the manifest have counts, it takes the max of
+  the two (either could be the more complete one). Deleting `sources/` after a
+  report is built no longer makes this check regress to a false "nothing was ever
+  sourced" — but it still can't recover `verify_report.py quotes`'s ability to
+  re-verify a quote's exact wording, since that needs the actual text, not just
+  metadata about it.
 - **`ratings <company_slug> [--months 6]`** — checks `rating_history.json`'s most
   recent logged entry is within the last 6 months. This is a **recency-of-check**
   guardrail, not a lookback limit on what gets *shown* (the Promoter/Governance
@@ -1035,6 +1054,13 @@ silently" above gets mechanically enforced rather than left to memory:
   covering agency's site for the last 6 months, not just trust a stale cache.
   Always informational (WARN, never FAILs the run) since an old entry could
   legitimately mean nothing changed, not that the check was skipped.
+- **`announcements <company_slug> [--months 6]`** — same recency-of-check pattern as
+  `ratings`, for the BSE/NSE announcements sweep (order wins, management changes,
+  client wins, capex approvals — see `reference/source_playbook.md`'s "Announcements
+  sweep" section for the full materiality checklist and where each finding type
+  belongs in the report). Log a sweep every run via `source_manifest.py <slug>
+  add-document --type announcement_sweep --label "6-month sweep" --date
+  "<date checked>"`. Always informational, same reasoning as `ratings`.
 - **`paragraphs <report.md> [--max-words 160]`** — flags any paragraph exceeding
   ~10 rendered lines (approximated as 160 words) anywhere in the report, by
   section. Per `reference/report_format.md`'s "Paragraph length limit" rule, a
@@ -1045,6 +1071,17 @@ silently" above gets mechanically enforced rather than left to memory:
   — the Verdict section stays a short paragraph by its own spec even when other
   sections default to bullets, so exceeding the limit there means evidence-
   recapping crept in, not that it needs bulleting.
+- **`social <company_slug> [--report-path report.md] [--months 3]`** — same
+  recency-of-check pattern as `ratings`/`announcements`, for the LinkedIn/X sweep
+  (see `reference/source_playbook.md`'s "LinkedIn / X (Twitter)" section). Uses a
+  **3-month** window, tighter than the 6-month ratings/announcements window,
+  since social posts are a discovery channel, not a formal disclosure record. Log
+  a check every run via `source_manifest.py <slug> add-document --type
+  social_media_check --label "LinkedIn/X sweep" --date "<date checked>"`. If
+  `--report-path` is given, also scans the report text for "LinkedIn post,
+  <date>" / "X post, <date>" citations and flags any older than the window as a
+  possible stale carryover from a prior run. Always informational, same
+  reasoning as `ratings`.
 
 **Every guardrail above that returns FAIL is a stop-and-fix, not a note-and-continue
 — a deterministic check with no consequence for failing isn't actually a guardrail,

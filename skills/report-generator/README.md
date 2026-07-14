@@ -8,6 +8,7 @@ source of truth.
 ## Contents
 
 - [Architecture overview](#architecture-overview)
+- [Claude vs. Python — who does what](#claude-vs-python--who-does-what)
 - [End-to-end flow — prompt to PDF](#end-to-end-flow--prompt-to-pdf)
 - [Directory structure](#directory-structure)
 - [Persistent state — how regeneration stays cheap](#persistent-state--how-regeneration-stays-cheap)
@@ -30,73 +31,145 @@ model context (PDF text extraction, structured-fact bookkeeping, arithmetic, PDF
 rendering). The four moving parts:
 
 ```
-+------------------------------------------------------------------------+
-|  YOU                                                                    |
-|  "research <Company>" / "refresh <Company>'s report" / upload a PDF     |
-+------------------------------------------------------------------------+
-                                  |
-                                  v
-+------------------------------------------------------------------------+
-|  CLAUDE (this skill's instructions)                                     |
-|  SKILL.md          -- the pipeline, step by step                        |
-|  reference/         -- report_format.md (what to write, section by      |
-|                         section) + source_playbook.md (where to get     |
-|                         each fact, and the fallback path if a source    |
-|                         is stuck)                                       |
-+------------------------------------------------------------------------+
-                |                                  |
-                v                                  v
-+----------------------------------+   +----------------------------------+
-|  EXTERNAL SOURCES                 |   |  LOCAL SCRIPTS (scripts/*.py)     |
-|  screener.in                      |   |  pdf_to_text.py                  |
-|  BSE / NSE (filings, results)     |   |  extract_theme_quotes.py         |
-|  Concall transcript (PDF)         |   |  guidance_tracker.py             |
-|  Investor presentation (PDF)      |   |  fundraise_tracker.py            |
-|  Annual report (PDF)              |   |  rating_tracker.py               |
-|  CRISIL / ICRA / CARE / Infomerics|   |  litigation_tracker.py           |
-|  Peer companies (WebSearch)       |   |  capacity_utilization.py         |
-|  Technicals provider              |   |  forward_pe.py                   |
-|  (no raw curl/requests -- always  |   |  check_freshness.py              |
-|   via WebFetch/WebSearch/browser) |   |  charts.py (opt-in only)         |
-+----------------------------------+   |  html_helpers.py                 |
-                |                      |  report_to_pdf.py (legacy         |
-                |                      |   fallback, reportlab)            |
-                |                      +----------------------------------+
-                |                                  |
-                v                                  v
-+------------------------------------------------------------------------+
-|  ~/.report-generator/sources/<company_slug>/  (OUTSIDE the plugin)       |
-|  *.txt / *.pdf / *.bm25.pkl -- fetched source documents + search index  |
-|  (bulky, regenerable by refetching -- not part of research_cache below, |
-|   so research_cache/ stays small and shareable on its own)              |
-+------------------------------------------------------------------------+
-                                  |
-                                  v
-+------------------------------------------------------------------------+
-|  ~/.report-generator/research_cache/<company_slug>/  (OUTSIDE the plugin)|
-|  *_history.json    -- durable, append-only fact logs (see below)        |
-|  state.json         -- freshness marker (last quarter processed)        |
-|  quotes.json, bullets.json -- synthesized outlook-quote extracts        |
-|  report.md          -- the drafted report, source of truth              |
-+------------------------------------------------------------------------+
-                                  |
-                                  v
-+------------------------------------------------------------------------+
-|  PDF ASSEMBLY (WeasyPrint via html_helpers.py + assets/report_style.css)|
-|  cover badge -> cards -> outlook -> 19 sections -> thesis -> verdict     |
-+------------------------------------------------------------------------+
-                                  |
-                                  v
-+------------------------------------------------------------------------+
-|  ~/.report-generator/output/<company_slug>/  (OUTSIDE the plugin)        |
-|  <Company>_report.md                                                    |
-|  <Company>_report.pdf                                                   |
-+------------------------------------------------------------------------+
++------------------------------------------------------------------------------+
+|  YOU                                                                         |
+|  "research <Company>" / "refresh <Company>'s report" / upload a PDF          |
++------------------------------------------------------------------------------+
+                                     |
+                                     v
++------------------------------------------------------------------------------+
+|  CLAUDE -- orchestrates every step, owns every judgment call                 |
+|  Reads: SKILL.md (the pipeline) + reference/report_format.md (what to        |
+|  write, section by section) + reference/source_playbook.md (where to get     |
+|  each fact, and the fallback path if a source is stuck)                      |
+|  Decides: what to fetch, which source to trust, what a guidance status       |
+|  means, what belongs in the report -- see "Claude vs. Python" above for      |
+|  the full division of labor                                                  |
++------------------------------------------------------------------------------+
+                                     |
+                                     v
++------------------------------------------------------------------------------+
+|  EXTERNAL SOURCES -- fetched via WebSearch/WebFetch/Chrome, never raw curl   |
+|  (sandbox network is allowlisted; direct calls to arbitrary domains 403)     |
+|                                                                              |
+|  - screener.in            price, ratios, financials, shareholding, peers     |
+|  - BSE / NSE announcements last 6 months, materiality-assessed every run     |
+|                             (order wins, KMP changes, client wins, etc.)     |
+|  - Concall transcripts     standard depth: last 6 quarters (no-concall       |
+|                             companies use the results date instead)          |
+|  - Investor presentations  standard depth: last 6 quarters (same as above)   |
+|  - Annual reports          standard depth: last 2 fiscal years, full extract |
+|  - CRISIL/ICRA/CARE/...    actively rechecked every run, last 6 months       |
+|  - Broker/agency reports   USER-UPLOADED ONLY, never fetched -- inline-      |
+|                             tagged [BROKER_DDMMYYYY], no dedicated section   |
+|  - Google Finance          universal TICKER:EXCHANGE lookup for a foreign    |
+|                             marquee customer's own listing status/concalls   |
+|  - Peers, technicals       WebSearch / a technicals provider                 |
++------------------------------------------------------------------------------+
+                                     |
+                                     v
++------------------------------------------------------------------------------+
+|  LOCAL SCRIPTS (scripts/*.py) -- deterministic: same input, same output,     |
+|  every time. No network except the tracker scripts' local file I/O.          |
+|                                                                              |
+|  Extraction & search        pdf_to_text.py, pdf_to_text_parallel.py          |
+|                              (byte-identical, multi-core for 150+ pg PDFs),  |
+|                              semantic_search.py (BM25 -- lexical, not an     |
+|                              embedding model), extract_theme_quotes.py       |
+|  Fact trackers               guidance_tracker.py, fundraise_tracker.py,      |
+|                              rating_tracker.py, litigation_tracker.py        |
+|  Arithmetic                  forward_pe.py, capacity_utilization.py          |
+|  PDF assembly                html_helpers.py + WeasyPrint (primary),         |
+|                              report_to_pdf.py (legacy reportlab fallback),   |
+|                              charts.py (opt-in only, not default)            |
+|  State & bookkeeping         check_freshness.py, source_manifest.py          |
++------------------------------------------------------------------------------+
+                                     |
+                                     v
++------------------------------------------------------------------------------+
+|  TWO-TIER STORAGE (both OUTSIDE the plugin, under ~/.report-generator/)      |
+|                                                                              |
+|  sources/<slug>/                        research_cache/<slug>/               |
+|  bulky, mechanically regenerable        small, judgment-based, worth keeping |
+|  *.pdf / *.txt / *.bm25.pkl             *_history.json (durable fact logs)   |
+|  customers/<peer>/ (4-qtr marquee-      candidate_quotes/*.json              |
+|   customer concalls, if listed)         quotes.json, bullets.json            |
+|  NOT backed up -- safe to delete        source_manifest.json (survives       |
+|                                           sources/ deletion, see below)      |
+|                                          state.json, report.md               |
++------------------------------------------------------------------------------+
+                                     |
+                                     v
++------------------------------------------------------------------------------+
+|  PDF ASSEMBLY -- cover badge -> stat card grid -> flow diagram -> outlook -> |
+|  19 sections -> investment thesis -> verdict -> sources list                 |
+|  Zero page_break() calls anywhere (a forced break guarantees dead            |
+|  whitespace on whatever page it interrupts -- banned outright, not just      |
+|  limited to one "safe" use)                                                  |
++------------------------------------------------------------------------------+
+                                     |
+                                     v
++------------------------------------------------------------------------------+
+|  DETERMINISTIC GUARDRAILS -- verify_report.py, 18 checks in 3 tiers, gates   |
+|  delivery (FAIL = stop-and-fix, not note-and-continue)                       |
+|                                                                              |
+|  Input       sniff (classify an uploaded PDF before routing), slug (path     |
+|               safety)                                                        |
+|  Execution   scope (no writes inside the plugin's own directory),            |
+|               reproduction (no verbatim copying from a broker source)        |
+|  Output      html, pdf, report, quotes, disclaimer, sources, freshness,      |
+|               extraction, depth (falls back to source_manifest.json if       |
+|               sources/ was deleted), whitespace, ratings, announcements,     |
+|               paragraphs                                                     |
++------------------------------------------------------------------------------+
+                                     |
+                                     v
++------------------------------------------------------------------------------+
+|  ~/.report-generator/output/<company_slug>/  (OUTSIDE the plugin)            |
+|  <Company>_report.md   +   <Company>_report.pdf                              |
++------------------------------------------------------------------------------+
+                                     |
+                                     v
+                              DELIVERED TO YOU
 ```
 
 Nothing in this diagram ever writes inside the plugin's own `skills/report-generator/`
 directory — every generated file lands under `~/.report-generator/` instead (see
-Directory structure below).
+Directory structure below). See "Claude vs. Python — who does what" above for exactly
+which side of each box owns the actual decision-making versus the mechanical execution.
+
+## Claude vs. Python — who does what
+
+The pipeline is a deliberate split: **Claude does everything that requires judgment,
+Python does everything that's mechanical and must be identical every time it runs.**
+Neither side does the other's job — Claude never hand-computes a BM25 score or
+hand-writes tracker JSON, and no script ever decides whether guidance was "met" or
+what a report's Verdict should say. This is also the exact same principle behind the
+`sources/` vs `research_cache/` directory split (see below): `sources/` is what a
+script alone can regenerate from a PDF with zero reasoning; `research_cache/` is what
+needed a mind to produce, even where a script helped store it correctly.
+
+| Step | Claude (judgment) | Python (deterministic) |
+|---|---|---|
+| Deciding what to fetch, from where | Chooses the source, the search query, when to retry vs. fall back | — (no script ever makes a network call; fetching goes through `WebSearch`/`WebFetch`/browser tools directly) |
+| PDF → text extraction | — | `pdf_to_text.py` / `pdf_to_text_parallel.py` — full extraction, byte-identical output every run, verified against the source PDF's actual page count |
+| Pre-filtering a transcript to candidate quotes | — | `extract_theme_quotes.py` — regex/heuristic pattern matching, deliberately over-inclusive, no understanding of what's actually important |
+| Selecting the 2-3 real quotes that go in the report | Reads the candidates, judges which are worth using, verifies each is an exact substring of the source | — |
+| Keyword search coming up empty | Decides *when* to escalate past grep | `semantic_search.py` — BM25 relevance scoring is pure statistics (word frequency/document length), not semantic understanding — see "Does it make sense to use embeddings" discussion for why this isn't a neural/embedding model |
+| Logging guidance/fund raises/ratings/litigation | Decides the status (`on_track`/`missed`/`delayed`), decides which entry supersedes an earlier one, writes the analytical note | `guidance_tracker.py`, `fundraise_tracker.py`, `rating_tracker.py`, `litigation_tracker.py` — mechanical JSON append + `report()` formatting; the script has no opinion on whether guidance was actually met |
+| Forward PE / capacity-headroom arithmetic | Supplies the inputs (guided revenue, margin assumption) | `forward_pe.py`, `capacity_utilization.py` — the arithmetic itself |
+| Drafting `report.md` | **100% Claude** — every sentence, every bullet, every synthesis, the entire Investment Thesis Summary and Verdict | — |
+| Assembling the visual PDF | Calls the right `html_helpers.py` functions in the right order for each section | `html_helpers.py` + WeasyPrint — the actual HTML generation and PDF rendering are deterministic given the same function calls |
+| Verifying the output before delivery | Decides how to fix a FAIL | `verify_report.py` — all 18 checks are mechanical (grep for CSS markers, count words per page, diff quotes against source text, check file mtimes) — no LLM judgment in any of them |
+| Freshness state (first run / incremental / from-scratch) | Decides which path the user's phrasing calls for | `check_freshness.py` — mechanical state read/write once the path is chosen |
+| Recording what was fetched, for later audit | Decides *when* to log (right after each document is fetched/extracted) | `source_manifest.py` — mechanical append; the durable metadata record that lets sourcing depth stay verifiable even after `sources/` is deleted |
+
+**The tell for which side owns a given task**: if you deleted the file and reran the
+relevant script with the same input, would you get the same output back? If yes,
+it's Python's job (extraction, BM25 indexing, arithmetic, guardrail checks). If the
+answer depends on reading and understanding the source material, it's Claude's job
+(drafting, status judgments, source selection) — no script could reproduce it without
+re-doing the reasoning.
 
 ## End-to-end flow — prompt to PDF
 
@@ -287,6 +360,10 @@ skills/report-generator/           (this skill's directory, inside the Research-
 |   |                             distinct from candidate_quotes/ above
 |   |-- bullets.json              Synthesized outlook bullets built from quotes.json
 |   |-- state.json                Last quarter processed, last price used
+|   |-- source_manifest.json      Durable log of every document ever fetched --
+|   |                             type, label, date, page coverage -- survives
+|   |                             sources/ being deleted, so depth/coverage
+|   |                             guardrails keep working after cleanup
 |   `-- report.md                 The drafted report (source of truth)
 `-- output/<company_slug>/           User-facing deliverables only, created
     |                                locally on your first run
@@ -338,7 +415,8 @@ reset. "From scratch" describes the report content, not the historical fact log.
 | `pdf_to_text.py` | Convert a fetched PDF to plain text (full extraction by default; `--pages` only for TOC scouting or re-extracting an already-located range) | No |
 | `pdf_to_text_parallel.py` | Same full-document extraction as `pdf_to_text.py`, split across worker processes for large (150+ page) PDFs — verified byte-identical output, refuses to write a partial file if a worker fails | No |
 | `semantic_search.py` | BM25-ranked relevance search over an extracted `.txt` when a grep keyword guess plausibly missed something due to phrasing | No |
-| `verify_report.py` | **Mandatory** deterministic guardrails, 16 subcommands in 3 tiers — see `SKILL.md`'s "Deterministic Guardrails" section: **Input** (`sniff` classifies an uploaded PDF's type before routing it; `slug` validates a company slug is filesystem-safe) — **Execution** (`scope` confirms no file was written inside the plugin's own directory; `reproduction` confirms no verbatim multi-word copy from a broker source) — **Output** (`html` confirms report.html has the required html_helpers.py CSS markers; `pdf` confirms producer/page-count; `report` confirms sections present + broker tags appear; `quotes` confirms every quoted outlook string is verbatim against a source `.txt`; `disclaimer` confirms the required disclaimer language; `sources` confirms the sources/research_cache split; `freshness` confirms `--mark-processed` was called; `extraction` confirms an annual report's extraction covers page 1 through the real last page; `depth` confirms the standard 6-quarter/2-AR/6-investor-presentation sourcing depth, grouping chunked annual-report extractions by document identity; `whitespace` confirms no interior or final page is dead/mostly-blank — only the cover page may be sparse; `ratings` confirms a rating-agency recency check within the last 6 months, informational only; `paragraphs` flags any paragraph exceeding ~10 rendered lines report-wide, with Verdict-specific "trim, don't bullet" guidance) | No |
+| `verify_report.py` | **Mandatory** deterministic guardrails, 18 subcommands in 3 tiers — see `SKILL.md`'s "Deterministic Guardrails" section: **Input** (`sniff` classifies an uploaded PDF's type before routing it; `slug` validates a company slug is filesystem-safe) — **Execution** (`scope` confirms no file was written inside the plugin's own directory; `reproduction` confirms no verbatim multi-word copy from a broker source) — **Output** (`html` confirms report.html has the required html_helpers.py CSS markers; `pdf` confirms producer/page-count; `report` confirms sections present + broker tags appear; `quotes` confirms every quoted outlook string is verbatim against a source `.txt`; `disclaimer` confirms the required disclaimer language; `sources` confirms the sources/research_cache split; `freshness` confirms `--mark-processed` was called; `extraction` confirms an annual report's extraction covers page 1 through the real last page; `depth` confirms the standard 6-quarter/2-AR/6-investor-presentation sourcing depth, grouping chunked annual-report extractions by document identity and falling back to `source_manifest.json` if `sources/` has since been deleted; `whitespace` confirms no interior or final page is dead/mostly-blank — only the cover page may be sparse; `ratings` confirms a rating-agency recency check within the last 6 months, informational only; `announcements` confirms a BSE/NSE announcements-sweep recency check within the last 6 months, same pattern as `ratings`; `social` confirms a LinkedIn/X sweep recency check within the last 3 months and flags stale (>3-month-old) LinkedIn/X citations still present in the report text; `paragraphs` flags any paragraph exceeding ~10 rendered lines report-wide, with Verdict-specific "trim, don't bullet" guidance) | No |
+| `source_manifest.py` | Durable, small log of every document ever fetched/extracted (type, label, date, page coverage) in `research_cache/<slug>/source_manifest.json` — logged once per document right after extraction, alongside saving to `sources/`. Lets `verify_report.py depth` keep working after `sources/` is deleted to save space; does not substitute for `sources/` when re-verifying exact quote text, which needs real content, not metadata | No |
 | `extract_theme_quotes.py` | Bucket transcript lines into near/medium/long-term candidate quotes | No |
 | `guidance_tracker.py` | Log/report outlook items and their status pointers | No |
 | `fundraise_tracker.py` | Log/report fund raises, named allottees, lapse flags | No |

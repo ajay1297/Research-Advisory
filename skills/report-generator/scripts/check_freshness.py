@@ -6,8 +6,12 @@ The point: regenerating a report should NOT re-fetch and re-process every histor
 concall/annual report every time. Each company has a small state.json recording what
 was last processed. On a regenerate request, Claude fetches only the *listing* of
 available concalls from screener.in's Documents tab (cheap — one page, no PDFs) and
-passes the latest label seen there into this script. The script diffs that against
-state.json and tells Claude exactly what to do next:
+passes the latest quarter's FULL DATE (YYYY-MM-DD) seen there into this script — never
+a month/quarter label like "May 2026" or "Q4 FY26", which is genuinely ambiguous (two
+results in the same month collide; screener.in's own label wording can drift). If the
+company doesn't hold a concall, use the results filing date instead — see
+reference/source_playbook.md's "If the company doesn't hold concalls" section. The
+script diffs the date against state.json and tells Claude exactly what to do next:
 
   - "up_to_date": nothing changed, reuse the cached report.md as-is (or just rerun
     forward_pe.py if the user supplied a new price — that alone doesn't need a refetch).
@@ -27,14 +31,14 @@ Runs entirely locally, no network required — the actual "what's the latest qua
 check is a WebSearch/web_fetch call Claude makes separately and passes in here.
 
 Usage:
-    # check
-    python3 check_freshness.py <company_slug> --latest-seen "May 2026"
+    # check (full date, not "May 2026")
+    python3 check_freshness.py <company_slug> --latest-seen "2026-04-29"
 
     # force a from-scratch rebuild regardless of cached state
     python3 check_freshness.py <company_slug> --force
 
     # after finishing processing, record what's now current
-    python3 check_freshness.py <company_slug> --mark-processed "May 2026" --price 1235
+    python3 check_freshness.py <company_slug> --mark-processed "2026-04-29" --price 1235
 """
 import argparse
 import json
@@ -58,11 +62,24 @@ def load(path: str):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("company_slug")
-    parser.add_argument("--latest-seen", help="latest concall/quarter label seen on screener.in just now")
+    parser.add_argument("--latest-seen",
+                         help="the latest quarter's FULL DATE (YYYY-MM-DD), not a month/quarter "
+                              "label like 'May 2026' or 'Q4 FY26' — use the concall date if the "
+                              "company holds one, otherwise the results filing date. A month-only "
+                              "or quarter-only label is genuinely ambiguous (screener.in's own "
+                              "label formatting can drift, and 'May 2026' can't distinguish two "
+                              "results announced in the same month) — the comparison in this "
+                              "script is a plain string match, so precision here is what keeps "
+                              "up_to_date/new_quarter detection reliable, not any date logic in "
+                              "the script itself.")
     parser.add_argument("--force", action="store_true",
                          help="user asked to regenerate from scratch — ignore cached state, "
                               "return force_full regardless of --latest-seen")
-    parser.add_argument("--mark-processed", help="record this label as now fully processed")
+    parser.add_argument("--mark-processed",
+                         help="record this FULL DATE (YYYY-MM-DD) as now fully processed — same "
+                              "precision requirement as --latest-seen; whatever gets written here "
+                              "is exactly what a future run's --latest-seen gets string-compared "
+                              "against")
     parser.add_argument("--price", type=float, help="price to record alongside --mark-processed")
     parser.add_argument("--lookback-months", type=int, default=18,
                          help="how far back guidance-tracker/report windows should look on "

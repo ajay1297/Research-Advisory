@@ -82,11 +82,64 @@ aggregators.
 3. If web_fetch can't retrieve a binary PDF cleanly, ask the user to download and drop it
    in the workspace folder instead, or use Chrome to navigate + download.
 4. Run `scripts/pdf_to_text.py` on the saved PDF (local, no network).
+5. Log it: `python3 scripts/source_manifest.py <company_slug> add-document --type
+   concall --label "<e.g. Q4 FY26>" --date "<call date>" --filename <name.txt>` —
+   see "Annual reports" below for why this matters (it's what lets sourcing depth
+   stay verifiable even after `sources/` is later deleted).
 
 ## Investor presentations
 
 Same path as concall transcripts — usually a PDF from the same BSE filing/IR page/
-screener.in Documents tab for the same quarter.
+screener.in Documents tab for the same quarter. Log it the same way, with
+`--type investor_presentation`.
+
+## If the company doesn't hold concalls
+
+**Many smaller listed companies never hold an earnings call at all — this is common,
+not an error, and the whole pipeline needs to keep working without one.** Check
+screener.in's Documents/Concalls tab: if it's empty, or only ever shows "Transcript
+not available" / no entries across several quarters, treat this as confirmed rather
+than retrying repeatedly — one check is enough to establish the pattern.
+
+**What changes when there's no concall:**
+
+- **The freshness label** (`check_freshness.py --latest-seen`) uses the latest
+  **quarterly/annual results filing date** instead of a concall date — results still
+  get filed under Regulation 33 (SEBI LODR) even without a call, and that's a real,
+  regularly-recurring date to track freshness against. Still a full date
+  (`YYYY-MM-DD`), same requirement as the concall case.
+- **The Near/Medium/Long Term outlook's source shifts** — without management's own
+  spoken forward-looking commentary, the outlook has to be built from whatever
+  written forward-looking language the company *does* disclose:
+  - The **results filing itself** — some companies include a short MD&A-style
+    paragraph or press release alongside the numbers, even without a call.
+  - **Investor presentations**, if published independently of a call (some companies
+    that skip calls still publish a slide deck) — check for this specifically,
+    don't assume "no concall" means "no investor presentation" too.
+  - The **annual report's MD&A section** — this becomes a more load-bearing source
+    than usual, since it may be the *only* place management states a forward view in
+    their own words.
+  - **BSE/NSE announcements** (see "Announcements sweep" below) — an order win,
+    capacity expansion, or management commentary in an announcement can be the closest
+    thing to forward guidance available.
+  - If none of these yield genuine forward-looking language, the Near/Medium/Long
+    Term sections should say so explicitly rather than forcing a bullet from thin
+    material — "management does not hold concalls and no forward-looking guidance was
+    found in the results filing, investor materials, or recent announcements" is a
+    legitimate, statable finding per report_format.md's rule that a bullet needs a
+    real verbatim-quotable source.
+- **The guidance-reliability track record (Promoter/Governance) will be thinner or
+  absent** — without a call, there's no verbatim "we guided X, delivered Y" chain to
+  reconstruct via `guidance_tracker.py`. Say this plainly rather than presenting an
+  empty guidance-history table as if it were a clean track record; a company that
+  simply never states verifiable forward guidance is a different (and worth-noting)
+  governance profile from one that guides and delivers reliably.
+- **State this explicitly in the Company Summary or Near Term section, once, rather
+  than leaving the reader to infer it from a thin outlook** — e.g. "STL Ltd does not
+  hold quarterly earnings calls; this report's near-term outlook draws instead from
+  [whichever of the above sources actually yielded something]." This is exactly the
+  kind of scope fact the "Never drop anything silently" rule in `SKILL.md` expects
+  stated, not left implicit.
 
 ## Annual reports
 
@@ -103,7 +156,24 @@ covered page 1 through the document's real last page (catching a scouting/partia
 range mistaken for the full extraction), and it needs the source PDF still on disk
 to compare against. If the PDF isn't saved, that check can't run at all, and a
 partial extraction can slip through unnoticed — which has already happened once in
-practice. The "don't read the whole thing" discipline applies to what
+practice.
+
+**Log every fetched-and-extracted document to `source_manifest.py`, not just annual
+reports — concalls and investor presentations too.** Immediately after extraction
+(and, for annual reports, right after running the `extraction` coverage check above),
+run `python3 scripts/source_manifest.py <company_slug> add-document --type
+<concall|investor_presentation|annual_report> --label "<e.g. Q4 FY26>" --date
+"<the document's own date>" --filename <name.txt> [--pages-total N
+--pages-extracted-start N --pages-extracted-end N --extraction-verified]`. This is
+what lets `scripts/verify_report.py depth` (and, implicitly, any future audit of
+"was this company's sourcing depth ever actually confirmed") keep working **even
+after `sources/<company_slug>/` is later deleted** — the manifest lives in
+`research_cache/<company_slug>/`, which is the small, kept-around state, not the
+bulky regenerable state. It does not substitute for `sources/` entirely — a deleted
+`sources/` still means `scripts/verify_report.py quotes` can no longer re-verify a
+quote's exact wording against the original text, since that needs the real content,
+not just metadata about it — but it does mean the depth/coverage story survives.
+The "don't read the whole thing" discipline applies to what
 you feed `extract_theme_quotes.py` and what you `Read()` into context, not to what
 gets extracted — grep the already-fully-extracted text for the MD&A section heading
 and only feed *that* slice to `extract_theme_quotes.py` (to avoid burning tokens
@@ -361,22 +431,55 @@ worth a line in Marquee & Niche Customers or the Capex/Milestones/Certifications
 Timeline (treat it as an achieved milestone) — a generic self-nominated award list
 adds little and isn't worth chasing hard.
 
-**LinkedIn / X (Twitter)** — the company's own official page/handle is a legitimate
+**LinkedIn / X (Twitter) — verified (2026-07) that access is page-type-dependent, not
+platform-dependent; check what kind of URL you actually have before deciding whether
+it's usable.**
+
+- **LinkedIn's listing pages are login-walled** — `linkedin.com/company/<name>/posts/`
+  redirects straight to a sign-up/sign-in page with no visible content underneath,
+  confirmed via direct navigation. There is no way to browse a company's LinkedIn feed
+  without an account, so don't try to discover posts this way.
+- **LinkedIn's individual post permalinks work without login** — a direct
+  `linkedin.com/posts/<company>-...-activity-<id>-...` URL (the kind returned by a
+  web search, or pasted by the user) loads the full post content — text, author,
+  timestamp, engagement counts — with no sign-in prompt, confirmed via direct
+  navigation on a real STL post. So: if you already have a specific post URL, fetch
+  it directly, it will work; if you only have the company name, don't try to browse
+  their LinkedIn page for one — run `WebSearch("<company name> linkedin")`, it
+  returns a mix of `linkedin.com/company/<name>` results (login-walled — skip these,
+  don't open them) and `linkedin.com/posts/<name>-...-activity-<id>-...` results
+  (open these directly). Confirmed on a real search: the same query surfaced both
+  types side by side, and every `/posts/.../activity-.../` link opened cleanly while
+  the `/company/...` links redirect to sign-up.
+- **X (Twitter) works** — a public company profile's recent posts load directly via
+  Claude in Chrome with no login required, confirmed via direct navigation (real,
+  current post content rendered).
+
+**Lookback window: 3 months.** Only surface posts dated within the last 3 months —
+older posts are either already reflected in a subsequent filing/concall or are stale
+by the time the report is read. This is tighter than the 6-month window used for
+ratings/BSE-NSE announcement rechecks, deliberately: social posts are a fast,
+low-friction discovery channel, not a formal disclosure record, so a shorter window
+keeps it to genuinely fresh, still-actionable news rather than pulling in things the
+report's other sections would already have caught.
+
+**How to use either**: the company's own official account/page is a legitimate
 primary-ish source for recent announcements not yet reflected in a filing (a new hire
-in a leadership role, a plant inauguration, an order-win post, a product launch) —
-cite it as "company LinkedIn/X post, <date>" like any other source. A *third-party*
-post (an employee, a customer, an analyst) is discovery-only — a lead to verify, not
-something to cite as fact on its own. **Run this check on every report** — it's quick
-(one targeted search, `<company name> linkedin OR twitter <year>` or `<company name>
-news <year>`, not a mandatory deep social-media audit), and skipping it entirely is
-the actual failure mode to avoid, not over-searching it. **Only surface what's
-genuinely noteworthy** — fold a real finding into the section it's actually relevant to
-(a new order/customer into Marquee & Niche Customers or the outlook, a facility/award
-into the Capex/Milestones Timeline, a leadership change into Promoter/Governance, a
-controversy or negative development into Key Risks) rather than manufacturing a new
-heading just because a search was run. If nothing noteworthy turns up, don't mention
-that the check was made — this tier is opportunistic corroboration, not a section that
-needs its own "nothing found" line the way litigation or TAM do.
+in a leadership role, a plant inauguration, an order-win or project-completion post, a
+product launch) — cite it as "company LinkedIn/X post, <date>" like any other source.
+A *third-party* post (an employee, a customer, an analyst) is discovery-only — a lead
+to verify, not something to cite as fact on its own. **Run this check on every
+report** — it's quick (navigate directly to `x.com/<handle>` if you know it, one
+targeted `WebSearch` for `<company name> linkedin OR twitter <year>` if you don't),
+and skipping it entirely is the actual failure mode to avoid, not over-searching it.
+**Only surface what's genuinely noteworthy** — fold a real finding into the section
+it's actually relevant to (a new order/customer/project into Marquee & Niche Customers
+or the outlook, a facility/award into the Capex/Milestones Timeline, a leadership
+change into Promoter/Governance, a controversy or negative development into Key
+Risks) rather than manufacturing a new heading just because a search was run. If
+nothing noteworthy turns up, don't mention that the check was made — this tier is
+opportunistic corroboration, not a section that needs its own "nothing found" line the
+way litigation or TAM do.
 
 ## Legal & litigation
 
@@ -982,6 +1085,66 @@ rather than gated behind trigger phrasing:
   shortfall — a WARN there is the prompt to either fetch what's missing or state the
   shortfall explicitly in the report, not something to notice only if someone asks
   later why a run came up short.
+
+## Announcements sweep — last 6 months, materiality-assessed (standing requirement)
+
+**Fetch every BSE/NSE corporate announcement from the last 6 months on every run, not
+just when something else prompts a look** — this is a standing part of the standard
+sourcing depth, the same status as the 6-quarter concall/investor-presentation window
+and the 6-month rating recheck, not an optional extra. Rating actions, fund raises,
+and litigation already get their own dedicated checks elsewhere in this playbook —
+this sweep is for the *rest* of what a company discloses: order wins, management
+changes, new client relationships, capacity/capex approvals, and anything else that
+moved the stock or the story between concalls.
+
+**Where to fetch it**: BSE (`https://www.bseindia.com/stock-share-price/<company>/
+<code>/corp-announcements/`) or NSE (`https://www.nseindia.com/companies-listing/
+corporate-filings-announcements`) — see "BSE / NSE filings" below for the fetch
+mechanics (fallback pattern, Chrome escalation if JS-rendered). Filter to the last 6
+months by announcement date.
+
+**Assess materiality before deciding what to fold in — most announcements are routine
+noise, and forcing all of them into the report would bury the ones that matter.**
+Two tiers:
+
+- **High materiality — actively look for these, and fold each one into the section it
+  actually belongs to, not a generic "announcements" dump:**
+  - **Order wins / large contract awards** → Near Term outlook (if recent enough to
+    be forward-looking) or the Capex/Milestones/Certifications Timeline (as an
+    achieved milestone) or Order Book (if it changes the disclosed backlog).
+  - **Management/KMP changes** (CEO, CFO, MD, or a board-level appointment/
+    resignation) → Promoter/Governance Track Record — a leadership change is
+    governance-relevant even without a wrongdoing angle; state it as a fact with the
+    effective date, and note if the announcement gives a reason (retirement,
+    resignation, expiry of term) or is silent on why.
+  - **New client relationships / client exits** → Marquee & Niche Customers (a new
+    named client) or Key Risks (a disclosed client exit/concentration change).
+  - **Capacity expansion / capex approvals** not already captured from the investor
+    presentation → Capex/Milestones/Certifications Timeline.
+  - **M&A, JV formation, or subsidiary/stake changes** → Value Chain Positioning (if
+    it changes the business's actual structure) and/or Capex/Milestones Timeline.
+  - **Regulatory action, show-cause notices, or exchange queries** (distinct from
+    litigation, which has its own tracker) → Key Risks.
+  - Anything that independently corroborates or contradicts a concall claim is
+    automatically high-materiality regardless of category — cross-reference it
+    explicitly rather than letting it sit unconnected.
+- **Low materiality — don't force these into the report just because they exist:**
+  routine board-meeting intimations with no substantive content, trading-window
+  closure/reopening notices, compliance certificates (e.g. reconciliation of share
+  capital), routine KYC/registrar updates, newspaper-publication confirmations. These
+  exist on every company's announcement feed and reading past the headline to confirm
+  they're genuinely routine (not, say, a board meeting intimation whose only content
+  turns out to be a material capex approval) is still worth a quick check — the
+  materiality judgment is about the actual content, not the announcement category
+  label BSE/NSE assigns it.
+
+**Log what you found and checked, don't just silently fold in what turned out to be
+material**: for each high-materiality announcement actually used in the report, note
+its date and BSE/NSE reference in the Sources list like any other citation. If the
+6-month sweep turned up genuinely nothing material, say so in one line (e.g. in the
+Capex/Milestones Timeline or Key Risks, wherever most relevant) rather than silently
+omitting any mention that the check was made — this is the same "Never drop anything
+silently" discipline applied to a sweep that legitimately came up empty.
 
 ## YouTube (supplementary, optional — not a primary source)
 
