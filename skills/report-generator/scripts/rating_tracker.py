@@ -35,10 +35,6 @@ Usage:
 import argparse
 import json
 import os
-import sys
-
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from run_context import get_run_id  # noqa: E402
 
 AGENCIES = ["crisil", "icra", "care", "india_ratings", "acuite", "brickwork", "other"]
 OUTLOOKS = ["stable", "positive", "negative", "watch_developing",
@@ -80,7 +76,6 @@ def add_rating(args):
         "action": args.action,
         "note": args.note or "",
         "source": args.source or "",
-        "run_id": get_run_id(),
     }
     data["ratings"].append(entry)
     save(path, data)

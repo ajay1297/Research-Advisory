@@ -9,23 +9,40 @@ The default, primary deliverable is an infographic-style PDF assembled as HTML a
 rendered with WeasyPrint — the same pattern as `scripts/charts.py` and
 `scripts/html_helpers.py`'s own docstrings, which live in this plugin's `scripts/`
 directory, paired with `assets/report_style.css`. The drafted markdown report (per
-`reference/report_sections.md`'s section-by-section spec) is still produced and cached as usual — see SKILL.md's
-"Save and cache" step — the HTML/PDF assembly consumes the same facts and figures, it
-doesn't replace the markdown as the source of truth for what was found.
+`reference/report_sections.md`'s section-by-section spec) is still produced and cached as usual — see
+`reference/step3_memorize.md`'s "Save and cache" step — the HTML/PDF assembly consumes
+the same facts and figures, it doesn't replace the markdown as the source of truth for
+what was found.
 
 **Tables are the default; charts are opt-in, not automatic.** Earlier drafts of this
 skill defaulted to a matplotlib chart in Financial Performance Summary, Capacity
 Utilization, the Promoter/Governance shareholding trend, and Promoter Fund Raises — this
 was reversed after the report itself came out too chart-heavy without a corresponding
-gain in clarity. **Financial Performance Summary, Segment-wise Performance, Order Book,
-Capacity Utilization & Headroom, the shareholding trend, and Promoter Fund Raises all
-render as `data_table()` only by default — no `charts.*` call for any of them unless
-the user explicitly asks for a visual/chart version.** `scripts/charts.py` still exists
-and still works if a chart is specifically requested for a given report, or if a
-genuinely long time series (10+ years) makes a table hard to scan — but that's now the
-exception, not the default. A one-off list of named allottees with exact amounts, or a
-detailed litigation/rating table, was always better as a dense `data_table()` anyway —
-charting it would lose precision the reader needs. Narrative sections (Company Summary,
+gain in clarity. **Financial Performance Summary, Order Book, Capacity Utilization &
+Headroom, the shareholding trend, and Promoter Fund Raises all render as `data_table()`
+only by default — no `charts.*` call for any of them unless the user explicitly asks
+for a visual/chart version.** `scripts/charts.py` still exists and still works if a
+chart is specifically requested for a given report, or if a genuinely long time series
+(10+ years) makes a table hard to scan — but that's now the exception, not the default.
+A one-off list of named allottees with exact amounts, or a detailed litigation/rating
+table, was always better as a dense `data_table()` anyway — charting it would lose
+precision the reader needs.
+
+**Two standing exceptions, always chart + table together, never chart-only:**
+Segment-wise Performance's **by-geography basis** (FY-vs-FY, % of total revenue) and
+Order Book's **business-wise composition breakdown** each get a `pie_chart()` call
+immediately after their `data_table()` — one pie per period/basis shown in the table
+(e.g. FY26 and FY25 each get their own pie for a geography split shown across two
+columns). The table stays mandatory regardless — the pie is additive, for the reader's
+at-a-glance read, not a replacement for the exact percentages, which belong in the table
+alone (see the pie_chart() docstring in `scripts/charts.py`; use `donut_chart()`
+instead, unchanged, for Promoter Fund Raises' fund-raise/ownership breakdowns per the
+existing convention above — the two are visually distinct so a reader can tell which
+kind of breakdown they're looking at). Only render the pie if the relevant basis is
+actually disclosed in a form with clean percentage/proportional splits summing sensibly
+to ~100% — don't force a pie onto a partial or non-exhaustive breakdown.
+
+Narrative sections (Company Summary,
 Situation Classification, Investment Thesis Summary, Key Risks) stay as text/
 `flag_list()`. **Marquee & Niche Customers and Manufacturing Locations & Physical
 Assets always render as a bullet list (`flag_list()` with `kind=''` or a plain `<ul>`),
@@ -76,7 +93,7 @@ spanning a page boundary normally is preferable to guaranteed dead space, every 
 import sys
 sys.path.insert(0, '<skill_dir>/scripts')
 from charts import revenue_profit_chart, quarterly_trend_chart, shareholding_chart, \
-    before_after_chart, donut_chart, line_compare_chart
+    before_after_chart, donut_chart, pie_chart, line_compare_chart
 from html_helpers import *
 
 body = ''

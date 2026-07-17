@@ -1,4 +1,4 @@
-# Report Sections Spec (the nineteen sections after the outlook)
+# Report Sections Spec (the eighteen sections after the outlook)
 
 Universal rules (Title, Cover, Company Summary, Situation Classification, Value Chain
 Positioning, Bullet rules, Paragraph length limit, Sourcing discipline) are in
@@ -9,7 +9,7 @@ in `reference/report_assembly.md`.
 
 ## Sections after the Near/Medium/Long Term outlook
 
-Append these nineteen sections, in this order, after Long Term. Each is conditional — skip
+Append these eighteen sections, in this order, after Long Term. Each is conditional — skip
 a section entirely (don't print an empty heading) if the underlying input isn't
 available, and say so in one line rather than silently omitting it (the sole exception
 is section 3, CDMO Pipeline, which is omitted with no mention at all for a non-CDMO
@@ -38,15 +38,6 @@ it with the same weight as the rating-agency or peer-concall corroboration used
 elsewhere in this report. State explicitly, per customer, whether such guidance was
 found or not (e.g. "No independently disclosed guidance from Style Bazaar was found in
 the sources reviewed") rather than silently omitting the check.
-
-**Export-shipment data as a supplementary lead** — for an exporting company, a quick
-check of an export/shipping-data aggregator (Volza, Seair Exim, ImportGenius, Zauba
-Corp — see `reference/source_playbook.md`) can surface actual shipment consignees,
-corroborating a named customer or surfacing one the company hasn't itself named. Label
-anything sourced this way distinctly ("per third-party export-shipment records, not
-disclosed by the company") rather than blending it into the company-disclosed list —
-same discipline as every other fact in this report, just with a third-party-data label
-attached.
 
 ### 2. Capex, Milestones & Certifications Timeline
 
@@ -81,14 +72,22 @@ pending scheme.
 
 ### 3. CDMO Pipeline (Phase 1 / 2 / 3 / Commercial)
 
-**Only include this section if the company is a CDMO (contract development and
-manufacturing organization) or has an explicit CDMO/CRAMS business line** — determine
-this from how the company describes its own business (concall, investor presentation,
-annual report), never from a keyword guess. For a non-CDMO company, omit this section
-entirely with no heading and no mention that it was skipped (unlike every other
-conditional section here, which states explicitly when data wasn't found — a molecule
-pipeline is simply not an applicable concept for a non-CDMO business, so there is
-nothing to flag).
+**Only include this section if the company is a pharmaceutical company** (or a
+pharma-sector subsidiary/division of a diversified group) **that is itself a CDMO
+(contract development and manufacturing organization) or has an explicit CDMO/CRAMS
+business line** — both conditions must hold, not either alone. "CDMO" as a term
+sometimes gets loosely applied outside pharma (e.g. an electronics or auto-components
+company describing itself as a contract manufacturer), and that is explicitly **not**
+this section — a Phase 1/2/3/Commercial molecule pipeline is a pharma-specific concept
+tied to drug development stages, not a general contract-manufacturing relationship.
+Determine pharma-CDMO status from how the company describes its own business (concall,
+investor presentation, annual report — an API/formulations/specialty-pharma company
+explicitly naming CDMO/CRAMS as a business line, not a keyword guess off "contract
+manufacturing" alone). For any non-pharma company, or a pharma company with no CDMO/
+CRAMS line, omit this section entirely with no heading and no mention that it was
+skipped (unlike every other conditional section here, which states explicitly when
+data wasn't found — a molecule pipeline is simply not an applicable concept outside
+pharma-CDMO, so there is nothing to flag).
 
 When it applies: show the number of molecules/projects the company has disclosed at
 each stage — Phase 1, Phase 2, Phase 3, and Commercial/Approved — as a simple count
@@ -103,7 +102,14 @@ pipeline counts shift every reporting period.
 A table of the last 3-5 fiscal years (or last 6-8 quarters if the company is early in
 its listed history) showing: Revenue, YoY growth %, Gross Margin %, PBT, PAT, PAT
 margin %. Source from screener.in's quarterly/annual results tables (already fetched
-for other sections — don't re-fetch). Compute YoY growth % yourself from the raw
+for other sections — don't re-fetch). **For each of the last 6 quarters, prefer the
+company's own official results press release over a secondary results-coverage
+aggregator whenever both exist** (see `reference/sourcing_depth.md`'s "Press
+releases" section) — specifically check the press release for a standalone-quarter
+breakout distinct from any cumulative/full-year figure, since a secondary aggregator
+summarizing only the headline annual number is exactly how a materially different
+standalone-quarter result (e.g. a full year that's still profitable but whose most
+recent quarter alone swung to a loss) goes unstated. Compute YoY growth % yourself from the raw
 figures; state the formula isn't needed inline (unlike Forward PE, this is a plain
 historical trend, not a forward estimate) but the underlying revenue/PAT figures must
 match what screener.in shows. If gross margin isn't a separately disclosed line (some
@@ -161,6 +167,12 @@ table rather than folding it into either. If exports revenue is disclosed but th
 specific export geography/customer mix isn't, show the exports/domestic split alone
 and say the geographic mix within exports wasn't broken out — don't infer it.
 
+**By geography, in the visual PDF**: if a geography basis is disclosed as a clean %-of-
+total-revenue split for two or more periods (e.g. FY26 vs. FY25), add a `pie_chart()`
+per period immediately after the table — see `reference/report_assembly.md`'s "Two
+standing exceptions" rule. The table with exact percentages stays mandatory; the pie is
+additive for at-a-glance comparison across periods, not a replacement.
+
 ### 6. Order Book
 
 Only include if the company discloses an order book figure (backlog of contracted/
@@ -184,6 +196,13 @@ figure was also disclosed (new orders booked in the period, as distinct from the
 cumulative order book level), it's fine to note it in one line under the table rather
 than adding it as its own row — it's a different metric (a flow, not a stock) and
 shouldn't be blended into the order-book figure itself.
+
+**Business-wise composition, in the visual PDF**: if the composition breakdown is a
+clean %-of-total split by business/segment/end-market (not just order type), add a
+`pie_chart()` immediately after the table — see `reference/report_assembly.md`'s "Two
+standing exceptions" rule. If more than one composition basis is shown (order type
+*and* business-wise), only the business-wise one gets the pie; order-type stays
+table-only unless it's also a clean exhaustive %-split. The table stays mandatory.
 
 **Exports vs. domestic composition** — if the order book's export/domestic split is
 disclosed (INR cr or % of total for each), always show it as part of the Composition
@@ -232,23 +251,6 @@ material sourcing" section. State the fact plainly once found — if imports are
 majority of raw-material consumption, or concentrated in one country, this is a real
 cost/FX/geopolitical exposure and should be cross-referenced in Key Risks (alongside
 the existing commodity/FX-exposure risk category).
-
-**Export Shipment / Customs Data** — for any company that exports (finished goods) or
-imports (raw materials/components), always attempt one targeted check of a
-shipment-data aggregator (Volza, Seair Exim, ImportGenius, Zauba Corp, Panjiva — see
-`reference/source_playbook.md`) rather than treating this as optional. Where records are
-found, list the concrete shipment-level detail actually surfaced — consignee/shipper
-name, destination/origin country, and product description, and quantity/value if
-shown — as its own short list (e.g. "Per Volza shipment records (not company-disclosed):
-3 shipments of optical fiber cable to a consignee in Vietnam, Mar-May 2026; 2 shipments
-to a consignee in Kenya, Jan 2026"), clearly labeled as third-party customs data rather
-than company disclosure. This serves two purposes and should be checked for both: (1)
-corroborating or surfacing customer names for Marquee & Niche Customers, and (2)
-corroborating or filling the country-of-origin gap for Raw Material Sourcing above. If a
-genuinely thorough check turns up nothing usable (site paywalled beyond a preview, no
-records indexed for the company), say so explicitly in one line rather than omitting the
-attempt silently — this is a check that should always be attempted and reported on, not
-a check that's only mentioned when it succeeds.
 
 ### 8. Capacity Utilization & Headroom
 
@@ -399,11 +401,11 @@ Medium/Long Term sections should already have captured). Compute via
   own guidance figure and the margin basis used), then — since this report is for
   personal research, not a distributed advisory product — it's fine to add one or two
   sentences of directional read *if it's actually evidenced*: how the resulting multiple
-  compares to the Peer Comparison table's peers, to the company's own historical trading
-  range (if visible on screener.in), or to the growth/CAGR figures from Financial
-  Performance Summary. Ground any "rich/cheap-looking" language in a specific comparison
-  number, not a bare adjective — "trading at 22x forward vs. peers at 14-18x on
-  comparable growth" is evidenced; "looks expensive" on its own is not. Never present
+  compares to the company's own historical trading range (if visible on screener.in), or
+  to the growth/CAGR figures from Financial Performance Summary. Ground any
+  "rich/cheap-looking" language in a specific comparison number, not a bare adjective —
+  "trading at 22x forward vs. its own 5-year average of 14-18x" is evidenced; "looks
+  expensive" on its own is not. Never present
   forward PE as a standalone number with no table/inputs anywhere nearby.
 - Keep using the ₹ symbol in the markdown itself, for readability. The legacy
   `scripts/report_to_pdf.py` reportlab path substitutes "Rs." automatically since its
@@ -412,10 +414,12 @@ Medium/Long Term sections should already have captured). Compute via
 
 ### Broker / agency research — inline-tagged, no dedicated section
 
-When the user has uploaded a third-party broker/agency research report (Nuvama,
-Motilal Oswal, ICICI Securities, etc. — see "Broker / agency research reports" in
-`reference/source_playbook.md` for the sourcing/compliance rule; this pipeline never
-fetches broker research off the web), **there is no separate section for it.** Instead,
+When a third-party broker/agency research report is available — Nuvama, Motilal
+Oswal, ICICI Securities, etc., whether user-uploaded or surfaced via an active search
+(see "Broker / agency research" in `reference/data_sources.md` for the
+sourcing/compliance rule — active search is standard now, but the copyright/
+reproduction discipline still fully applies either way) — **there is no separate
+section for it.** Instead,
 fold each broker-sourced fact directly into whichever section it naturally belongs to
 — a target price and rating into Valuation, a broker's demand-growth read into
 Industry Tailwinds/Headwinds, a broker's thesis point into Investment Thesis Summary,
@@ -451,7 +455,8 @@ also carries the pipeline's own independently-derived figure (e.g. Valuation's F
 PE table) — if both exist, show both, each clearly attributed (the pipeline's own row
 unlabeled/as normal, the broker's row carrying its tag), never averaged or merged into
 one number. Paraphrase a broker's thesis/risk points in your own words rather than
-reproducing paragraphs verbatim (per the compliance note in `source_playbook.md`) —
+reproducing paragraphs verbatim (per the compliance note in `reference/data_sources.md`'s
+"Broker / agency research" section) —
 the tag establishes attribution, it doesn't license copying the source text at length.
 
 ### 11. Industry Tailwinds / Headwinds
@@ -462,39 +467,42 @@ Format: `**<Tailwind/Headwind name>**: <one to two sentence factual claim>. (Sou
 <name, date>)`. Separate tailwinds from headwinds with a one-line subheading each if
 both are present.
 
-### 12. Competitive Positioning: Peer Comparison
+**Actively search beyond the reporting company's own concall/investor materials for
+this section — the company's own commentary on industry conditions is a legitimate
+source, but it's management's framing of the industry, not an independent one, and
+relying on it alone is exactly how this section ends up thin.** At minimum, attempt
+each of the following before concluding a tailwind/headwind isn't independently
+corroborated (see `reference/data_sources.md`'s "Industry-level and macro sources"
+section for the concrete site list and search patterns per sector):
+- **Government/regulatory sources** for the company's sector and country — trade
+  ministry data, a sector-specific incentive scheme or policy document, published
+  trade statistics. These are often the single best source for a *quantified*,
+  independently-stated tailwind (a specific incentive-scheme outlay, a tariff-schedule
+  change, an FTA status) rather than a vaguer qualitative claim.
+- **A rating agency's *industry-level* research** (distinct from the company-specific
+  rating rationale already used elsewhere in this report) — ICRA, CRISIL, and similar
+  agencies publish sector outlook/special-comment reports independent of any single
+  company's own rating action; these often quantify a sector-wide trend (export
+  growth/decline %, margin pressure, capacity trends) with real numbers.
+- **Trade/industry association or sector-specific trade publication coverage** —
+  useful for cross-country competitive context (e.g. a comparative operating-metrics
+  table across the company's country and its principal competing sourcing
+  geographies) that no single company's own disclosure would ever state, since it's
+  about the industry's shape, not this company specifically.
+- **General news search for sector-wide developments** (a tariff action, an industry
+  demand/order-book trend, a competing country's policy shift) not specific to the
+  reporting company, to corroborate or contextualize what management said.
 
-Always attempt this section — unlike a disclosure-gated section (TAM, order book), a
-basic peer comparison is normally sourceable for any listed company from screener.in's
-own "Peers" tab plus each peer's investor presentation, so a genuinely empty section
-should be rare. If nothing usable can be sourced for a peer, say so explicitly for that
-peer rather than dropping the section.
+If a genuinely thorough attempt across these turns up nothing beyond what the
+company's own materials already state, say so explicitly (e.g. "no independent
+industry-level source beyond the company's own concall commentary was found for this
+tailwind") rather than silently presenting management's framing as if it were already
+independently corroborated.
 
-**Peer Comparison table** — identify 3-5 direct listed peers (screener.in's Peers tab,
-the company's own concall references to competitors, or a sector report) and compare
-each — including the reporting company itself as a row — on the factors that actually
-differentiate competitive positioning in this business, not generic valuation ratios
-(those belong in Financial Performance / Forward PE, not here):
+### 12. MOATs
 
-| Company | IP / Technology Moat | Niche / Marquee Customers | Certifications & Qualifications | Other Differentiator | Source |
-|---|---|---|---|---|---|
-| <Peer 1> | <patents, proprietary process, in-house R&D, or "none disclosed"> | <named niche/marquee customers, if any> | <e.g. AS9100, USFDA, defense empanelment> | <backward integration, scale, cost position, geography> | <investor presentation/annual report/screener.in Peers tab, date> |
-| **<The Company>** | ... | ... | ... | ... | ... |
-
-Follow the table with one or two lines stating plainly which peer(s), if any, appear to
-hold a stronger position than the reporting company on IP, customer niche-ness, or
-certifications — and where the reporting company leads instead. This is a factual
-comparison of what each company has itself disclosed (or what a sector report states),
-not a ranking score, a moat "score," or a buy/sell signal — never editorialize beyond
-the disclosed facts. If no direct listed pure-play peer exists (common for a genuinely
-niche business), say so explicitly and use the closest adjacent listed comparables
-available, labeling them as adjacent rather than direct competitors.
-
-### 13. MOATs
-
-A dedicated section — kept separate from the Peer Comparison table above because a
-company's moat is about its own durable structural advantages, not how it stacks up
-against named peers on a table. **Render as a bullet list (`flag_list(kind='bull')` in
+A dedicated section — a company's moat is about its own durable structural advantages,
+not how it stacks up against named peers on a table. **Render as a bullet list (`flag_list(kind='bull')` in
 the visual PDF, plain markdown bullets in the `.md`) — never a merged paragraph.** Cover
 whichever of these actually apply, each bullet naming the specific evidence behind it
 (never a generic "strong moat" assertion with no support):
@@ -532,7 +540,7 @@ this company, say so plainly for that bullet rather than manufacturing one — a
 can have a real moat on IP/technology while having weak switching costs, and the section
 should reflect that honestly rather than presenting a uniformly strong picture.
 
-### 14. Technical Snapshot
+### 13. Technical Snapshot
 
 Pull, don't compute — get the trend/moving-average/RSI/support-resistance summary from
 a technicals-focused source (see source_playbook.md) rather than deriving indicators
@@ -557,9 +565,9 @@ follow the table with one short `para()` (normal body text, not the small italic
 giving context on the 52-week range and the staleness caveat, but the metrics
 themselves belong in the table/bullets, not folded into that closing sentence.
 
-### 15. Promoter / Governance Track Record
+### 14. Promoter / Governance Track Record
 
-Sourced from `scripts/guidance_tracker.py`'s output (see SKILL.md workflow). Show a
+Sourced from `scripts/guidance_tracker.py`'s output (see `reference/step2_synthesize.md`'s workflow). Show a
 short table or list of the last 6 quarters (the framework's standard sourcing-depth
 lookback, not a per-report choice): guidance given vs. actual delivered,
 and whether it was a beat/met/miss. If 2 or more of the last 4 tracked guidance calls
@@ -629,7 +637,7 @@ as "resolved" or "closed." Like Fund Raises and Credit Rating, this is not
 lookback-limited — an old case with a live appeal window is exactly the kind of thing
 this section exists to surface, however long ago it originated.
 
-### 16. Investment Thesis Summary
+### 15. Investment Thesis Summary
 
 **Bullet points by default — `flag_list(kind='bull')` in the visual PDF, markdown
 bullets in the `.md`** — not a prose paragraph. Each bullet is one specific, falsifiable
@@ -641,12 +649,12 @@ carrying its own source. Pull from:
 - Near/Medium/Long Term bullets currently marked `[On Track]` or `[Delivered]` — these
   are the outlook claims with actual interim evidence behind them, the strongest
   material for a thesis.
-- The MOATs section and Competitive Positioning table, if the reporting company leads
-  peers on IP, certifications, entry barriers, or niche customers.
+- The MOATs section, if the reporting company has a genuinely evidenced structural
+  advantage on IP, certifications, entry barriers, or niche customers.
 - Total Addressable Market headroom and the Capacity Utilization before/after-capex gap,
   if both point the same direction.
 - Any independent third-party corroboration surfaced elsewhere (a named customer's own
-  capacity guidance, a credit-rating reaffirmation/upgrade, export-shipment data).
+  capacity guidance, a credit-rating reaffirmation/upgrade).
 
 Each bullet keeps its source, the same discipline as every other section — this reads as
 "here is the specific, evidenced case," not marketing copy. **If the research gathered
@@ -659,7 +667,7 @@ three or four for the appearance of thoroughness. It's fine to close with one sh
 tempering paragraph (not a bullet) naming the factor(s) that keep the thesis from being
 fully de-risked — that synthesis reads more naturally as prose than as a bullet.
 
-### 17. Key Risks (Red Flags / Bear Case)
+### 16. Key Risks (Red Flags / Bear Case)
 
 3-5 bullets (`flag_list(..., kind='bear')` in the visual PDF) covering whichever of
 these actually apply, sourced from the concall, filings, or industry context gathered
@@ -667,9 +675,7 @@ above — never invented:
 - Business/execution risk (capacity constraints — cross-reference the Capacity
   Utilization headroom figure if utilization is already high, customer concentration —
   cross-reference the Marquee & Niche Customers section if concentration was
-  disclosed there, single large contracts, delivery/quality disputes, a peer with a
-  clearly stronger IP/certification/customer position from the Competitive Positioning
-  section above)
+  disclosed there, single large contracts, delivery/quality disputes)
 - Financial risk (working capital trend, receivables/payables days, leverage,
   commodity/input-cost exposure, FX exposure)
 - Governance risk (from the Promoter/Governance section above, if flagged — including
@@ -685,7 +691,7 @@ Thesis Summary does not excuse a thin Key Risks section. If the company is genui
 troubled, this section (not section 16) should dominate the report, and the Verdict
 below should say so plainly.
 
-### 18. Verdict
+### 17. Verdict
 
 `verdict_box()` in the visual PDF (a short highlighted paragraph in the markdown
 deliverable) — one or two honest sentences: the situation classification (see
@@ -703,7 +709,7 @@ overlong paragraph into bullets here — a bulleted Verdict undermines the one-l
 closing-statement purpose this section exists for, unlike every other section where
 bullets are the default.
 
-### 19. Sources
+### 18. Sources
 
 `sources_list()` in the visual PDF (a numbered, hyperlinked list in the markdown
 deliverable) — every URL cited anywhere in the report, numbered, each with a short note

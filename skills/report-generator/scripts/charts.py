@@ -24,6 +24,31 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mticker
+from PIL import Image
+
+
+def _trim_transparent_margin(path, pad=6):
+    """Crop a saved transparent-background PNG down to its actual non-transparent
+    content bbox, plus a small pad. matplotlib's bbox_inches='tight' sometimes still
+    reserves extra vertical canvas around a legend placed via bbox_to_anchor outside
+    the axes (e.g. loc='center left', bbox_to_anchor=(1.0, 0.5)) — the resulting PNG
+    can have a real, non-obvious band of transparent pixels above/below the visible
+    content. Because <img> tags size themselves off the PNG's raw pixel dimensions
+    regardless of transparency, that invisible band becomes real, invisible dead
+    space in the rendered HTML/PDF layout — it looks like a CSS/page-break bug but
+    is actually baked into the image file. Call this after every savefig() that uses
+    an off-axes legend anchor."""
+    im = Image.open(path).convert('RGBA')
+    bbox = im.getbbox()
+    if not bbox:
+        return path
+    left, top, right, bottom = bbox
+    left = max(0, left - pad)
+    top = max(0, top - pad)
+    right = min(im.width, right + pad)
+    bottom = min(im.height, bottom + pad)
+    im.crop((left, top, right, bottom)).save(path)
+    return path
 
 NAVY = '#1F4E78'
 TEAL = '#1D9E75'
@@ -102,6 +127,7 @@ def shareholding_chart(path, periods, promoter, fii, dii, public, figsize=(9.2, 
     plt.tight_layout()
     plt.savefig(path, transparent=True, bbox_inches='tight', pad_inches=0.05)
     plt.close(fig)
+    _trim_transparent_margin(path)
     return path
 
 
@@ -148,6 +174,47 @@ def donut_chart(path, labels, values, figsize=(4.2, 4.2)):
     plt.tight_layout()
     plt.savefig(path, transparent=True, bbox_inches='tight', pad_inches=0.05)
     plt.close(fig)
+    _trim_transparent_margin(path)
+    return path
+
+
+def pie_chart(path, labels, values, figsize=(6.4, 5.2), explode_index=None):
+    """Full pie chart (no center hole) for a single-period composition breakdown —
+    e.g. Segment-wise Performance's geography split, or Order Book's business-wise
+    composition. Use donut_chart() instead for a fund-raise/ownership breakdown per
+    existing convention; this is the plain-pie variant for the two sections that
+    call for one explicitly.
+
+    Style: labels sit outside the pie with a thin leader line to their slice (no
+    side legend — a legend forces the reader to look away from the chart to match
+    colors back to labels, which the outside-label style avoids), percentage inside
+    each slice, pastel palette. Pass explode_index to pull one slice out slightly
+    for emphasis (e.g. the largest or most-discussed category) — optional, omit for
+    a plain pie with no slice pulled out."""
+    palette = ['#F2C94C', '#93C9AD', '#A6B1E1', '#F2A65A', '#D391B0', '#8FBF8F', '#7FB3D5', '#D9C89E']
+    n = len(values)
+    explode = [0.08 if explode_index is not None and i == explode_index else 0 for i in range(n)]
+    fig, ax = plt.subplots(figsize=figsize, dpi=200)
+    wedges, texts, autotexts = ax.pie(
+        values, labels=labels, autopct=lambda p: f'{p:.1f}%' if p >= 9 else '',
+        colors=palette[:n], startangle=90, explode=explode,
+        labeldistance=1.18, pctdistance=0.62,
+        wedgeprops=dict(edgecolor='white', linewidth=1.5),
+        textprops=dict(fontsize=8, color='#333333'),
+    )
+    for i, t in enumerate(autotexts):
+        t.set_fontsize(8.5)
+        t.set_color('#2a2a2a')
+        if explode_index is not None and i == explode_index:
+            t.set_fontweight('bold')
+    for i, t in enumerate(texts):
+        if explode_index is not None and i == explode_index:
+            t.set_fontweight('bold')
+    ax.set_aspect('equal')
+    plt.tight_layout()
+    plt.savefig(path, transparent=True, bbox_inches='tight', pad_inches=0.15)
+    plt.close(fig)
+    _trim_transparent_margin(path)
     return path
 
 

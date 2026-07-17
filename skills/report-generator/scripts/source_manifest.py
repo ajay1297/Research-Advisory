@@ -7,8 +7,9 @@ sources/ is later deleted to save space).
 Why this exists: sources/<slug>/ holds the bulky raw PDFs/text (regenerable by
 refetching, deliberately not backed up) while research_cache/<slug>/ holds the
 small synthesized state (worth keeping). But two of verify_report.py's
-guardrails — `depth` (counts concalls/investor presentations/annual reports)
-and `extraction` (confirms an annual report's extraction covered every page) —
+guardrails — `depth` (counts concalls/investor presentations/annual reports/
+press releases) and `extraction` (confirms an annual report's extraction
+covered every page) —
 currently work by scanning sources/ directly. Delete sources/ and those checks
 can no longer prove anything was ever sourced correctly, even though the real
 analysis (guidance_history.json, report.md, etc.) is intact. This manifest is
@@ -41,11 +42,15 @@ import os
 import sys
 from datetime import datetime, timezone
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from run_context import get_run_id  # noqa: E402
+DOC_TYPES = ["concall", "investor_presentation", "annual_report", "press_release",
+             "broker_report", "rating_rationale", "announcement_sweep",
+             "social_media_check", "other"]
 
-DOC_TYPES = ["concall", "investor_presentation", "annual_report", "broker_report",
-             "rating_rationale", "announcement_sweep", "social_media_check", "other"]
+# announcement_sweep/social_media_check log a *check performed*, not a fetched
+# document — there is no real file in sources/<slug>/ for these, so --filename
+# is not required for them (see add_document()'s validation below). Every other
+# type is a genuine fetched document and --filename stays required.
+FILENAME_OPTIONAL_TYPES = {"announcement_sweep", "social_media_check"}
 
 
 def _path(slug):
@@ -70,9 +75,9 @@ def _save(slug, data):
 
 def add_document(args):
     # --status/--evidence/--reason exist specifically for the announcement_sweep and
-    # social_media_check doc types (see SKILL.md's `announcements`/`social` guardrails,
-    # which verify_report.py FAILs if a "performed" entry has no real evidence, or if
-    # the most recent entry is a disclosed "skipped"). This was previously documented
+    # social_media_check doc types (see reference/guardrails.md's `announcements`/`social`
+    # guardrails, which verify_report.py FAILs if a "performed" entry has no real evidence,
+    # or if the most recent entry is a disclosed "skipped"). This was previously documented
     # in SKILL.md but not actually implemented here — a real spec/script mismatch that
     # meant those two guardrails could never have worked as described.
     if args.status == "performed":
@@ -91,6 +96,11 @@ def add_document(args):
             sys.exit(1)
     if args.status == "skipped" and not args.reason:
         print("ERROR: --status skipped requires --reason.", file=sys.stderr)
+        sys.exit(1)
+    if args.type not in FILENAME_OPTIONAL_TYPES and not args.filename:
+        print(f"ERROR: --filename is required for --type {args.type} (a genuine "
+              f"fetched document needs a real filename as saved in sources/<slug>/).",
+              file=sys.stderr)
         sys.exit(1)
 
     data = _load(args.slug)
@@ -117,11 +127,11 @@ def add_document(args):
         "evidence": args.evidence,
         "reason": args.reason,
         "logged_at": datetime.now(timezone.utc).isoformat(),
-        "run_id": get_run_id(),
     }
     data["documents"].append(entry)
     _save(args.slug, data)
-    print(f"Logged document #{next_id}: {args.type} / {args.label} ({args.filename})")
+    filename_bit = f" ({args.filename})" if args.filename else ""
+    print(f"Logged document #{next_id}: {args.type} / {args.label}{filename_bit}")
     if fully_covered is False:
         print(f"WARN: pages_extracted_start/end ({args.pages_extracted_start}-"
               f"{args.pages_extracted_end}) does not cover the full document "
@@ -174,7 +184,10 @@ def main():
     p1.add_argument("--type", required=True, choices=DOC_TYPES)
     p1.add_argument("--label", required=True, help='e.g. "Q4 FY26" or "FY2024-25"')
     p1.add_argument("--date", required=True, help="ISO date of the document itself, not today")
-    p1.add_argument("--filename", required=True, help="filename as saved in sources/<slug>/")
+    p1.add_argument("--filename",
+                     help="filename as saved in sources/<slug>/ — required for every type "
+                          "except announcement_sweep/social_media_check, which log a check "
+                          "performed rather than a fetched document")
     p1.add_argument("--pages-total", type=int)
     p1.add_argument("--pages-extracted-start", type=int)
     p1.add_argument("--pages-extracted-end", type=int)

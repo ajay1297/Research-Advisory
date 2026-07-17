@@ -49,10 +49,6 @@ Usage:
 import argparse
 import json
 import os
-import sys
-
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from run_context import get_run_id  # noqa: E402
 
 MISS_THRESHOLD_PCT = 10.0  # actual more than this % below guidance counts as a miss
 STATUSES = ["pending", "on_track", "delivered", "delayed", "missed"]
@@ -98,7 +94,6 @@ def add_guidance(args):
         "status": args.status,
         "supersedes_id": args.supersedes_id,
         "note": args.note or "",
-        "run_id": get_run_id(),
     }
     data["guidances"].append(entry)
     save(path, data)
@@ -111,7 +106,7 @@ def add_guidance(args):
 def add_actual(args):
     path = cache_path(args.company_slug)
     data = load(path)
-    entry = {"period": args.period, "metric": args.metric, "value_cr": args.value_cr, "run_id": get_run_id()}
+    entry = {"period": args.period, "metric": args.metric, "value_cr": args.value_cr}
     match = next((g for g in data["guidances"]
                   if g["for_period"] == args.period and g["metric"] == args.metric), None)
     if match:

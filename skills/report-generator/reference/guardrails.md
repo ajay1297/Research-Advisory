@@ -7,9 +7,10 @@ check named below, tested against real report runs, not written and left unverif
 **The standing rule for all of it: any FAIL is a stop-and-fix, not a note-and-continue**
 — a deterministic check with no consequence for failing isn't actually a guardrail,
 it's decoration. WARN-level results (sourcing-depth shortfalls, a ReportLab fallback)
-don't block delivery but must be stated explicitly to the user per SKILL.md's "Never
-drop anything silently" rule — the distinction between FAIL and WARN is "must be fixed
-before delivery" vs. "must be disclosed at delivery," never "can be ignored."
+don't block delivery but must be stated explicitly to the user per
+`reference/rules_and_validation.md`'s "Never drop anything silently" rule — the
+distinction between FAIL and WARN is "must be fixed before delivery" vs. "must be
+disclosed at delivery," never "can be ignored."
 
 Three tiers, matching where in the pipeline each one runs.
 
@@ -30,6 +31,11 @@ Catch a bad input before it corrupts everything built on top of it:
   the company can't be found there at all, that's the signal to ask the user to
   confirm the name/ticker rather than proceeding to build a report for a company
   that may not exist or may be misspelled.
+- **`links`** — not a per-report check, a self-integrity check on this skill's own
+  `SKILL.md`/`reference/*.md` docs (via `scripts/check_reference_links.py`). Run
+  this once per session after editing any reference file or `SKILL.md` — not once
+  per report — since that's when a dangling cross-reference (a pointer surviving
+  a file split/rename/heading move) actually gets introduced.
 
 ## 2. Execution Guardrails — run during / immediately after a run
 
@@ -39,22 +45,23 @@ it's trying to accomplish:
 - **`scope <plugin_skill_dir> [--minutes N]`** — confirms no file under the skill's
   own install directory (`skills/report-generator/`) was created or modified
   recently. This skill must only ever write under `~/.report-generator/` — never
-  inside its own plugin directory (a standing rule since the "Directory structure"
-  section of `README.md`); this check makes that mechanically verifiable instead of
-  just stated.
+  inside its own plugin directory (a standing rule stated in `SKILL.md`'s "All
+  working state and deliverables live outside this plugin directory" section);
+  this check makes that mechanically verifiable instead of just stated.
 - **`reproduction <source.txt> <report.md> [--ngram N]`** — checks no N-consecutive-
   word sequence (default 12) from a broker/agency source document was copied
   verbatim into the drafted report. Run this against every broker source used this
   run before delivery — enforces the "paraphrase, don't reproduce at length" rule
   from the Broker/agency research reports section mechanically.
 - **Sandbox network boundary** — no raw `curl`/`requests`/`urllib` against arbitrary
-  domains (see "Important sandbox constraint" in `source_playbook.md`); all fetching
+  domains (see "Sandbox constraint" in `reference/data_sources.md`); all fetching
   goes through the platform's own web tools. This is enforced by the sandbox itself
   (a real call will 403), not by this script — it's an execution boundary that
   doesn't need a separate deterministic check because the environment already
   refuses it.
 - **One-retry-per-stuck-source limit** — bounds runaway retry loops against a source
-  that isn't going to resolve (SKILL.md's Token discipline section) — a judgment-call
+  that isn't going to resolve (`reference/rules_and_validation.md`'s Token discipline
+  section) — a judgment-call
   boundary, not separately scriptable, but stated here as an execution guardrail
   alongside the two that are.
 
@@ -87,9 +94,10 @@ silently" gets mechanically enforced rather than left to memory.
    once — catching the case where a broker PDF was read and summarized to yourself
    but its facts never actually made it into the report.
 4. **`sources <company_slug>`** — confirms the `sources/`/`research_cache/` split
-   (see Directory structure in README.md) wasn't violated: no bulky
-   `.pdf`/`.txt`/`.bm25.pkl` leaked into `research_cache/`, no candidate-quotes JSON
-   left loose in `sources/` instead of `research_cache/<slug>/candidate_quotes/`.
+   (bulky raw material vs. small synthesized state, per `reference/step3_memorize.md`'s
+   "Save and cache" section) wasn't violated: no bulky `.pdf`/`.txt`/`.bm25.pkl` leaked into
+   `research_cache/`, no candidate-quotes JSON left loose in `sources/` instead of
+   `research_cache/<slug>/candidate_quotes/`.
 5. **`freshness <company_slug>`** — confirms `check_freshness.py --mark-processed`
    was actually called at the end of this run (checks `state.json`'s
    `last_processed_at` is today), not just intended.
@@ -97,13 +105,15 @@ silently" gets mechanically enforced rather than left to memory.
    extracted this run, **before** deleting/losing the source PDF. Confirms the
    extraction actually starts at page 1 and reaches the document's real final page —
    catches a scouting/partial-range extraction being mistaken for the full-document
-   extraction SKILL.md's "always extract the whole document" rule requires. This
+   extraction `reference/step1_retrieve.md`'s "always extract the whole document"
+   rule requires. This
    only works if the source PDF is still on disk, so always save a fetched annual
    report PDF to `sources/<company_slug>/` before extracting it — don't
    extract-then-discard.
-7. **`depth <company_slug>`** — counts concall/annual-report/investor-presentation
-   `.txt` files actually present in `sources/<company_slug>/` against the standard
-   depth (6 quarters, 2 annual reports, 6 investor presentations). A WARN here isn't
+7. **`depth <company_slug>`** — counts concall/annual-report/investor-presentation/
+   press-release `.txt` files actually present in `sources/<company_slug>/` against
+   the standard depth (6 quarters, 2 annual reports, 6 investor presentations, 6
+   press releases). A WARN here isn't
    automatically a blocker — a newly-listed company can genuinely lack 6 quarters of
    history — but the shortfall must then be stated explicitly in the report per
    "Never drop anything silently," not silently delivered as if standard depth was
@@ -112,8 +122,9 @@ silently" gets mechanically enforced rather than left to memory.
    count as 1 report, not 6. **Survives `sources/` being deleted**: falls back to
    `research_cache/<slug>/source_manifest.json` — a small, durable log of every
    document ever fetched/extracted, logged via `scripts/source_manifest.py
-   add-document` right after each fetch (see `source_playbook.md`'s "Concall
-   transcripts" and "Annual reports" sections). If both `sources/` and the manifest
+   add-document` right after each fetch (see `reference/sourcing_depth.md`'s
+   "Concalls, investor presentations, annual reports, press releases" and "Annual
+   reports — processing" sections). If both `sources/` and the manifest
    have counts, it takes the max of the two. Confirmed in practice that a missing
    investor presentation isn't just a thinner report, it can be factually wrong
    (Segment-wise Performance, TAM, and Manufacturing Locations lean heavily on it) —
@@ -150,8 +161,9 @@ mandatory before delivery:
 - **`announcements <company_slug> [--months 6]`** and **`social <company_slug>
   [--report-path report.md] [--months 3]`** — same recency-of-check pattern as
   `ratings`, for the BSE/NSE announcements sweep and the LinkedIn/X sweep
-  respectively (see `source_playbook.md`'s "Announcements sweep" and "LinkedIn / X
-  (Twitter)" sections); `social` uses a tighter 3-month window since social posts are
+  respectively (see `source_playbook.md`'s "Announcements sweep" section and
+  `data_sources.md`'s "LinkedIn / X (Twitter)" section); `social` uses a tighter
+  3-month window since social posts are
   a discovery channel, not a formal disclosure record. **Unlike `ratings`, these two
   are not purely informational**: log the sweep every run via `source_manifest.py
   <slug> add-document --type announcement_sweep` (or `social_media_check`)

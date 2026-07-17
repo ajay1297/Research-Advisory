@@ -36,10 +36,6 @@ Usage:
 import argparse
 import json
 import os
-import sys
-
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from run_context import get_run_id  # noqa: E402
 
 INSTRUMENTS = [
     "preferential_equity", "warrants", "ncd", "term_loan",
@@ -89,7 +85,6 @@ def add_raise(args):
         "status": args.status or default_status,
         "note": args.note or "",
         "investors": args.investors or "",
-        "run_id": get_run_id(),
     }
     data["raises"].append(entry)
     save(path, data)

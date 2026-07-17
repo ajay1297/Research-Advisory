@@ -10,7 +10,7 @@ passes the latest quarter's FULL DATE (YYYY-MM-DD) seen there into this script �
 a month/quarter label like "May 2026" or "Q4 FY26", which is genuinely ambiguous (two
 results in the same month collide; screener.in's own label wording can drift). If the
 company doesn't hold a concall, use the results filing date instead — see
-reference/source_playbook.md's "If the company doesn't hold concalls" section. The
+reference/sourcing_depth.md's "If the company doesn't hold concalls" section. The
 script diffs the date against state.json and tells Claude exactly what to do next:
 
   - "up_to_date": nothing changed, reuse the cached report.md as-is (or just rerun
@@ -48,7 +48,7 @@ def _cadence_from_dates(dates_csv: str, today: datetime = None) -> dict:
     standard "6 quarters / 2 annual reports" depth assumption can be flagged as a
     poor fit *before* an agent spends fetch/verification effort discovering that
     itself. A company with only sporadic concalls (multi-year gaps) needs the
-    "doesn't hold concalls" fallback path (see source_playbook.md) from the start,
+    "doesn't hold concalls" fallback path (see reference/sourcing_depth.md) from the start,
     not as a late correction."""
     today = today or datetime.now(timezone.utc)
     if not dates_csv:
@@ -87,11 +87,11 @@ def _cadence_from_dates(dates_csv: str, today: datetime = None) -> dict:
             "reduced_depth_disclose_gap": "Concall cadence is sparse — don't wait to "
                 "discover this later. Use whatever concalls exist plus results filings/"
                 "investor presentations for the outlook sections, and state the sparse "
-                "cadence explicitly in the report per source_playbook.md's "
+                "cadence explicitly in the report per reference/sourcing_depth.md's "
                 "\"If the company doesn't hold concalls\" section (it applies here too, "
                 "even though at least one concall exists).",
             "no_concall_fallback": "No concall within 18 months (or none at all). Use "
-                "results filing dates for freshness and follow source_playbook.md's "
+                "results filing dates for freshness and follow reference/sourcing_depth.md's "
                 "\"If the company doesn't hold concalls\" section from the start.",
         }[mode],
     }

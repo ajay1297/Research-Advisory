@@ -3,7 +3,7 @@
 Fixed structure, modeled on the Sterlite Technologies example (`examples/Sterlite_Technologies_report.md`).
 Do not deviate from this structure unless the user explicitly asks for a different
 template. This file covers the report's opening (Title through Value Chain
-Positioning) and the rules that apply everywhere. The nineteen sections that follow
+Positioning) and the rules that apply everywhere. The eighteen sections that follow
 the outlook are in `reference/report_sections.md`; PDF build mechanics are in
 `reference/report_assembly.md`.
 

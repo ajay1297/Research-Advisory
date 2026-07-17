@@ -31,6 +31,15 @@ Organized into three tiers (see reference/guardrails.md for the full rationale o
         ~/.report-generator/ — lowercase letters, digits, and underscores only.
         Catches a malformed/unsanitized slug before it's used to construct paths.
 
+    python3 verify_report.py links
+        Not a per-report check — a self-integrity check on this skill's own docs
+        (SKILL.md + reference/*.md), via check_reference_links.py. Catches a
+        dangling cross-reference left behind after a reference file gets split,
+        renamed, or has a heading moved (the exact bug class found repeatedly by
+        hand before this check existed). No arguments — always checks this
+        skill's own install directory. Run this once per session if you edited
+        any reference/*.md or SKILL.md file, not once per report.
+
 --- 2. EXECUTION GUARDRAILS (the boundaries — run during/immediately after a run) ---
 
     python3 verify_report.py scope <plugin_skill_dir> [--minutes 120]
@@ -115,7 +124,6 @@ REQUIRED_REPORT_SECTIONS = [
     "Capacity Utilization & Headroom",
     "Valuation",
     "Industry Tailwinds",
-    "Competitive Positioning",
     "MOATs",
     "Technical Snapshot",
     "Promoter",
@@ -178,7 +186,7 @@ def check_pdf(path):
     elif "ReportLab" in producer:
         print(f"WARN: Producer is {producer} — this is the legacy text-only "
               f"fallback. This is only acceptable if WeasyPrint genuinely failed "
-              f"twice (see SKILL.md), AND you must state this explicitly in your "
+              f"twice (see reference/step3_memorize.md), AND you must state this explicitly in your "
               f"chat response to the user — never let this pass silently.")
         # Not a hard FAIL — ReportLab is an allowed fallback — but it must be
         # surfaced, so callers should treat WARN as requiring explicit disclosure.
@@ -351,23 +359,25 @@ def check_extraction(pdf_path, txt_path):
 
 
 def _load_manifest_counts(slug):
-    """Returns (concall_count, ip_count, ar_doc_count, had_manifest) from
-    source_manifest.json, so check_depth still works after sources/ has been
-    deleted — see source_manifest.py's docstring for why this file exists."""
+    """Returns (concall_count, ip_count, ar_doc_count, press_release_count,
+    had_manifest) from source_manifest.json, so check_depth still works after
+    sources/ has been deleted — see source_manifest.py's docstring for why this
+    file exists."""
     base = os.path.expanduser("~/.report-generator")
     manifest_path = os.path.join(base, "research_cache", slug, "source_manifest.json")
     if not os.path.exists(manifest_path):
-        return 0, 0, 0, False
+        return 0, 0, 0, 0, False
     with open(manifest_path) as f:
         data = json.load(f)
     docs = data.get("documents", [])
     concalls = sum(1 for d in docs if d.get("type") == "concall")
     ips = sum(1 for d in docs if d.get("type") == "investor_presentation")
+    press_releases = sum(1 for d in docs if d.get("type") == "press_release")
     # Annual reports: count distinct labels (e.g. "FY2024-25"), not documents —
     # a manifest entry per chunk would otherwise over-count the same document,
     # same reasoning as the directory-scan de-duplication below.
     ar_labels = {d.get("label") for d in docs if d.get("type") == "annual_report"}
-    return concalls, ips, len(ar_labels), True
+    return concalls, ips, len(ar_labels), press_releases, True
 
 
 def check_depth(slug):
@@ -375,7 +385,7 @@ def check_depth(slug):
     sources_dir = os.path.join(base, "sources", slug)
     print(f"=== standard sourcing depth check: {slug} ===")
 
-    manifest_concalls, manifest_ips, manifest_ars, had_manifest = _load_manifest_counts(slug)
+    manifest_concalls, manifest_ips, manifest_ars, manifest_prs, had_manifest = _load_manifest_counts(slug)
 
     if not os.path.isdir(sources_dir):
         if had_manifest:
@@ -387,6 +397,7 @@ def check_depth(slug):
                   f"needs sources/ for specifically, and can't be recovered this way).")
             concall_files = [None] * manifest_concalls
             ip_files = [None] * manifest_ips
+            pr_files = [None] * manifest_prs
             ar_doc_keys = set(range(manifest_ars))
             ar_files_raw = list(ar_doc_keys)  # count-only, no real filenames once sources/ is gone
             ar_from_manifest = True
@@ -415,6 +426,10 @@ def check_depth(slug):
         # the same false-positive reason.
         ip_files = [f for f in files if f.endswith(".txt") and
                     re.search(r"(?i)presentation|investor.?deck|ir.?deck", f)]
+        # Same explicit-naming discipline again — require "press" or "pr_"/"pr-"
+        # style naming rather than a loose quarter-pattern match.
+        pr_files = [f for f in files if f.endswith(".txt") and
+                    re.search(r"(?i)press.?release|\bpr[_-]", f)]
 
         # Annual reports are sometimes saved as one file per fiscal year
         # (AR_FY2020-21.txt) and sometimes as multiple page-range chunks of the
@@ -441,6 +456,8 @@ def check_depth(slug):
                 concall_files = [None] * manifest_concalls
             if manifest_ips > len(ip_files):
                 ip_files = [None] * manifest_ips
+            if manifest_prs > len(pr_files):
+                pr_files = [None] * manifest_prs
             if manifest_ars > len(ar_doc_keys):
                 ar_doc_keys = set(range(manifest_ars))
                 ar_from_manifest = True
@@ -474,6 +491,20 @@ def check_depth(slug):
               f"publish one every quarter, etc.).")
     else:
         print(f"PASS: {len(ip_files)} investor presentations found")
+
+    if len(pr_files) < 6:
+        print(f"WARN: only {len(pr_files)} press release(s) found "
+              f"{_detail(pr_files)} — standard depth is 6 quarters, same as "
+              f"concalls. A press release routinely states a standalone-quarter "
+              f"figure or a dividend/exceptional-item detail that a secondary "
+              f"results-coverage aggregator can drop or garble (see "
+              f"reference/sourcing_depth.md's 'Press releases' section) — a "
+              f"report relying only on secondary coverage here isn't just "
+              f"thinner, it can miss a materially different standalone-quarter "
+              f"result. Only acceptable with a stated reason (company doesn't "
+              f"issue a separate press release, etc.).")
+    else:
+        print(f"PASS: {len(pr_files)} press releases found")
 
     ar_source_note = (f"from source_manifest.json (topped up beyond what's on disk)"
                        if ar_from_manifest
@@ -547,6 +578,27 @@ def check_slug(slug):
           f"~/.report-generator/ paths as-is; normalize it (lowercase, underscores) "
           f"before using it anywhere")
     return False
+
+
+def check_links():
+    print("=== reference-link integrity check (this skill's own docs) ===")
+    skill_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    import check_reference_links
+    findings = check_reference_links.check(skill_dir)
+    if not findings:
+        print("PASS: no dangling reference-file or heading pointers found.")
+        return True
+
+    fails = [f for f in findings if f[0] == "FAIL"]
+    warns = [f for f in findings if f[0] == "WARN"]
+    for severity, name, msg in findings:
+        print(f"{severity}: [{name}] {msg}")
+    print(f"{len(fails)} FAIL, {len(warns)} WARN.")
+    if fails:
+        return False
+    print("PASS: only WARNs (informational) — review them, not a blocker on their own")
+    return True
 
 
 # --- 2. EXECUTION GUARDRAILS ------------------------------------------------
@@ -694,7 +746,7 @@ def check_disclaimer(report_path):
         print("PASS: disclaimer language found")
         return True
     print("FAIL: no 'not investment advice' style disclaimer found — required per "
-          "SKILL.md's Accuracy discipline")
+          "reference/rules_and_validation.md's Accuracy discipline")
     return False
 
 
@@ -833,31 +885,34 @@ def check_ratings_recency(slug, months=6):
 
 def check_announcements(slug, months=6):
     """Checks source_manifest.json for a logged 'announcement_sweep' entry within
-    the last N months — mirrors check_ratings_recency's pattern. Log a sweep via
-    `source_manifest.py <slug> add-document --type announcement_sweep --label
-    "6-month sweep" --date "<date the sweep was actually performed>"` each run."""
+    the last N months — mirrors check_ratings_recency's pattern, but per
+    reference/guardrails.md this check FAILs (not WARNs) if the sweep was never
+    logged, has no evidence, or was logged as an explicit --status skipped. Log a
+    sweep via `source_manifest.py <slug> add-document --type announcement_sweep
+    --status performed --evidence "<what was actually searched and found>"` each
+    run (or --status skipped --reason "..." if it genuinely can't be done)."""
     base = os.path.expanduser("~/.report-generator")
     manifest_path = os.path.join(base, "research_cache", slug, "source_manifest.json")
     print(f"=== BSE/NSE announcements sweep recency: {slug} (expect a sweep "
           f"within the last {months} months) ===")
 
     if not os.path.exists(manifest_path):
-        print(f"WARN: no source_manifest.json found — no announcement sweep has "
+        print(f"FAIL: no source_manifest.json found — no announcement sweep has "
               f"ever been logged for this company. Per reference/source_playbook.md's "
               f"'Announcements sweep' section, this is a standing requirement on "
-              f"every run, not optional.")
-        return True
+              f"every run, not optional. Log it via source_manifest.py before "
+              f"delivering the report.")
+        return False
 
     with open(manifest_path) as f:
         data = json.load(f)
     sweeps = [d for d in data.get("documents", []) if d.get("type") == "announcement_sweep"]
 
     if not sweeps:
-        print(f"WARN: source_manifest.json exists but no 'announcement_sweep' entry "
-              f"has ever been logged — same caveat as above, this sweep is a "
-              f"standing requirement, not something to skip because nothing else "
-              f"prompted a look.")
-        return True
+        print(f"FAIL: source_manifest.json exists but no 'announcement_sweep' entry "
+              f"has ever been logged — this sweep is a standing requirement, not "
+              f"something to skip because nothing else prompted a look.")
+        return False
 
     dates = []
     for s in sweeps:
@@ -866,27 +921,47 @@ def check_announcements(slug, months=6):
         except ValueError:
             continue
     if not dates:
-        print("WARN: could not parse a date from any logged announcement_sweep entry")
-        return True
+        print("FAIL: could not parse a date from any logged announcement_sweep entry")
+        return False
 
+    latest_entry = max(sweeps, key=lambda s: s.get("date") or "")
     latest = max(dates)
+
+    if latest_entry.get("status") == "skipped":
+        print(f"FAIL: most recent announcement sweep ({latest.date()}) was logged as "
+              f"--status skipped (reason: {latest_entry.get('reason') or 'not given'!r}) "
+              f"— a disclosed skip must never look the same as a done sweep, and this "
+              f"check is designed to FAIL in that case rather than silently pass "
+              f"delivery. Perform the sweep, or accept the FAIL and state the gap "
+              f"explicitly in the report per reference/rules_and_validation.md's 'Never drop anything silently' rule.")
+        return False
+
+    if not latest_entry.get("evidence") or not str(latest_entry.get("evidence")).strip():
+        print(f"FAIL: most recent announcement sweep ({latest.date()}) has no "
+              f"'evidence' field logged — a 'performed' sweep with no evidence of "
+              f"what was actually searched/found is indistinguishable from a sweep "
+              f"that never happened.")
+        return False
+
     now = datetime.now(timezone.utc) if latest.tzinfo else datetime.now()
     age_days = (now - latest).days
     if age_days > months * 30:
-        print(f"WARN: most recent logged announcement sweep is {latest.date()} "
+        print(f"FAIL: most recent logged announcement sweep is {latest.date()} "
               f"({age_days} days old, > {months} months) — a fresh 6-month BSE/NSE "
               f"announcements sweep genuinely needs to happen this run, not just be "
               f"assumed unchanged from an old log entry.")
-    else:
-        print(f"PASS: most recent logged announcement sweep is {latest.date()} "
-              f"({age_days} days old, within {months} months)")
-    return True  # informational WARN only — never blocks delivery on its own
+        return False
+
+    print(f"PASS: most recent logged announcement sweep is {latest.date()} "
+          f"({age_days} days old, within {months} months) — evidence: "
+          f"{latest_entry.get('evidence')!r}")
+    return True
 
 
 def check_social(slug, report_path=None, months=3):
     """Checks source_manifest.json for a logged 'social_media_check' sweep within
     the last N months (default 3, tighter than the 6-month ratings/announcements
-    window — see reference/source_playbook.md's LinkedIn/X section for why), and
+    window — see reference/data_sources.md's LinkedIn/X section for why), and
     if a report_path is given, flags any "LinkedIn post"/"X post" citation in the
     report whose cited date is older than the window — a stale social citation
     should have been refreshed or dropped, not left in from a prior run."""
@@ -897,20 +972,23 @@ def check_social(slug, report_path=None, months=3):
 
     ok = True
     if not os.path.exists(manifest_path):
-        print(f"WARN: no source_manifest.json found — no social media check has "
-              f"ever been logged for this company. Per reference/source_playbook.md's "
+        print(f"FAIL: no source_manifest.json found — no social media check has "
+              f"ever been logged for this company. Per reference/data_sources.md's "
               f"'LinkedIn / X (Twitter)' section, this is a standing requirement on "
-              f"every run, not optional.")
+              f"every run, not optional. Log it via source_manifest.py before "
+              f"delivering the report.")
+        ok = False
     else:
         with open(manifest_path) as f:
             data = json.load(f)
         checks = [d for d in data.get("documents", []) if d.get("type") == "social_media_check"]
 
         if not checks:
-            print(f"WARN: source_manifest.json exists but no 'social_media_check' "
-                  f"entry has ever been logged — same caveat as above, this check "
-                  f"is a standing requirement, not something to skip because "
-                  f"nothing else prompted a look.")
+            print(f"FAIL: source_manifest.json exists but no 'social_media_check' "
+                  f"entry has ever been logged — this check is a standing "
+                  f"requirement, not something to skip because nothing else "
+                  f"prompted a look.")
+            ok = False
         else:
             dates = []
             for c in checks:
@@ -919,19 +997,37 @@ def check_social(slug, report_path=None, months=3):
                 except ValueError:
                     continue
             if not dates:
-                print("WARN: could not parse a date from any logged social_media_check entry")
+                print("FAIL: could not parse a date from any logged social_media_check entry")
+                ok = False
             else:
+                latest_entry = max(checks, key=lambda c: c.get("date") or "")
                 latest = max(dates)
-                now = datetime.now(timezone.utc) if latest.tzinfo else datetime.now()
-                age_days = (now - latest).days
-                if age_days > months * 30:
-                    print(f"WARN: most recent logged social media check is "
-                          f"{latest.date()} ({age_days} days old, > {months} months) "
-                          f"— a fresh LinkedIn/X check genuinely needs to happen this "
-                          f"run, not just be assumed unchanged from an old log entry.")
+
+                if latest_entry.get("status") == "skipped":
+                    print(f"FAIL: most recent social media check ({latest.date()}) was "
+                          f"logged as --status skipped (reason: "
+                          f"{latest_entry.get('reason') or 'not given'!r}) — a "
+                          f"disclosed skip must never look the same as a done check.")
+                    ok = False
+                elif not latest_entry.get("evidence") or not str(latest_entry.get("evidence")).strip():
+                    print(f"FAIL: most recent social media check ({latest.date()}) has "
+                          f"no 'evidence' field logged — a 'performed' check with no "
+                          f"evidence of what was actually searched/found is "
+                          f"indistinguishable from a check that never happened.")
+                    ok = False
                 else:
-                    print(f"PASS: most recent logged social media check is "
-                          f"{latest.date()} ({age_days} days old, within {months} months)")
+                    now = datetime.now(timezone.utc) if latest.tzinfo else datetime.now()
+                    age_days = (now - latest).days
+                    if age_days > months * 30:
+                        print(f"FAIL: most recent logged social media check is "
+                              f"{latest.date()} ({age_days} days old, > {months} months) "
+                              f"— a fresh LinkedIn/X check genuinely needs to happen this "
+                              f"run, not just be assumed unchanged from an old log entry.")
+                        ok = False
+                    else:
+                        print(f"PASS: most recent logged social media check is "
+                              f"{latest.date()} ({age_days} days old, within {months} "
+                              f"months) — evidence: {latest_entry.get('evidence')!r}")
 
     if report_path and os.path.exists(report_path):
         with open(report_path, "r", errors="ignore") as f:
@@ -958,7 +1054,7 @@ def check_social(slug, report_path=None, months=3):
             print(f"PASS: no LinkedIn/X citation in the report is older than "
                   f"{months} months")
 
-    return ok  # informational WARN only — never blocks delivery on its own
+    return ok  # FAILs if the sweep was never logged/skipped/evidence-free or stale — see docstring
 
 
 def check_paragraphs(report_path, max_words=160):
@@ -1056,6 +1152,8 @@ def main():
     p9 = sub.add_parser("slug")
     p9.add_argument("slug")
 
+    sub.add_parser("links")
+
     p10 = sub.add_parser("scope")
     p10.add_argument("plugin_dir")
     p10.add_argument("--minutes", type=int, default=120)
@@ -1116,6 +1214,8 @@ def main():
         ok = check_sniff(args.pdf_path)
     elif args.cmd == "slug":
         ok = check_slug(args.slug)
+    elif args.cmd == "links":
+        ok = check_links()
     elif args.cmd == "scope":
         ok = check_scope(args.plugin_dir, args.minutes)
     elif args.cmd == "reproduction":

@@ -9,8 +9,14 @@ Usage:
     python3 pdf_to_text.py <input.pdf> <output.txt> [--pages START-END] \\
         [--expect-name "Bhartiya International"]
 
---pages is optional and 1-indexed inclusive, e.g. --pages 40-65 to grab only the
-MD&A / outlook section of a large annual report instead of the whole document.
+--pages is optional and 1-indexed inclusive. It exists for a quick scouting pass only
+— e.g. --pages 1-10 to read a table of contents and locate a section's page number
+before committing to full extraction, or to re-extract an already-located range at
+higher fidelity after a full-text grep already found it. It is NOT a substitute for
+full-document extraction: an annual report's sections (segment/PP&E/litigation/
+shareholding notes, the contingent-liabilities note) are scattered across the entire
+document, not clustered in one guessed range, so omit --pages and extract the whole
+document for any real (non-scouting) use.
 
 --expect-name is a cheap identity check, strongly recommended for any annual
 report/large PDF fetched from a search result rather than a company's own IR page.
@@ -87,7 +93,7 @@ def main():
     header = (
         "=== DO NOT Read() THIS FILE DIRECTLY — grep it instead ===\n"
         "This is a full-document text extraction and may run to thousands of lines.\n"
-        "Per SKILL.md's token-discipline rule: grep -n \"<keyword>\" -C3 this file for the\n"
+        "Per reference/rules_and_validation.md's token-discipline rule: grep -n \"<keyword>\" -C3 this file for the\n"
         "section you need, then Read() only the specific line range that surfaces. Reading\n"
         "this file top-to-bottom defeats the reason it was extracted this way and will\n"
         "inflate every subsequent turn's context for the rest of this session.\n"

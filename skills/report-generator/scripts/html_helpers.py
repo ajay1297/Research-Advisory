@@ -129,13 +129,17 @@ def verdict_box(text):
 
 
 def sources_list(sources):
-    """sources: list of (title, url, note) — note is a short description, may be empty"""
+    """sources: list of (title, url, note) — note is a short description, may be
+    empty. url is also optional (empty string, None, or the literal placeholder '#')
+    — many report sources are internal documents (concall transcripts, investor
+    presentations, annual reports) with no public URL to link to; in that case no
+    link line is rendered at all, rather than printing a bare, non-functional '#'."""
     parts = []
     for i, (title, url, note) in enumerate(sources, 1):
         note_html = f' — {esc(note)}' if note else ''
+        link_html = f'<br><a href="{esc(url)}">{esc(url)}</a>' if url and url != '#' else ''
         parts.append(
-            f'<div class="source-item"><span class="title">{i}. {esc(title)}</span>{note_html}<br>'
-            f'<a href="{esc(url)}">{esc(url)}</a></div>'
+            f'<div class="source-item"><span class="title">{i}. {esc(title)}</span>{note_html}{link_html}</div>'
         )
     return ''.join(parts)
 

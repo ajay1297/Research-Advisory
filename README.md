@@ -237,3 +237,26 @@ and `~/.report-generator/output/<company_slug>/<Company>_report.pdf` — PDF exp
 is automatic, never a separate ask. Full detail (architecture, end-to-end
 flow diagram, section-by-section source mapping) lives in
 [`skills/report-generator/README.md`](skills/report-generator/README.md#usage).
+
+#### Pipeline steps and the files each one touches
+
+The pipeline runs as four steps, each owned by its own file under
+`skills/report-generator/reference/`. Files with no extension shown are
+`.md`; `.py` files live in `skills/report-generator/scripts/`; JSON/HTML/PDF
+files live under `~/.report-generator/` (`research_cache/<slug>/` or
+`output/<slug>/`, as noted in Setup above).
+
+| Step | Step file | Reference docs it reads | Scripts it invokes | Data files it reads/writes |
+|---|---|---|---|---|
+| 0 — Perceive (freshness check) | `step0_perceive.md` | `data_sources.md`, `sourcing_depth.md`, `SKILL.md`, `step1_retrieve.md` | `check_freshness.py`, `forward_pe.py`, `guidance_tracker.py` | `state.json`, `report.md`, `bullets.json`, `guidance_history.json` |
+| 1 — Retrieve (fetch + extract) | `step1_retrieve.md` | `data_sources.md`, `step0_perceive.md`, `step3_memorize.md` | `pdf_to_text.py`, `pdf_to_text_parallel.py`, `extract_theme_quotes.py` | `sources/<slug>/`, `candidate_quotes/*.json`, `quotes.json` |
+| 2 — Synthesize (draft sections) | `step2_synthesize.md` | `step0_perceive.md`, `report_format.md`, `report_sections.md`, `source_playbook.md` | `guidance_tracker.py`, `capacity_utilization.py`, `forward_pe.py`, `fundraise_tracker.py`, `rating_tracker.py`, `litigation_tracker.py` | `quotes.json`, `guidance_history.json`, `fundraise_history.json`, `rating_history.json`, `litigation_history.json` |
+| 3 — Memorize (save + verify) | `step3_memorize.md` | `step0_perceive.md`, `report_assembly.md`, `guardrails.md` | `html_helpers.py`, `charts.py`, `verify_report.py`, `report_to_pdf.py`, `check_freshness.py` | `report.html`, `*_report.pdf`, `report.md`, `quotes.json`, `bullets.json`, 4 tracker histories (guidance/fundraise/rating/litigation), `state.json` |
+
+Two cross-cutting files every step reads but none of them "owns":
+`reference/rules_and_validation.md` (standing constraints — token
+discipline, never-drop-anything-silently, accuracy discipline) and
+`reference/guardrails.md` (the `verify_report.py` checklist reference).
+Step 3's Memorize is also where the loop closes: `check_freshness.py
+--mark-processed` writes `state.json`, which the *next* run's Step 0/Perceive
+reads back to decide how much of the pipeline actually needs to re-run.

@@ -33,10 +33,6 @@ Usage:
 import argparse
 import json
 import os
-import sys
-
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from run_context import get_run_id  # noqa: E402
 
 CASE_TYPES = ["tax_dispute", "customer_vendor_dispute", "regulatory", "labor",
               "ip", "criminal", "arbitration", "consumer", "promoter_related", "other"]
@@ -77,7 +73,6 @@ def add_case(args):
         "appeal_window": args.appeal_window or "",
         "note": args.note or "",
         "source": args.source or "",
-        "run_id": get_run_id(),
     }
     data["cases"].append(entry)
     save(path, data)

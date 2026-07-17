@@ -108,7 +108,7 @@ def main():
     header = (
         "=== DO NOT Read() THIS FILE DIRECTLY — grep it instead ===\n"
         "This is a full-document text extraction and may run to thousands of lines.\n"
-        "Per SKILL.md's token-discipline rule: grep -n \"<keyword>\" -C3 this file for the\n"
+        "Per reference/rules_and_validation.md's token-discipline rule: grep -n \"<keyword>\" -C3 this file for the\n"
         "section you need, then Read() only the specific line range that surfaces.\n"
         "===========================================================\n"
     )

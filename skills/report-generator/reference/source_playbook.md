@@ -1,84 +1,12 @@
-# Source Playbook
+# Source Playbook — per-report-topic sourcing for Step 2
 
-**Where and how to fetch each source (tool, URL pattern, fallback chain, uploads)
-lives in `reference/data_sources.md` — read it once per report.** This file tells
-you what to pull for each part of the report; each section below names its primary
-source and points back to `data_sources.md` for the mechanics of getting it.
-
-## Concalls, investor presentations, annual reports
-
-Fetch/extract/log mechanics in `reference/data_sources.md`. Annual-report-specific
-processing beyond the generic fetch pattern:
-
-## If the company doesn't hold concalls
-
-**Many smaller listed companies never hold an earnings call at all — this is common,
-not an error, and the whole pipeline needs to keep working without one.** Check
-screener.in's Documents/Concalls tab: if it's empty, or only ever shows "Transcript
-not available" / no entries across several quarters, treat this as confirmed rather
-than retrying repeatedly — one check is enough to establish the pattern.
-
-**What changes when there's no concall:**
-
-- **The freshness label** (`check_freshness.py --latest-seen`) uses the latest
-  **quarterly/annual results filing date** instead of a concall date — results still
-  get filed under Regulation 33 (SEBI LODR) even without a call, and that's a real,
-  regularly-recurring date to track freshness against. Still a full date
-  (`YYYY-MM-DD`), same requirement as the concall case.
-- **The Near/Medium/Long Term outlook's source shifts** — without management's own
-  spoken forward-looking commentary, the outlook has to be built from whatever
-  written forward-looking language the company *does* disclose:
-  - The **results filing itself** — some companies include a short MD&A-style
-    paragraph or press release alongside the numbers, even without a call.
-  - **Investor presentations**, if published independently of a call (some companies
-    that skip calls still publish a slide deck) — check for this specifically,
-    don't assume "no concall" means "no investor presentation" too.
-  - The **annual report's MD&A section** — this becomes a more load-bearing source
-    than usual, since it may be the *only* place management states a forward view in
-    their own words.
-  - **BSE/NSE announcements** (see "Announcements sweep" below) — an order win,
-    capacity expansion, or management commentary in an announcement can be the closest
-    thing to forward guidance available.
-  - If none of these yield genuine forward-looking language, the Near/Medium/Long
-    Term sections should say so explicitly rather than forcing a bullet from thin
-    material — "management does not hold concalls and no forward-looking guidance was
-    found in the results filing, investor materials, or recent announcements" is a
-    legitimate, statable finding per report_format.md's rule that a bullet needs a
-    real verbatim-quotable source.
-- **The guidance-reliability track record (Promoter/Governance) will be thinner or
-  absent** — without a call, there's no verbatim "we guided X, delivered Y" chain to
-  reconstruct via `guidance_tracker.py`. Say this plainly rather than presenting an
-  empty guidance-history table as if it were a clean track record; a company that
-  simply never states verifiable forward guidance is a different (and worth-noting)
-  governance profile from one that guides and delivers reliably.
-- **State this explicitly in the Company Summary or Near Term section, once, rather
-  than leaving the reader to infer it from a thin outlook** — e.g. "STL Ltd does not
-  hold quarterly earnings calls; this report's near-term outlook draws instead from
-  [whichever of the above sources actually yielded something]." This is exactly the
-  kind of scope fact the "Never drop anything silently" rule in `SKILL.md` expects
-  stated, not left implicit.
-
-## Annual reports — processing, beyond the generic fetch pattern
-
-Larger PDF (100-300+ pages) — always run the **whole** thing through
-`pdf_to_text.py`/`pdf_to_text_parallel.py`, never a guessed page range: the segment
-note, litigation note, shareholding pattern, and PP&E note typically sit much
-further back than the MD&A and are just as required as the outlook section.
-`verify_report.py extraction` needs the source PDF still on disk to confirm
-full-page coverage — save it before extracting, don't extract-then-discard.
-
-The "don't read the whole thing" discipline applies to what you feed
-`extract_theme_quotes.py` and what you `Read()` into context, not to what gets
-extracted — grep the already-fully-extracted text for the MD&A section heading and
-only feed *that* slice to `extract_theme_quotes.py` (avoids burning tokens running
-quote-candidate extraction over financial-statement boilerplate), while the full
-extracted `.txt` stays on disk for every other section's grep/`semantic_search.py`
-pass. If a section you know should exist (raw material sourcing note, a value-chain/
-backward-integration description, a specific customer mention) doesn't surface under
-any keyword you try, run `scripts/semantic_search.py <extracted.txt> "<what you're
-looking for, in plain language>"` before giving up on grep — annual reports vary a
-lot in phrasing between companies and a keyword guess that worked for one company's
-report often doesn't for another's.
+**Read only by `reference/step2_synthesize.md`.** Where and how to fetch each
+source (tool, URL pattern, fallback chain, uploads) lives in
+`reference/data_sources.md` — read it once per report. This file tells you what to
+pull for each part of the report; each section below names its primary source and
+points back to `data_sources.md` for the mechanics of getting it. Document-set/
+depth/cadence policy (how far back, what's standard, what changes on a refresh)
+lives in `reference/sourcing_depth.md`, not here.
 
 ## Value chain positioning
 
@@ -213,7 +141,7 @@ via step 1 below rather than guessing an exchange).
    reads as an inconclusive search when it's actually a confirmed, citable fact; a
    reader can't tell the difference between "I checked and there's nothing to find"
    and "I didn't check thoroughly enough to find it." This is the same discipline as
-   the "Never drop anything silently" rule in `SKILL.md`, applied specifically to
+   the "Never drop anything silently" rule in `reference/rules_and_validation.md`, applied specifically to
    customer-listing checks since it's a recurring place the distinction gets blurred.
 
    This step is what separates "worth 4 quarters of analysis" from "quick guidance
@@ -237,8 +165,7 @@ via step 1 below rather than guessing an exchange).
      exchanges via the same URL pattern (e.g. `:LON` for London, `:XETR` for
      Frankfurt) — try it there first before falling back to the customer's own IR
      page. Beyond those two, treat any other regional aggregator as unverified until
-     you've confirmed it actually returns usable content, same discipline as the
-     shipment-data-aggregator lesson above.
+     you've confirmed it actually returns usable content.
    - **Only one retry per source, same as any other stuck-source rule** — if a
      customer's transcripts genuinely aren't fetchable (paywalled investor portal, no
      public transcript for that market), say so explicitly rather than silently
@@ -260,25 +187,6 @@ via step 1 below rather than guessing an exchange).
    calls checked, even the ones that turned up nothing relevant — the point is showing
    the check was done across 4 quarters, not just cherry-picking the one call that
    happened to be favorable.
-
-**Discovering additional customers via export-shipment data** (for an exporting
-company — see "Export/import shipment data" below): this is a legitimate way to
-surface customer names the company itself hasn't named in any filing, but it must be
-labeled distinctly, not blended into the company-disclosed list — write it as "per
-third-party export-shipment records (not disclosed by the company itself): shipments
-recorded to <consignee>, <country>" rather than presenting it with the same confidence
-as an investor-presentation logo slide. This doesn't relax the existing rule against
-inferring a relationship from a photo or a bare LinkedIn mention — shipment records are
-a specific, checkable data point (an actual bill of lading/shipping bill), not an
-indirect inference, which is why they get a different treatment.
-
-## Export/import shipment data
-
-Which aggregators, their reliability, and the fallback chain (raw material note →
-DGFT stats → investor presentation/concall) are in `reference/data_sources.md`. Feeds
-two report sections at once: corroborating/surfacing names for Marquee & Niche
-Customers, and corroborating/filling the country gap for Raw Material Sourcing. State
-the outcome explicitly either way per SKILL.md's "Never drop anything silently" rule.
 
 **Awards & recognition** — check the investor presentation for an "Awards & Accolades"
 slide (common in Indian small/midcap decks, often listing the awarding body and year)
@@ -397,8 +305,9 @@ This is already sitting in the screener.in fetch done in step 1 above — the qu
 and annual results tables give revenue, PBT, and PAT directly for at least the last
 5 years (and gross margin or EBITDA margin, whichever the company discloses). No
 separate fetch needed; just don't discard these columns when you scope the rest of the
-report to the standard 18-month/6-quarter lookback window (see "Filtering to an
-18-month window" below) — this section is explicitly a multi-year trend, not a
+report to the standard 18-month/6-quarter lookback window (see
+`reference/sourcing_depth.md`'s "Filtering to an 18-month window" section) — this
+section is explicitly a multi-year trend, not a
 recent-quarter snapshot, and is exempt from that lookback default.
 
 ## Segment-wise performance, order book composition & exports vs. domestic split
@@ -458,11 +367,6 @@ Long Term outlook bullet (e.g. "capacity sized for INR3,000-3,200cr sales by FY2
 Reuse that figure via `--post-capex-max-revenue-cr` rather than re-deriving or
 re-searching for a number management already gave.
 
-## BSE / NSE filings (fallback / verification)
-
-URL patterns and the two failure modes this covers (missing filing, screener.in
-widgets not populating) are in `reference/data_sources.md`.
-
 ## Forward PE inputs
 
 From screener.in's summary block: current market price, shares outstanding (Equity
@@ -474,55 +378,6 @@ instead and label it "user-supplied" per `reference/report_sections.md`'s Forwar
 **Median PE** comes from a secondary aggregator, not a filing — sourcing mechanics
 and the divergent-sources rule are in `reference/data_sources.md`.
 
-## Broker / agency research reports (Nuvama, etc.) — uploaded only, never fetched
-
-Unlike every other source in this playbook, **don't go looking for broker/agency
-research reports (Nuvama, Motilal Oswal, ICICI Securities, Kotak Institutional, Jefferies,
-etc.) on your own.** Two reasons: they're near-universally paywalled/institutional-
-distribution products with no reliable free public copy to fetch, and — more
-importantly — every such report's own disclaimer typically states it is confidential
-and must not be "reproduced or redistributed or passed on directly or indirectly in
-any form to any other person or published, copied, in whole or in part, for any
-purpose." Respect that: this section only activates when the **user directly uploads**
-a broker report (per "User-uploaded documents" below), and even then the *use* of it
-stays narrow — extracting and attributing the factual content (rating, target price,
-estimates, thesis points, risk points) for the user's own personal research report is
-squarely the point of them sharing it, but that doesn't extend to reproducing the
-source document's analysis verbatim at length.
-
-**How to use one once uploaded:**
-1. Extract via `pdf_to_text.py` like any other PDF, save to
-   `~/.report-generator/sources/<company_slug>/` (e.g.
-   `Nuvama_Result_Update_2026-04-29.pdf`/`.txt`).
-2. Pull the factual snapshot: agency name, analyst name(s), report date, report type
-   (Result Update/Company Update/Initiation/Visit Note), rating, price at report date,
-   12-month target price, target methodology (e.g. "15x Mar-28E EBITDA"), and the
-   headline estimates table (revenue/EBITDA/PAT/EPS by year) — these are facts, not the
-   report's copyrightable prose, and are fine to state directly, always attributed.
-3. For the thesis/key-risks bullets, **paraphrase in your own words** rather than
-   copying the source report's paragraphs — a one-line factual paraphrase per point
-   ("Nuvama flags [specific risk] as a new headwind") captures the substance without
-   reproducing the analyst's actual written analysis. Do not quote more than a short
-   phrase verbatim from the source document.
-4. **There is no dedicated section for this.** Fold each fact directly into whichever
-   existing report section it belongs to — the target price/rating into Valuation, a
-   sector-demand read into Industry Tailwinds/Headwinds, a thesis point into Investment
-   Thesis Summary, a flagged risk into Key Risks, and so on — per
-   `reference/report_sections.md`'s "Broker / agency research — inline-tagged, no
-   dedicated section." What keeps a broker's numbers from blending into the pipeline's
-   own independently-sourced Valuation/Financial Performance Summary/Investment Thesis
-   figures is an **inline tag on every single point**: `[<BROKER>_<DDMMYYYY>]`
-   (agency name uppercase/no-spaces, then the report's own publication date), appended
-   immediately after the sentence, table row, or bullet it supports — e.g. a Nuvama
-   Result Update dated 29 April 2026 tags every point it contributes as
-   `[NUVAMA_29042026]`. Tag every sentence individually, even consecutive ones from the
-   same report.
-5. If the user later uploads a newer report from the same or a different agency on a
-   regeneration, its points get their own tag with the new report's date — don't
-   overwrite an earlier broker-sourced point with a newer one under the same tag; both
-   coexist, distinguished by their own dates, same principle as the tracker histories
-   elsewhere in this pipeline.
-
 ## Raw material sourcing — domestic vs. imported, country-wise
 
 A standard Companies Act/Ind AS disclosure, but one easy to miss because it isn't in
@@ -530,7 +385,8 @@ the concall or investor presentation — it lives in the **annual report's Notes
 Accounts**, usually under a heading like "Value of raw materials, components and spare
 parts consumed" or "Additional Information pursuant to Schedule III," broken into
 indigenous vs. imported ₹ value and %. Fetch the latest available annual report (per
-"Annual reports" below) and search its extracted text for "imported" / "indigenous" /
+`reference/sourcing_depth.md`'s "Annual reports — processing" section) and search its
+extracted text for "imported" / "indigenous" /
 "raw material consumed."
 
 **Don't stop at the aggregate %** — if any portion is imported, look specifically for a
@@ -549,12 +405,6 @@ aggregate as the complete picture, and try one of the following before giving up
   sometimes volunteers directional color (e.g. "we import our nickel content from
   Indonesia") without a hard %; report this as qualitative color, explicitly labeled as
   such rather than presented as a quantified figure.
-- **An import-shipment-data aggregator** (see "Export/import shipment data" below) —
-  actual inbound customs records showing shipper name and origin country are a genuine,
-  checkable partial substitute for both the % and the country split when the annual
-  report doesn't give one; say explicitly if only a partial picture was available this
-  way (these sites usually gate full records behind a paywall).
-
 Don't substitute generic industry knowledge (e.g. "India imports most of its nickel")
 for a company-specific disclosure — if the company's own number or country breakdown
 isn't found anywhere reviewed, say so plainly rather than guessing.
@@ -647,18 +497,6 @@ ownership (owned/leased), and area; the investor presentation's manufacturing-fo
 slide and concall Q&A about plant locations or expansion sites are secondary sources
 that are often faster to fetch but less complete than the annual report.
 
-## Industry tailwinds / headwinds
-
-Don't infer these from the single company's concall alone — that's already covered
-in the Near/Medium/Long Term sections. Look outward:
-- `WebSearch` for `<industry/sector> India outlook <year>`, `<industry> order inflow
-  trend India`, or the same query for 1-2 direct peers/competitors named in the
-  concall or on screener.in's Peers tab.
-- Sector-level commentary from industry bodies (e.g. CII, sector-specific
-  associations), rating agency sector notes (CRISIL/ICRA/CARE publish free sector
-  outlook notes), or a peer's own concall commentary on the same demand drivers.
-- Keep this section tight — 2-4 bullets, not a literature review.
-
 ## Peer comparison, entry barriers & product criticality
 
 Start from screener.in's own "Peers" tab on the company page — it lists 5-10 comparable
@@ -701,57 +539,12 @@ relevant than an arbitrary screener.in peer-set cutoff.
 Fetch mechanics (which sites, escalation pattern) in `reference/data_sources.md`.
 Always record the as-of date next to the numbers — this section goes stale fast.
 
-## Credit rating agencies (CRISIL / ICRA / CARE / India Ratings / Acuite / Brickwork)
-
-Check this for every report, not just when the company has visibly raised debt — a
-rating rationale is one of the few genuinely independent, professionally-underwritten
-views in the whole pipeline (unlike the concall, which is management's own words, or
-screener.in, which aggregates public filings without an opinion on them). Which
-agencies to search and where rationales live are in `reference/data_sources.md` —
-don't assume no result means "unrated," a different agency may cover the company; if
-genuinely none is found anywhere, say so explicitly.
-
-- **What to extract from the rationale**: current rating and outlook (e.g. "CRISIL
-  A-/Stable"), the instrument it applies to (bank facilities, NCD, commercial paper —
-  a company can carry different ratings for different instruments), the date of the
-  rationale, and 1-2 lines of the agency's own reasoning — leverage/coverage trend,
-  liquidity assessment (strong/adequate/stretched/poor), and any promoter-support,
-  personal-guarantee, or related-party-transaction commentary the agency called out.
-- **Log it**: use `scripts/rating_tracker.py add-rating` once per rating action found
-  (don't re-log an unchanged rating on every regeneration — it's a durable record like
-  fund raises, not a per-quarter one like guidance). State the `--action` yourself
-  (`first_time`/`reaffirmed`/`upgrade`/`downgrade`/`outlook_revised_positive`/
-  `outlook_revised_negative`/`withdrawn`) based on what the rationale itself says
-  relative to the company's prior rating — don't try to infer it purely from comparing
-  rating-scale notches.
-- **Treat a downgrade or negative/watch-negative outlook as a first-class risk signal**:
-  run `scripts/rating_tracker.py <slug> report` and reproduce its flag verbatim if the
-  currently-in-force rating on any instrument is a downgrade or carries a negative/
-  watch-negative outlook — this belongs in both the Promoter/Governance section and, if
-  material, the Key Risks section, not softened into a passing mention.
-- **Always actively check for a rating action within the last 6 months, every run —
-  not just on a regeneration where something else changed.** This is a check-recency
-  requirement, distinct from the "not lookback-limited, show the full history" rule
-  above for what gets *displayed*: `rating_history.json` showing an old entry from
-  a year ago is not evidence that nothing happened since — agencies review ratings on
-  their own schedule (annual surveillance reviews, event-driven reviews after a
-  material development), so an old cached entry can go stale silently if a run just
-  reuses it without a fresh check. On every run (`no_state`, `new_quarter`, or a
-  from-scratch rebuild), re-run the agency searches above for each agency already
-  known to cover the company, scoped to the last 6 months, even if
-  `rating_history.json` already has an entry — if nothing new is found, that's a
-  legitimate "checked, no action in the last 6 months" finding, not a reason to skip
-  the check.
-- **Rating rationales are point-in-time**, usually issued once or twice a year (annual
-  surveillance, or on a trigger event like a fund raise) — state the rationale's own
-  date next to the rating, the same staleness discipline as the Technical Snapshot.
-
 ## Promoter / governance track record
 
 Three separate things to check:
 1. **Guidance reliability** — use `scripts/guidance_tracker.py` against the cached
    `guidance_history.json` for the company (built up over successive report runs from
-   this skill; see SKILL.md). This needs no new fetching once a couple of quarters are
+   this skill; see `reference/step0_perceive.md`). This needs no new fetching once a couple of quarters are
    logged — it's a local comparison.
 2. **Other governance signals** — pull directly from screener.in's Shareholding
    Pattern (promoter holding trend, pledge % if shown) and Documents tab (auditor
@@ -790,7 +583,7 @@ Three separate things to check:
      and call `fundraise_tracker.py update-status` accordingly before running `report`.
    - **NCDs / term loans / promoter loans**: BSE/NSE announcements ("Issue of
      Non-Convertible Debentures") and, especially, the same credit-rating rationale
-     documents covered in "Credit rating agencies" above — these typically state the
+     documents covered in `reference/data_sources.md`'s "Credit rating agencies" section — these typically state the
      amount, tenure, coupon, purpose, and whether the promoter has furnished a personal
      guarantee or pledged shares as security. Search `<company name> NCD allotment BSE`.
      Log the debt instrument itself in `fundraise_history.json` via `fundraise_tracker.py`
@@ -803,72 +596,6 @@ Three separate things to check:
      (optionally with `--cmp <price>` to show issue price as a premium/discount to the
      current price) and reproduce its output/flags in the Promoter Fund Raises
      sub-section per `reference/report_sections.md`.
-
-## Standard sourcing depth — last 2 annual reports, last 6 quarters of concalls and investor presentations
-
-**This is the default for every `research <company>` / first-time (`no_state`) run,
-not a special request the user has to ask for.** The question this depth exists to
-answer: **can this promoter actually be trusted — does management walk the talk, and
-what has genuinely changed about the business over time?** That needs more history
-than a single quarter's tone can show, so it's built into the standard pipeline
-rather than gated behind trigger phrasing:
-
-- **Annual reports: the last 2 fiscal years**, not just the latest one — e.g. if the
-  current fiscal year is FY27, fetch and fully extract (`pdf_to_text.py`/
-  `pdf_to_text_parallel.py`, per the "always extract the whole document" rule) the FY25
-  and FY26 annual reports. Two consecutive years lets you read the Chairman's
-  letter/MD&A narrative *change* year over year — did the stated strategy actually
-  shift, did a previously-flagged risk get addressed, does this year's framing
-  contradict or confirm last year's — which a single year's report can't show on its
-  own.
-- **Concall transcripts: the last 6 quarters.** This is specifically to give
-  `guidance_history.json` enough successive data points to show a genuine track record
-  rather than 1-2 isolated entries — a promoter who guided X in quarter 1, revised to Y
-  in quarter 3, and delivered Z in quarter 6 tells you something 1-2 quarters can't.
-  Extract each transcript and run `extract_theme_quotes.py` on it as usual, then log
-  each quarter's guidance items via `guidance_tracker.py add-guidance` (using
-  `--supersedes-id` wherever a later quarter revises an earlier one) so the evolution
-  is reconstructable, not just the latest snapshot.
-- **Investor presentations: also the last 6 quarters, same depth as concalls — this
-  is not optional or secondary.** Confirmed in practice on a real report: the investor
-  presentation is frequently the *only* source for the segment-wise revenue split, the
-  geographic/exports split, and the company's own disclosed TAM figure — a report built
-  from the concall transcript and screener.in alone can be genuinely wrong (not just
-  thin) on these sections, having incorrectly claimed "no TAM disclosed" when the
-  investor presentation had one all along. Fetch and fully extract each quarter's
-  investor presentation alongside its concall — they're normally published together on
-  screener.in's Documents tab, so this shouldn't require a separate search. If a
-  quarter's investor presentation genuinely isn't available (some companies don't
-  publish one every quarter), say so explicitly rather than silently having only the
-  concall for that quarter.
-- This depth feeds the **Situation Classification** (a transformation/turnaround call
-  needs multi-year evidence, not one quarter's tone), the **Promoter/Governance Track
-  Record** section's guidance-reliability read, the **Segment-wise Performance**/
-  **Total Addressable Market**/**Manufacturing Locations** sections (which lean heavily
-  on investor presentations specifically), and the **Investment Thesis Summary**/
-  **Verdict** — it does not change what goes into the Near/Medium/Long Term outlook
-  bullets themselves, which still reflect *current* forward guidance.
-- **Check this was actually done, don't just intend it**: `scripts/verify_report.py
-  depth <company_slug>` counts both concall and investor-presentation files actually
-  sitting in `sources/<company_slug>/` and WARNs if either is short of 6 — the same
-  mechanism that would have caught the investor-presentation gap above before delivery
-  rather than after a user had to point it out.
-- **On a `new_quarter` refresh, this does not mean re-fetching all 6 quarters again**
-  — per the incremental-regeneration rule, only the new quarter gets fetched; earlier
-  quarters already sitting in `sources/<company_slug>/` from prior runs are reused
-  untouched, so the rolling 6-quarter window stays maintained cheaply over successive
-  regenerations rather than being rebuilt from scratch each time.
-- **Only go narrower than this** if the user explicitly asks for something
-  lighter/faster in that specific request (e.g. "just give me a quick take," "don't
-  need the full history"). State plainly which fiscal years and quarters were
-  actually pulled either way — this is exactly the kind of scope decision the "Never
-  drop anything silently" rule in `SKILL.md` expects to be stated, not left implicit.
-- **Check this depth was actually met before delivering, don't just intend it**:
-  `python3 scripts/verify_report.py depth <company_slug>` counts the concall/annual-
-  report `.txt` files actually sitting in `sources/<company_slug>/` and flags a
-  shortfall — a WARN there is the prompt to either fetch what's missing or state the
-  shortfall explicitly in the report, not something to notice only if someone asks
-  later why a run came up short.
 
 ## Announcements sweep — last 6 months, materiality-assessed (standing requirement)
 
@@ -883,7 +610,7 @@ moved the stock or the story between concalls.
 
 **Where to fetch it**: BSE (`https://www.bseindia.com/stock-share-price/<company>/
 <code>/corp-announcements/`) or NSE (`https://www.nseindia.com/companies-listing/
-corporate-filings-announcements`) — see "BSE / NSE filings" below for the fetch
+corporate-filings-announcements`) — see `reference/data_sources.md`'s "BSE / NSE filings" section for the fetch
 mechanics (fallback pattern, Chrome escalation if JS-rendered). Filter to the last 6
 months by announcement date.
 
@@ -929,81 +656,3 @@ its date and BSE/NSE reference in the Sources list like any other citation. If t
 Capex/Milestones Timeline or Key Risks, wherever most relevant) rather than silently
 omitting any mention that the check was made — this is the same "Never drop anything
 silently" discipline applied to a sweep that legitimately came up empty.
-
-## YouTube (supplementary, optional — not a primary source)
-
-Some concalls are only available as a recording, not a written transcript (screener.in's
-Concalls section links these as "REC" against the relevant quarter). Also occasionally
-useful for a management interview (CNBC/ET Now/ETMarkets) that adds outlook color
-beyond the concall — treat that as industry/company color, not the primary near/
-medium/long-term source. Access mechanics and known limitations (Chrome-dependent,
-no audio transcription) are in `reference/data_sources.md`.
-
-## Filtering to an 18-month window — how it actually works
-
-There's no server-side "give me the last 18 months only" parameter on either
-screener.in or YouTube/WebSearch. The 18-month/6-quarter lookback (the framework's
-standard sourcing depth — see SKILL.md and "Standard sourcing depth" above) is
-enforced by what gets *used and cached*, not by what gets fetched:
-
-- **screener.in**: one `web_fetch` always returns the entire page — the full
-  multi-year quarterly table, full P&L/balance sheet history, full shareholding
-  history back to 2015-17, and the full concalls list back to whenever the company
-  started disclosing them. There is no URL parameter or lighter endpoint that returns
-  only recent data. The window filter happens after the fetch: read only the last 6
-  columns of the quarterly table, the top 6 entries of the Concalls list, and the
-  recent shareholding-pattern columns spanning the same window. Don't cache or carry
-  forward older columns/entries beyond that window into
-  `~/.report-generator/research_cache/` — leave them in the one-time fetch and discard
-  them once you've pulled what you need. This means the fetch itself isn't smaller,
-  but the tokens spent reasoning over the result, and what persists in the cache, are
-  scoped to the standard window.
-- **YouTube / WebSearch**: `WebSearch`'s schema has no date-range parameter, so you
-  can't ask it for "concalls from the last 18 months" directly. Two ways to stay
-  scoped: (1) prefer the quarter-linked link from screener.in as above, which is
-  already dated by construction; (2) if doing a genuinely open search (e.g. industry
-  commentary, not a specific concall), phrase the query with the specific
-  month/quarter you want (e.g. "TD Power Systems management interview June 2026") and
-  then check the actual publish date shown in the search result or on the fetched
-  page before using it — discard anything you can't confirm falls inside the window.
-
-## Regenerating for a new quarter — what to actually (re)fetch
-
-This is the single biggest token-saving lever in the whole pipeline, and it's easy to
-under-use by "just re-running everything to be safe." When `check_freshness.py` returns
-`new_quarter`, fetch **only**:
-
-- The new quarter's **concall transcript** and **investor presentation** (the two
-  documents that actually changed).
-- **screener.in's last 1-2 columns** of the quarterly/annual results table and the most
-  recent shareholding-pattern column — not the full history, per "Filtering to an
-  18-month window" above (this incremental fetch stays narrow even though the
-  standard *sourcing depth* is 6 quarters — a `new_quarter` refresh only needs
-  what's new, since earlier quarters are already cached).
-- Any **new** BSE/NSE announcement, rating action, or litigation development since the
-  last run — check dates against what's already logged in `guidance_history.json`/
-  `fundraise_history.json`/`rating_history.json`/`litigation_history.json` and only
-  fetch/log what's actually new, not the full history again.
-
-**Do not re-fetch or re-derive** anything that doesn't change quarter to quarter and is
-already sitting in `~/.report-generator/research_cache/<company_slug>/report.md` from the last run:
-manufacturing locations, certifications, TAM figures, entry barriers, product
-criticality, peer identities (their financials may need a quick refresh if quoted, but
-the peer set itself rarely changes), the value chain description, or older annual
-reports already processed. Carry these sections forward from the cached `report.md`
-unmodified unless the new concall/presentation specifically mentions a change (a new
-certification obtained, a new plant, a new peer entering the conversation).
-
-**What does need a fresh look every quarter**: the Near/Medium/Long Term outlook
-(supersedes the old bullets, per SKILL.md), Financial Performance Summary (add the new
-quarter/year as a row, don't rebuild the table), Order Book, Capacity Utilization,
-the Capex/Milestones timeline (append new rows only), Valuation (new price/guidance),
-Technical Snapshot (always stale, always refresh), and the Promoter/Governance
-sub-sections — but even those only get a new *entry* appended if something actually
-happened (a new rating action, a new fund raise, a new case) rather than a full rebuild
-of an unchanged history.
-
-## User-uploaded documents
-
-See `reference/data_sources.md`'s "User-uploaded documents" section — always prefer
-an upload over fetching for that document type.
