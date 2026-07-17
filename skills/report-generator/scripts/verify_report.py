@@ -1057,6 +1057,82 @@ def check_social(slug, report_path=None, months=3):
     return ok  # FAILs if the sweep was never logged/skipped/evidence-free or stale — see docstring
 
 
+def check_brokers(slug, months=3):
+    """Checks source_manifest.json for a logged 'broker_sweep' entry within the
+    last N months (default 3, same window as check_social — see
+    reference/data_sources.md's 'Broker / agency research' section for why: a
+    broker-forum discovery sweep is a discovery channel, not a formal disclosure
+    record, so it needs re-checking every run rather than being trusted stale).
+    Same performed/skipped/evidence rules as check_social — a disclosed skip or an
+    evidence-free 'performed' entry both FAIL, never silently pass as if the sweep
+    happened."""
+    base = os.path.expanduser("~/.report-generator")
+    manifest_path = os.path.join(base, "research_cache", slug, "source_manifest.json")
+    print(f"=== broker-forum sweep recency check: {slug} (expect a check within "
+          f"the last {months} months) ===")
+
+    ok = True
+    if not os.path.exists(manifest_path):
+        print(f"FAIL: no source_manifest.json found — no broker-forum sweep has "
+              f"ever been logged for this company. Per reference/data_sources.md's "
+              f"'Broker / agency research' section, this is a standing requirement "
+              f"on every run, not optional. Log it via source_manifest.py before "
+              f"delivering the report.")
+        return False
+
+    with open(manifest_path) as f:
+        data = json.load(f)
+    checks = [d for d in data.get("documents", []) if d.get("type") == "broker_sweep"]
+
+    if not checks:
+        print(f"FAIL: source_manifest.json exists but no 'broker_sweep' entry has "
+              f"ever been logged — this check is a standing requirement, not "
+              f"something to skip because a broker PDF happened to already be on "
+              f"file from an earlier run.")
+        return False
+
+    dates = []
+    for c in checks:
+        try:
+            dates.append(datetime.fromisoformat(str(c.get("date")).replace("Z", "+00:00")))
+        except ValueError:
+            continue
+    if not dates:
+        print("FAIL: could not parse a date from any logged broker_sweep entry")
+        return False
+
+    latest_entry = max(checks, key=lambda c: c.get("date") or "")
+    latest = max(dates)
+
+    if latest_entry.get("status") == "skipped":
+        print(f"FAIL: most recent broker-forum sweep ({latest.date()}) was logged "
+              f"as --status skipped (reason: "
+              f"{latest_entry.get('reason') or 'not given'!r}) — a disclosed skip "
+              f"must never look the same as a done check.")
+        ok = False
+    elif not latest_entry.get("evidence") or not str(latest_entry.get("evidence")).strip():
+        print(f"FAIL: most recent broker-forum sweep ({latest.date()}) has no "
+              f"'evidence' field logged — a 'performed' check with no evidence of "
+              f"what was actually searched/found is indistinguishable from a check "
+              f"that never happened.")
+        ok = False
+    else:
+        now = datetime.now(timezone.utc) if latest.tzinfo else datetime.now()
+        age_days = (now - latest).days
+        if age_days > months * 30:
+            print(f"FAIL: most recent logged broker-forum sweep is {latest.date()} "
+                  f"({age_days} days old, > {months} months) — a fresh sweep "
+                  f"genuinely needs to happen this run, not just be assumed "
+                  f"unchanged from an old log entry.")
+            ok = False
+        else:
+            print(f"PASS: most recent logged broker-forum sweep is {latest.date()} "
+                  f"({age_days} days old, within {months} months) — evidence: "
+                  f"{latest_entry.get('evidence')!r}")
+
+    return ok  # FAILs if the sweep was never logged/skipped/evidence-free or stale — see docstring
+
+
 def check_paragraphs(report_path, max_words=160):
     # ~160 words approximates 10 rendered lines of body-text prose at the report's
     # normal column width (roughly 15-16 words/line observed in practice) — a
@@ -1193,6 +1269,10 @@ def main():
     p17.add_argument("--report-path", default=None)
     p17.add_argument("--months", type=int, default=3)
 
+    p18 = sub.add_parser("brokers")
+    p18.add_argument("slug")
+    p18.add_argument("--months", type=int, default=3)
+
     args = parser.parse_args()
 
     if args.cmd == "html":
@@ -1234,6 +1314,8 @@ def main():
         ok = check_paragraphs(args.report_path, args.max_words)
     elif args.cmd == "social":
         ok = check_social(args.slug, args.report_path, args.months)
+    elif args.cmd == "brokers":
+        ok = check_brokers(args.slug, args.months)
     else:
         parser.print_help()
         sys.exit(2)

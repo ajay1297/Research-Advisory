@@ -17,7 +17,7 @@ does while running ever adds, modifies, or deletes a file here.
 
 | Skill | What it does |
 |---|---|
-| [`report-generator`](skills/report-generator/README.md) | Generates/refreshes India-listed-company research reports (visual PDF + Markdown) from concall transcripts, investor presentations, annual reports, credit-rating rationales, and screener.in/BSE/NSE data. See its own README for the full pipeline, directory structure, and setup. |
+| [`report-generator`](skills/report-generator/SKILL.md) | Generates/refreshes India-listed-company research reports (visual PDF + Markdown) from concall transcripts, investor presentations, annual reports, credit-rating rationales, and screener.in/BSE/NSE data. Full pipeline, directory structure, and setup are documented in this README below (Usage and Setup sections); the skill's own `SKILL.md` and `reference/*.md` are the operational spec Claude reads at run time. |
 | [`portfolio-analysis`](skills/portfolio-analysis/SKILL.md) | **Placeholder — not yet implemented.** Reserved for future portfolio-level analysis/advisory. |
 
 More skills may be added here over time, each in its own `skills/<name>/` directory.
@@ -179,9 +179,10 @@ python3 -c "import pdfplumber, weasyprint; print('ok')"
 pdftoppm -v
 ```
 
-Full setup detail (known gotchas, the `pdftotext -layout` fallback for
-mis-extracted PDFs, directory-creation behavior) lives in
-[`skills/report-generator/README.md`](skills/report-generator/README.md#setup).
+Known gotchas and fallback behavior (what happens when a fetch fails, when
+WeasyPrint isn't installed, when a PDF extraction comes back partial) are
+documented inline in the skill's own `reference/*.md` files, not duplicated
+here — see the table below for which file covers which step.
 
 ## Usage
 
@@ -234,9 +235,29 @@ preferring the uploaded document over fetching one.
 
 Every run ends with both `~/.report-generator/output/<company_slug>/<Company>_report.md`
 and `~/.report-generator/output/<company_slug>/<Company>_report.pdf` — PDF export
-is automatic, never a separate ask. Full detail (architecture, end-to-end
-flow diagram, section-by-section source mapping) lives in
-[`skills/report-generator/README.md`](skills/report-generator/README.md#usage).
+is automatic, never a separate ask. Architecture, the end-to-end flow, and
+the section-by-section source mapping are covered in the two subsections
+below.
+
+#### Pipeline flow
+
+```mermaid
+flowchart TD
+    A[User prompt] --> B[LLM - Claude]
+    B --> C["Procedural memory: SKILL.md"]
+    subgraph PIPE["Four-step pipeline"]
+        direction LR
+        P0["Perceive<br/>step0_perceive.md"] --> P1["Retrieve<br/>step1_retrieve.md"]
+        P1 --> P2["Synthesize<br/>step2_synthesize.md"]
+        P2 --> P3["Memorize<br/>step3_memorize.md"]
+    end
+    C --> P0
+    P2 --> SM[("Semantic memory<br/>research_cache/*.json")]
+    P3 --> SM
+    P3 --> EV{"Eval<br/>verify_report.py"}
+    EV -->|pass| OUT["Deliver .md + .pdf"]
+    EV -.->|mark-processed, loop| P0
+```
 
 #### Pipeline steps and the files each one touches
 

@@ -19,17 +19,18 @@ section headings):
 | **Financial statements / quarterly results** | screener.in (structured P&L/balance sheet/cash flow) | screener.in's "Raw PDF" links redirect straight to the underlying BSE filing — no browser needed (see below) |
 | **Press releases** | BSE/NSE, filtered to Category "Company Update" / Sub-Category "Press Release / Media Release" | Company's own IR page (sometimes bundled with results, not always a separate document) |
 | **Rating reports** | The rating agency's own site (ICRA/CRISIL/CARE/India Ratings/Acuite/Brickwork) — company-specific rationale | The same agencies' free *industry-level* sector special-comment reports (distinct from the company rationale — see "Industry-level and macro sources" below) |
-| **Order wins** | BSE/NSE announcements (Category "Company Update," the 6-month sweep) | News search, company's LinkedIn/X (both as discovery, not sole source) |
+| **Order wins** | BSE/NSE announcements (Category "Company Update," the 6-month sweep) | Company-specific news (see "News sources" below), company's LinkedIn/X (both as discovery, not sole source) |
 | **Brokerage reports** | `WebSearch` for `<company> <broker> rating target price` (actively searched now — see "Broker / agency research" below) | User uploads, if the user has one; never bypass a paywall to get the actual PDF |
-| **Industry/macro context** (tailwinds, headwinds, sector trends) | Government/ministry/trade-body sites, rating agencies' *industry-level* research, trade publications | General news search on sector-wide (not company-specific) developments |
+| **Industry/macro context** (tailwinds, headwinds, sector trends) | Government/ministry/trade-body sites, rating agencies' *industry-level* research, trade publications | General news search on sector-wide (not company-specific) developments — see "News sources" below |
 | **Everything else** (screener.in itself, technicals, secondary price checks) | screener.in, Trendlyne/Tijori as a fallback | — |
 
 `Google`/`WebSearch` isn't its own row — it's the universal lookup tool used to
 *locate* the actual document/page for every row above, not a distinct source of
-facts in itself. `News`/aggregators (EquityBulls, ScanX, Business Standard, etc.)
-work the same way: legitimate for discovery and for the 6-month announcements sweep,
-but never cited as the primary source for a number if the primary filing/press
-release is reachable instead (see the source-trust-hierarchy below).
+facts in itself. `News`/aggregators work the same way — see "News sources" below
+for the actual site list — legitimate for discovery and for the 6-month
+announcements sweep, but never cited as the primary source for a number if the
+primary filing/press release is reachable instead (see the source-trust-hierarchy
+below).
 
 An uploaded concall transcript, investor presentation, annual report PDF, or
 broker/agency research report (Nuvama, Motilal Oswal, etc.) in place of/alongside a
@@ -434,6 +435,84 @@ came from an upload or a public find.
    mention that the check was made — same "never drop anything silently" discipline
    as the rest of this pipeline.
 
+**Broker-forum/aggregator sites worth querying directly, beyond a bare `WebSearch`
+for the broker's name** (verified 2026-07-17 against Sterlite Technologies) —
+these surface headline rating/target-price info even when the broker's own PDF
+isn't accessible:
+- **Trendlyne** (`trendlyne.com/research-reports/stock/<id>/<TICKER>/...`) —
+  aggregates dated broker calls with rating/target price; useful as a discovery
+  index of *which* brokers have covered the stock and roughly when, even though
+  the underlying report itself usually isn't reproduced in full.
+- **ICICI Direct** (`icicidirect.com/research/equity/<company-slug>/<id>`) — publishes
+  its own house research reports with a visible report date, analyst name, rating,
+  and target price; genuinely fetchable via `WebFetch`, but **check the report date
+  before using it** — a stale multi-year-old report (observed: a 2023-dated note
+  still ranking near the top of search results in mid-2026, target price far below
+  the then-current price) is worse than no data if presented without that caveat.
+- **scanx.trade / stockopedia.com / whalesbook.com / multibagg.ai** and similar
+  corporate-action/news aggregators — good for confirming *that* a rating action,
+  fundraise, or board resolution happened and its headline terms, same discovery-tier
+  trust level as the News sources section below; cross-check a load-bearing number
+  against a primary filing before treating it as confirmed.
+- **tradebrains.in** and similar retail-investor-education sites — often paraphrase
+  an existing broker call (e.g. a target-price revision) rather than surfacing a new
+  one; before adding anything found here as if it were new coverage, check whether
+  it's actually just restating a broker call already on file (same date, same
+  target price) under a different headline.
+- **An unattributed rating claim is not usable** — if a search surfaces a claim like
+  "one brokerage downgraded to REDUCE" or "a brokerage turned constructive" without
+  a named agency, analyst, or report date attached anywhere in the result chain,
+  it fails the sourcing-discipline bar in `reference/rules_and_validation.md`
+  ("every material fact traces to a cited source and date") and must not be added
+  to the report as if it were a new, distinct data point — note it was seen but
+  couldn't be traced, rather than silently dropping or silently including it.
+- **Log a broker-forum sweep every run**, same pattern as the announcements/social
+  sweeps below: `source_manifest.py <slug> add-document --type broker_sweep
+  --status performed --evidence "<what was actually searched and found, or
+  'nothing new/nothing attributable'>"`. `verify_report.py brokers` checks this
+  was logged within the last 3 months, same recency window as `social`.
+
+## News sources — company-specific coverage, beyond the generic "News search" mention
+
+Every earlier mention of "news search"/"general news search" in this file points
+here for the actual site list and query patterns, rather than leaving "news" as an
+unscoped WebSearch term. Widening past a single default outlet matters because
+different Indian business-news sites cover different things well — a wire-service
+result win, a management interview, a sector deep-dive — and relying on only one
+misses whichever of those it doesn't specialize in.
+
+- **Mainstream business-news sites** — Economic Times (`economictimes.indiatimes.com`),
+  Business Standard (`business-standard.com`), Mint/LiveMint (`livemint.com`),
+  Moneycontrol (`moneycontrol.com`), Business Today (`businesstoday.in`), Financial
+  Express (`financialexpress.com`). `WebSearch` for `<company name> <topic> site:<domain>`
+  to target one, or `<company name> <topic>` unscoped to let results surface across
+  all of them — unscoped is usually better for a first pass since it also surfaces
+  which outlet actually covered the story.
+- **Broadcast/wire-adjacent outlets** — CNBC-TV18 (`cnbctv18.com`), ET Now/ETMarkets
+  (`etnow.in`, `economictimes.indiatimes.com/markets`), NDTV Profit
+  (`ndtvprofit.com`) — often the first to carry a management interview or an
+  on-air comment that adds outlook color beyond the concall (same "industry/company
+  color, not the primary near/medium/long-term source" caveat as the YouTube section
+  below).
+- **Wire-syndicated/PR-distribution coverage** — PR Newswire India, Business Wire
+  India, and results/announcement roundups that syndicate a company's own press
+  release verbatim across multiple sites (EquityBulls, ScanX, and similar
+  aggregators fall in this bucket too). Useful for confirming a press release
+  actually went out and for catching an early copy if the company's own IR page
+  hasn't posted it yet — but treat the syndicated copy as a mirror of the primary
+  release, not a substitute for finding the release itself on the company's IR
+  page or BSE/NSE.
+- **Sector/industry trade press** — already covered in "Industry-level and macro
+  sources" below (e.g. `textiletoday.com.bd`-style sector publications) for
+  industry-wide context; this section is about company-specific news instead.
+
+**Trust tier reminder** — every source in this section is tier 3 (Discovery-only)
+in the Source trust hierarchy above: fine for finding a lead (an order win, a
+rating action, a management interview worth checking), never cited as the primary
+source for a number without tracing it back to the primary filing/press release it
+originated from. This is also the source set the 6-month announcements sweep and
+the Order Book/industry-tailwinds "also check" columns in the table above draw on.
+
 ## Industry-level and macro sources — don't default to the reporting company's own concall
 
 **This is a standing requirement, not a nice-to-have — the failure mode this guards
@@ -494,8 +573,19 @@ management's framing as independently corroborated.
   timestamp, engagement) with no sign-in prompt. If you only have the company name,
   run `WebSearch("<company name> linkedin")` — it returns a mix of both URL types;
   open the `/posts/.../activity-.../` ones, skip the `/company/...` ones.
-- X (Twitter) works directly — a public company profile's recent posts load via
-  Claude in Chrome with no login required.
+- **X (Twitter) is login-walled for a direct profile navigation** — re-verified
+  2026-07-17 (Sterlite Technologies, `@STL_Tech`): the profile chrome itself loads
+  (name, follower/post counts, bio) but the timeline renders X's logged-out
+  placeholder ("hasn't posted... when they do, their posts will show up here")
+  regardless of whether the account has actually posted recently. **Treat this as
+  an access limitation, not a finding of no activity** — never report "no recent
+  posts found" off a bare profile navigation; either get at X content indirectly
+  via `WebSearch` (which can surface individual tweets already indexed by the
+  underlying search engine, e.g. a `site:x.com` or `site:twitter.com` query, or a
+  third party quoting/screenshotting a tweet) or via an authenticated tool if one is
+  connected for this session. If neither route surfaces anything, say so explicitly
+  in the report/chat rather than treating a blank timeline as confirmation of
+  silence.
 
 ## YouTube (supplementary, optional)
 

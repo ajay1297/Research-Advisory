@@ -158,23 +158,30 @@ mandatory before delivery:
   covering agency's site for the last 6 months, not just trust a stale cache.
   Always informational (WARN, never FAILs the run) since an old entry could
   legitimately mean nothing changed, not that the check was skipped.
-- **`announcements <company_slug> [--months 6]`** and **`social <company_slug>
-  [--report-path report.md] [--months 3]`** — same recency-of-check pattern as
-  `ratings`, for the BSE/NSE announcements sweep and the LinkedIn/X sweep
+- **`announcements <company_slug> [--months 6]`**, **`social <company_slug>
+  [--report-path report.md] [--months 3]`**, and **`brokers <company_slug>
+  [--months 3]`** — same recency-of-check pattern as `ratings`, for the BSE/NSE
+  announcements sweep, the LinkedIn/X sweep, and the broker-forum/aggregator sweep
   respectively (see `source_playbook.md`'s "Announcements sweep" section and
-  `data_sources.md`'s "LinkedIn / X (Twitter)" section); `social` uses a tighter
-  3-month window since social posts are
-  a discovery channel, not a formal disclosure record. **Unlike `ratings`, these two
-  are not purely informational**: log the sweep every run via `source_manifest.py
-  <slug> add-document --type announcement_sweep` (or `social_media_check`)
-  `--status performed --evidence "<what was actually searched and found, or
-  'nothing new'>"` — `source_manifest.py` itself rejects a `performed` entry with
-  placeholder evidence (`"done"`, `"checked"`, etc.) at write time, and
-  `verify_report.py announcements`/`social` **FAILs** (not WARNs) if the most recent
-  entry is a disclosed `--status skipped --reason "..."` or has no evidence at all.
-  A disclosed skip must never look the same as a done sweep to this check — if the
-  sweep genuinely can't be done this run, log it as skipped and accept the resulting
-  FAIL rather than working around it.
+  `data_sources.md`'s "LinkedIn / X (Twitter)" and "Broker / agency research"
+  sections); `social` and `brokers` both use a tighter 3-month window since social
+  posts and broker calls are discovery channels, not formal disclosure records.
+  **Unlike `ratings`, these three are not purely informational**: log the sweep
+  every run via `source_manifest.py <slug> add-document --type announcement_sweep`
+  (or `social_media_check`, or `broker_sweep`) `--status performed --evidence
+  "<what was actually searched and found, or 'nothing new'>"` — `source_manifest.py`
+  itself rejects a `performed` entry with placeholder evidence (`"done"`,
+  `"checked"`, etc.) at write time, and `verify_report.py announcements`/`social`/
+  `brokers` **FAILs** (not WARNs) if the most recent entry is a disclosed
+  `--status skipped --reason "..."` or has no evidence at all. A disclosed skip
+  must never look the same as a done sweep to this check — if the sweep genuinely
+  can't be done this run, log it as skipped and accept the resulting FAIL rather
+  than working around it. `brokers` specifically guards against the failure mode
+  observed in practice: a broad web search surfacing an unattributed rating claim
+  (no named agency, no date) that shouldn't be added to the report as a new data
+  point — the sweep still needs to be logged as performed with that caveat as the
+  evidence (e.g. "searched broker forums, found only an unattributed REDUCE-rating
+  mention with no traceable agency/date — not added"), not silently skipped.
 - **`paragraphs <report.md> [--max-words 160]`** — flags any paragraph exceeding
   ~10 rendered lines (approximated as 160 words) anywhere in the report, by section.
   Per `report_format.md`'s "Paragraph length limit" rule, a paragraph this long
