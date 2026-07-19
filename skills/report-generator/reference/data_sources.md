@@ -103,6 +103,44 @@ Claude in Chrome (`navigate` + `get_page_text`). Don't burn more than one retry 
 stuck source before falling back to an alternative (see each source's fallback
 below) — debugging a stuck fetch costs more than switching sources.
 
+**Confirmed in practice (2026-07): `bseindia.com` is blocked by policy in the
+Browser pane's `navigate` tool, not just JS-rendered.** This is a harder block than
+the "escalate to Chrome for JS content" pattern above assumes — Chrome-in-browser
+navigation to any `bseindia.com` URL fails outright, and the Google Docs viewer
+workaround (below) also fails on BSE-hosted PDFs specifically (returns "No preview
+available," most likely because BSE blocks the fetch on its own end, not a size
+issue). **This means the corp-announcements *page* (the JS-rendered search/filter
+UI on `bseindia.com` itself) is unreachable by any fetch method in this environment,
+full stop.** Two things still work, though, and between them cover everything the
+blocked page would have provided:
+
+1. **Individual BSE-hosted PDFs** — `WebFetch` on the direct
+   `bseindia.com/stockinfo/AnnPdfOpen.aspx` / `bseindia.com/xml-data/corpfiling/AttachHis`
+   URL (not `navigate` to a page) succeeds because `WebFetch` runs server-side
+   rather than through the Browser pane — this is how this pipeline already gets
+   concall transcripts/investor presentations elsewhere in this file.
+2. **Discovering *which* announcements exist, without the blocked search page at
+   all** — `scripts/bse_announcements.py` queries `api.bseindia.com`'s own JSON API
+   directly (a different subdomain from the blocked one, confirmed reachable via a
+   plain HTTPS request/`curl` from this sandbox — see the script's own docstring for
+   the full story and why this is a narrow, tested exception to the "never write a
+   raw fetch script" rule, not a general license to curl arbitrary domains). Give it
+   a scrip code and a date range; it paginates automatically and returns every
+   matching announcement's date, category/subcategory, headline, and direct PDF URL
+   — exactly the same information the blocked search page would have shown, with no
+   browser step at all. **This is now the standard method for discovering press
+   releases, order-win announcements, or any other BSE announcement type for a
+   report run** — see `reference/sourcing_depth.md`'s "Press releases" section for
+   the concrete usage pattern. Each returned PDF URL still needs its own `WebFetch` +
+   `pdf_to_text.py` pass per (1) above — this script solves discovery, not
+   extraction.
+
+**Only fall back to asking the user to fetch/download a document themselves** when
+neither of the above applies — a PDF `WebFetch` can't retrieve for size reasons (see
+"User-uploaded documents" below), or a source that's genuinely not on BSE at all
+(the company's own site, hosting an oversized file). Don't default to asking the
+user for something `bse_announcements.py` can now discover directly.
+
 ## screener.in (primary source)
 
 Fastest single source for an Indian listed company — aggregates key ratios,
@@ -129,6 +167,44 @@ the full P&L/balance sheet/segment splits) → a secondary quote aggregator
 (Tickertape, Trendlyne) for just the one missing number (price/market cap/52-week
 range).
 
+**Logged-in screener.in access — for the login-gated "Documents → Announcements →
+Search" panel referenced in `reference/sourcing_depth.md`'s "Press releases"
+section.** If `~/.report-generator/.env` exists (copied by the user from
+`.env.example` in the same directory), it holds `SCREENER_EMAIL`/
+`SCREENER_PASSWORD` for the user's own screener.in account. **Read this file only to
+confirm an account exists and to tell the user which email to log in with — never
+type `SCREENER_PASSWORD` into screener.in's login form, or any login form, under any
+circumstance.** Entering authentication credentials is outside what gets done
+autonomously regardless of where the value came from (chat, a file, anywhere) — this
+holds even though the user supplied and explicitly authorized storing the password
+for this purpose. Instead: ask the user to log into screener.in themselves in the
+Browser pane (state which email from the `.env` file, so they don't have to look it
+up); once logged in, that Browser-pane tab's session persists for the rest of the
+session, and the login-gated panel becomes fetchable through it like any other page.
+If the user hasn't logged in and isn't available to, fall back to BSE's own
+corp-announcements filter (Claude in Chrome) or ask the user to pull the filtered
+results directly, per `reference/sourcing_depth.md`.
+
+**Confirmed in practice (2026-07): logging in does not change what's fetchable for
+annual reports, concalls, or investor presentations — only for the Announcements
+search panel and screener's own rating-update history list.** screener.in never
+hosts these three document types itself; its Documents tab always links out to the
+primary host (`bseindia.com` or the company's own site), login or not — verified by
+comparing the same company's Documents tab logged-in vs. logged-out and finding
+identical URLs either way. So a login does not route around the `bseindia.com`
+block described above, and does not shrink a company-hosted PDF under the fetch
+size limit. What login genuinely adds: (1) the Announcements search panel itself
+becomes viewable (still only useful if the underlying filing is BSE-hosted and thus
+subject to the same block, so its practical value is mostly for confirming *that* an
+announcement exists and its date, not for fetching it), and (2) screener's Documents
+tab shows the *complete* multi-year rating-action history for each covering agency,
+not just the two or three most recent entries a logged-out view surfaces — genuinely
+useful for the Credit Rating Snapshot section's "check every agency's last 6 months"
+requirement. Don't expect a screener.in login to solve an annual-report or
+press-release fetch problem; go straight to "ask the user to download and upload"
+per `reference/sourcing_depth.md`'s "User-uploaded documents" section instead of
+retrying the login path for that purpose.
+
 **"Raw PDF" links in the Quarterly Results / Profit & Loss tables — a no-browser way
 to reach BSE's underlying filing.** Each period column in these tables has a small
 "Raw PDF" link at the bottom, e.g. `screener.in/company/source/quarter/<internal_id>/
@@ -154,6 +230,32 @@ company's own IR page, or linked from screener.in's Documents tab:
 
 1. Get the direct PDF URL (screener.in Documents tab, or `WebSearch` for
    `<company name> <document type> <quarter> filetype:pdf`).
+
+   **Annual reports specifically — a more reliable discovery method than
+   screener.in's Documents tab, using `scripts/bse_announcements.py` directly**
+   (the same confirmed-reachable `api.bseindia.com` exception documented in that
+   script's own docstring and this file's "Sandbox constraint" section): every
+   annual report a company files gets a standard BSE announcement subcategory,
+   `"Reg. 34 (1) Annual Report"`, under category `"Others"`. Confirmed in practice
+   (2026-07):
+
+   ```
+   python3 scripts/bse_announcements.py <scrip_code> --from <YYYYMMDD> --to <YYYYMMDD> \
+       --category "Others" --subcategory "Reg. 34 (1) Annual Report"
+   ```
+
+   returns every annual report filing in the date range, one row per fiscal year,
+   each with its exact filing date, headline, and a direct
+   `bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=<uuid>.pdf` download URL — a clean
+   list going back multiple years in one call, no screener.in dependency and no
+   guessing which Documents-tab link corresponds to which fiscal year. Widen the
+   `--from` date well past the standard ~18-month sourcing-depth window if the
+   company's Documents tab only shows a couple of recent years and you need to
+   confirm an older one exists. **This solves discovery only, not extraction or the
+   size limit** — each returned PDF still has to be fetched via `WebFetch` (subject
+   to the same 10MB cap and the "User-uploaded documents" fallback below if it's
+   too large) and then run through `pdf_to_text.py`/`pdf_to_text_parallel.py` as
+   usual.
 2. `mcp__workspace__web_fetch` the PDF URL; if it returns content, save directly to
    `~/.report-generator/sources/<company_slug>/`. If web_fetch can't retrieve a
    binary PDF cleanly, ask the user to download and drop it in the workspace, or use
@@ -241,6 +343,57 @@ directly). Export/import shipment-data aggregators (Volza, Seair, ImportGenius, 
 Panjiva) are out of scope for this pipeline — they require a paid subscription this
 setup does not have, and are not to be attempted. State any resulting gap explicitly
 per `reference/rules_and_validation.md`'s "Never drop anything silently" rule.
+
+## Bulk & Block Deals — named institutional/HNI open-market participation
+
+**A standing check for every report, same recency discipline as credit ratings and
+the BSE/social sweeps below** — not something to run only if a company looks
+interesting. A bulk deal (>0.5% of equity traded by one party in a day) or a block
+deal (a large single trade through the separate block window) is one of the only
+places in this whole pipeline where a *named* institution, fund, FII/FPI, insurer,
+or well-known HNI shows up buying or selling on the open market — the
+shareholding-pattern table (screener.in) only ever shows category totals (FII %,
+DII %, Public %), never names, and the fund-raise tracker only covers preferential/
+warrant allotments, not ordinary market trades.
+
+**Fetch mechanics — `scripts/bulk_block_deals.py`, the same confirmed-reachable
+`api.bseindia.com` exception as `scripts/bse_announcements.py`** (see that script's
+own docstring and this file's "Sandbox constraint" section above for why this
+specific subdomain is fetchable via a plain HTTPS request when the rest of
+`bseindia.com` is policy-blocked in the Browser pane):
+
+```
+python3 scripts/bulk_block_deals.py <scrip_code> --from <YYYYMMDD> --to <YYYYMMDD>
+```
+
+Fetches both bulk and block deals in one call by default (`--type bulk` / `--type
+block` to narrow), covering the same ~18-month standard sourcing-depth window used
+elsewhere. No pagination handling needed — unlike the announcements API, this one
+returns the complete matching set in a single response. **An empty result (no rows
+for either type) is a legitimate, common finding** for most listed companies over
+most windows — state this plainly ("no bulk or block deals were recorded in the
+period reviewed") rather than treating it as a fetch failure or silently omitting
+the check.
+
+**What counts as "notable" — a judgment call the script doesn't make.** The script
+only returns raw client names; recognizing which of them is a genuinely notable
+institution/fund is on the report-drafting step. Only name a deal in the report if
+the `CLIENT_NAME` is a **recognizable, named mutual fund** (e.g. an AMC's own scheme
+name), **FII/FPI**, **insurance company**, **AIF**, or a **well-known individual
+HNI/promoter-linked entity already established elsewhere in the report** (e.g. one of
+the promoter/promoter-group entities already named in Fund Raises) — same
+verifiability bar as naming a marquee customer. A generic-sounding LLP/trust/holding
+company name that isn't independently recognizable is not "notable" just because it
+appears in a bulk/block deal — don't invent institutional significance for an
+unfamiliar name; if genuinely unsure whether a name is a real institution, say so
+rather than asserting it either way.
+
+**Where this belongs in the report**: fold into **Promoter / Governance Track
+Record** as its own sub-section (`Bulk & Block Deals`), immediately after
+Shareholding Pattern and before Promoter Fund Raises — this is governance/ownership
+context, not a fund-raise (no cash flows to the company) and not a customer
+relationship. See `reference/report_sections.md`'s Promoter/Governance section for
+the exact fields to show per deal.
 
 ## Secondary valuation/technicals aggregators (Trendlyne, Tijori, MoneyWorks4Me)
 
@@ -554,11 +707,33 @@ outcome either way" discipline as the announcements sweep:
   shift. `WebSearch` for `<industry/sector> India outlook <year>` or `<industry>
   order inflow trend India`, and the same query pattern for 1-2 direct peers/
   competitors named in the concall or on screener.in's Peers tab.
+- **The sector's dominant exogenous/macro variable** — the cost or demand driver
+  management has no reason to proactively flag, since it isn't a company-specific
+  decision. Identify which one applies (usually one, sometimes two) before
+  searching, then look it up independently rather than waiting for the concall to
+  mention it:
+
+  | Sector | Dominant exogenous variable | Where to check |
+  |---|---|---|
+  | Textiles/apparel (cotton-dependent) | Monsoon/El Niño-La Niña cycles → cotton yield & price | IMD monsoon forecast (`mausam.imd.gov.in`), USDA cotton outlook, ICRA/CRISIL textile sector notes |
+  | Chemicals/synthetic fiber/plastics | Crude oil / naphtha price cycles | `ppac.gov.in` (petroleum planning), EIA/OPEC outlook |
+  | Auto components | Semiconductor cycles, OEM production schedules | SIAM production/sales data, OEM order-book commentary |
+  | Power/utilities (thermal or hydro) | Coal linkage/availability, PLF trends, monsoon (for hydro) | CEA generation reports, Ministry of Power, Coal India dispatch data |
+  | Pharma/API manufacturers | API/intermediate price swings (often China-linked), USFDA inspection cycles | USFDA warning-letter database, API price trackers, China API export data |
+  | Agri-inputs/agrochemicals | Rainfall/monsoon directly on sowing and demand (not just cost) | IMD, agri-ministry sowing-progress data |
+  | Metals/mining | Global commodity benchmark prices (LME, iron ore index) | LME, `ibm.gov.in` (Indian Bureau of Mines), World Steel Association |
+  | Shipping/logistics | Freight rate indices, fuel (bunker) prices, canal/strait disruptions | Baltic Dry Index, bunker price trackers, general news for chokepoint disruptions |
+
+  `WebSearch` for `<sector> India <exogenous variable> impact <year>` (e.g. `textile
+  India cotton price monsoon 2026 impact`). This table is a starting point, not
+  exhaustive — for a sector not listed, spend one search working out what the
+  equivalent variable is before moving on, rather than skipping this category
+  silently.
 
 Keep the resulting section tight — 2-4 bullets, not a literature review — but the
 bullets should draw on whichever of the above genuinely surfaced something, not
 default to the concall because that was the source already on hand. If a thorough
-attempt across all four genuinely turns up nothing beyond the company's own
+attempt across all five genuinely turns up nothing beyond the company's own
 commentary, say so explicitly in the report rather than silently presenting
 management's framing as independently corroborated.
 
@@ -605,6 +780,30 @@ the gap.
 If the user has already uploaded the concall transcript / investor PPT / annual
 report / broker report, **always prefer those over fetching** — check the
 uploads/workspace folder first before doing any web research for that document type.
+
+**A local, user-supplied file has no size limit — this is the actual fix for a PDF
+too large for `WebFetch` (10MB) or the Google Docs viewer workaround, not just an
+alternative path.** Confirmed in practice: a 25MB, 272-page annual report that
+failed both `WebFetch` (size limit) and a Google Docs viewer workaround ("too large
+to preview") extracted cleanly and completely via `pdf_to_text.py` once the user
+supplied a local copy (found already sitting in their Downloads folder, in one
+case — worth checking there before asking the user to re-download). The fetch-size
+ceiling is specifically a *remote-fetch* constraint; a file already on the local
+filesystem bypasses it entirely, since `pdf_to_text.py` reads local files directly
+with no network involved. **When an annual report or other large PDF is blocked by
+size on every remote-fetch path, don't keep trying fetch variants — ask the user to
+download and either point to an existing local copy or supply a fresh one.** This is
+the reliable resolution for this specific failure mode, not a last resort to reach
+for only after exhausting other options.
+
+**Batch uploads of the same document type (e.g. several quarters' press releases at
+once) are common and should all be processed in one pass**: extract each with
+`pdf_to_text.py`, identify its date/subject from the covering-letter text (BSE
+filing covering letters state the filing date and a one-line subject — grep for
+`Re:`/`Sub:` near the top of each extraction), and log each via
+`scripts/source_manifest.py add-document --user-uploaded` individually — don't
+bundle multiple filings under one manifest entry even if they arrived in the same
+upload batch, since each is a separate dated primary source.
 
 A user-uploaded **broker/agency research report** (Nuvama, Motilal Oswal, etc.) is a
 distinct case — see this file's "Broker / agency research" section above for

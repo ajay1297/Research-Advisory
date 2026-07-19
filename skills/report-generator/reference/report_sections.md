@@ -467,6 +467,22 @@ Format: `**<Tailwind/Headwind name>**: <one to two sentence factual claim>. (Sou
 <name, date>)`. Separate tailwinds from headwinds with a one-line subheading each if
 both are present.
 
+**Before searching, name the sector's 1-2 dominant exogenous/macro variables —
+the kind of thing that moves this specific industry's costs or demand but that
+management has no reason to proactively flag on a concall.** This is a distinct
+step from the general search below, not a substitute for it: identify the variable
+first (e.g. monsoon/El Niño-La Niña cycles for a cotton-dependent textile exporter,
+crude/naphtha prices for a synthetic-fiber or chemicals business, semiconductor
+cycles and OEM production schedules for an auto-component maker, coal linkage and
+PLF trends for a power generator, USFDA inspection cycles and API-input price
+swings for a pharma company), then search for it specifically per
+`reference/data_sources.md`'s "Industry-level and macro sources" section. This step
+exists because a report built only from what management chose to mention in a
+concall will systematically miss the exogenous risk a company has no incentive to
+surface unsolicited — this happened in practice with a textile exporter's report
+that never mentioned monsoon/El Niño effects on cotton pricing despite cotton being
+the company's primary raw material.
+
 **Actively search beyond the reporting company's own concall/investor materials for
 this section — the company's own commentary on industry conditions is a legitimate
 source, but it's management's framing of the industry, not an independent one, and
@@ -582,6 +598,31 @@ DII/Public % as columns, one row per quarter) — no chart by default, per
 returns the multi-quarter history in one fetch (see source_playbook.md) — no separate
 tracking script needed for this one, unlike guidance/fund-raises/ratings/litigation. Add
 a promoter-pledge `card_grid()` metric alongside it if a pledge % is disclosed.
+
+**Bulk & Block Deals** (sub-section, immediately after Shareholding Pattern, before
+Promoter Fund Raises — checked on every report, same standing-check discipline as
+Credit Ratings below, not gated behind the company "looking interesting"). Sourced
+from `scripts/bulk_block_deals.py` (see `reference/data_sources.md`'s "Bulk & Block
+Deals" section for fetch mechanics and the recency/empty-result discipline). **Only
+name a deal if the counterparty is a recognizable, named mutual fund, FII/FPI,
+insurance company, AIF, or a well-known individual/entity already established
+elsewhere in the report** (e.g. a promoter/promoter-group entity already named in
+Fund Raises) — the same verifiability bar this report applies to naming a marquee
+customer (`reference/report_sections.md`'s Marquee & Niche Customers section). A
+generic-sounding LLP/trust/holding-company name that isn't independently
+recognizable does not get named or characterized as institutional — say the deal
+occurred and show its counterparty name factually, without asserting significance
+you can't verify. For each notable deal, show: date, deal type (bulk/block), the
+named party, buy or sell, quantity, and price — as a `data_table()` in the visual
+PDF (`Date | Type | Party | B/S | Quantity | Price`), same dense-table-over-chart
+default as the rest of this section. If genuinely no bulk/block deals were found for
+the period reviewed, state that explicitly in one line (e.g. "No bulk or block deals
+were recorded for this company in the period reviewed") rather than omitting the
+sub-section silently — same "never drop anything silently" discipline as Credit
+Rating Snapshot and Legal & Litigation below. If deals exist but none involve a
+recognizable named institution (e.g. all counterparties are unfamiliar LLPs), say
+that too, rather than presenting an empty-of-insight table as if the check wasn't
+performed.
 
 **Promoter Fund Raises** (sub-section, always included once any raise is on record —
 unlike guidance, this is not lookback-limited to the standard 18-month window; a

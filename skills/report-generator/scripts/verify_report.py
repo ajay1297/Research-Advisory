@@ -102,6 +102,16 @@ Organized into three tiers (see reference/guardrails.md for the full rationale o
         short, since a newly-listed company can legitimately not have 6 quarters
         of history yet — but the shortfall must then be stated explicitly in the
         report, not silently delivered as if the standard depth was met.
+
+    python3 verify_report.py filenames <company_slug>
+        Checks ~/.report-generator/output/<company_slug>/ contains
+        <Company_Name>_report.md and <Company_Name>_report.pdf, per
+        reference/step3_memorize.md's "Save and cache" naming rule — and FAILs
+        if it instead finds the generic report.md/report.pdf (the naming used
+        only for the internal research_cache/ working copy, never for the
+        output/ deliverable). Catches exactly the mistake already made once in
+        practice: saving the deliverable under the generic name instead of the
+        company-prefixed one.
 """
 import sys
 import os
@@ -750,6 +760,38 @@ def check_disclaimer(report_path):
     return False
 
 
+def check_filenames(slug):
+    print(f"=== output filename check: {slug!r} ===")
+    out_dir = os.path.expanduser(f"~/.report-generator/output/{slug}")
+    if not os.path.isdir(out_dir):
+        print(f"FAIL: {out_dir} does not exist")
+        return False
+
+    entries = os.listdir(out_dir)
+    generic = [f for f in entries if f in ("report.md", "report.pdf")]
+    if generic:
+        print(f"FAIL: found generic filename(s) {generic} in {out_dir} — "
+              f"reference/step3_memorize.md requires <Company_Name>_report.md/.pdf "
+              f"for the output/ deliverable (e.g. TD_Power_Systems_report.md); "
+              f"'report.md'/'report.pdf' is only the internal research_cache/ "
+              f"working-copy name and must never be the delivered filename. Rename "
+              f"before telling the user the report is ready.")
+        return False
+
+    md_matches = [f for f in entries if f.endswith("_report.md")]
+    pdf_matches = [f for f in entries if f.endswith("_report.pdf")]
+    ok = True
+    if not md_matches:
+        print(f"FAIL: no <Company_Name>_report.md found in {out_dir}")
+        ok = False
+    if not pdf_matches:
+        print(f"FAIL: no <Company_Name>_report.pdf found in {out_dir}")
+        ok = False
+    if ok:
+        print(f"PASS: {md_matches[0]} and {pdf_matches[0]} correctly named")
+    return ok
+
+
 def check_whitespace(pdf_path, ratio=0.5):
     print(f"=== dead-whitespace check: {pdf_path} (interior page threshold: "
           f"{ratio:.0%} of median) ===")
@@ -958,6 +1000,82 @@ def check_announcements(slug, months=6):
     return True
 
 
+def check_deals(slug, months=6):
+    """Checks source_manifest.json for a logged 'deals_sweep' entry within the last
+    N months — same pattern and same FAIL-not-WARN discipline as check_announcements
+    (a bulk/block-deal check is a standing requirement per reference/data_sources.md's
+    "Bulk & Block Deals" section and reference/report_sections.md's Promoter/
+    Governance sub-section, not something to skip because the company looks quiet).
+    Log a sweep via `source_manifest.py <slug> add-document --type deals_sweep
+    --status performed --evidence "<what scripts/bulk_block_deals.py returned>"`
+    each run (or --status skipped --reason "..." if it genuinely can't be done)."""
+    base = os.path.expanduser("~/.report-generator")
+    manifest_path = os.path.join(base, "research_cache", slug, "source_manifest.json")
+    print(f"=== Bulk/block deals sweep recency: {slug} (expect a sweep "
+          f"within the last {months} months) ===")
+
+    if not os.path.exists(manifest_path):
+        print(f"FAIL: no source_manifest.json found — no bulk/block deals sweep has "
+              f"ever been logged for this company. Per reference/data_sources.md's "
+              f"'Bulk & Block Deals' section, this is a standing requirement on "
+              f"every run, not optional. Log it via source_manifest.py before "
+              f"delivering the report.")
+        return False
+
+    with open(manifest_path) as f:
+        data = json.load(f)
+    sweeps = [d for d in data.get("documents", []) if d.get("type") == "deals_sweep"]
+
+    if not sweeps:
+        print(f"FAIL: source_manifest.json exists but no 'deals_sweep' entry "
+              f"has ever been logged — this sweep is a standing requirement, not "
+              f"something to skip because nothing else prompted a look.")
+        return False
+
+    dates = []
+    for s in sweeps:
+        try:
+            dates.append(datetime.fromisoformat(str(s.get("date")).replace("Z", "+00:00")))
+        except ValueError:
+            continue
+    if not dates:
+        print("FAIL: could not parse a date from any logged deals_sweep entry")
+        return False
+
+    latest_entry = max(sweeps, key=lambda s: s.get("date") or "")
+    latest = max(dates)
+
+    if latest_entry.get("status") == "skipped":
+        print(f"FAIL: most recent deals sweep ({latest.date()}) was logged as "
+              f"--status skipped (reason: {latest_entry.get('reason') or 'not given'!r}) "
+              f"— a disclosed skip must never look the same as a done sweep, and this "
+              f"check is designed to FAIL in that case rather than silently pass "
+              f"delivery. Perform the sweep, or accept the FAIL and state the gap "
+              f"explicitly in the report per reference/rules_and_validation.md's 'Never drop anything silently' rule.")
+        return False
+
+    if not latest_entry.get("evidence") or not str(latest_entry.get("evidence")).strip():
+        print(f"FAIL: most recent deals sweep ({latest.date()}) has no "
+              f"'evidence' field logged — a 'performed' sweep with no evidence of "
+              f"what was actually found (or 'no deals found') is indistinguishable "
+              f"from a sweep that never happened.")
+        return False
+
+    now = datetime.now(timezone.utc) if latest.tzinfo else datetime.now()
+    age_days = (now - latest).days
+    if age_days > months * 30:
+        print(f"FAIL: most recent logged deals sweep is {latest.date()} "
+              f"({age_days} days old, > {months} months) — a fresh bulk/block deals "
+              f"sweep genuinely needs to happen this run, not just be assumed "
+              f"unchanged from an old log entry.")
+        return False
+
+    print(f"PASS: most recent logged deals sweep is {latest.date()} "
+          f"({age_days} days old, within {months} months) — evidence: "
+          f"{latest_entry.get('evidence')!r}")
+    return True
+
+
 def check_social(slug, report_path=None, months=3):
     """Checks source_manifest.json for a logged 'social_media_check' sweep within
     the last N months (default 3, tighter than the 6-month ratings/announcements
@@ -1055,6 +1173,55 @@ def check_social(slug, report_path=None, months=3):
                   f"{months} months")
 
     return ok  # FAILs if the sweep was never logged/skipped/evidence-free or stale — see docstring
+
+
+# Case-insensitive marker for a gap the drafting step itself has already flagged as
+# closed. A real, still-open gap bullet never needs this word — it's only ever
+# written by a drafting pass that fixed a section but forgot to delete the gap
+# bullet describing the now-fixed problem (confirmed in practice: this happened on
+# a real report, where an Annual Report fetch failure was resolved by a user-supplied
+# local copy, three downstream sections got corrected, but the "Sourcing Gaps &
+# Limitations" bullet describing the original failure was left in place instead of
+# removed, mislabeled "RESOLVED" rather than deleted).
+RESOLVED_MARKER = re.compile(r"\bresolved\b", re.IGNORECASE)
+GAPS_SECTION_HEADING = re.compile(r"^#{1,3}\s*sourcing gaps", re.IGNORECASE)
+
+
+def check_gaps(report_path):
+    """Scans the 'Sourcing Gaps & Limitations' section (if present) for a
+    RESOLVED/resolved marker left in a gap bullet — a gap that's been fixed belongs
+    removed from this section entirely, not flagged as resolved and kept. FAILs if
+    found, since this is a straightforward mechanical mistake with a mechanical fix
+    (delete the bullet), not a judgment call worth a WARN."""
+    print(f"=== gaps-section staleness check: {report_path} (flag any "
+          f"resolved-but-not-removed gap bullet) ===")
+    if not os.path.exists(report_path):
+        print(f"FAIL: {report_path} does not exist")
+        return False
+
+    with open(report_path, "r", errors="ignore") as f:
+        lines = f.read().split("\n")
+
+    in_gaps_section = False
+    flagged = []
+    for line in lines:
+        stripped = line.strip()
+        if stripped.startswith("#"):
+            in_gaps_section = bool(GAPS_SECTION_HEADING.match(stripped))
+            continue
+        if in_gaps_section and stripped.startswith(("-", "*")) and RESOLVED_MARKER.search(stripped):
+            preview = stripped[:100] + ("..." if len(stripped) > 100 else "")
+            flagged.append(preview)
+
+    if flagged:
+        for p in flagged:
+            print(f"FAIL: gap bullet still present but marked resolved — delete the "
+                  f"bullet instead of labeling it resolved: {p!r}")
+        return False
+
+    print("PASS: no resolved-but-not-removed gap bullets found "
+          "(or no 'Sourcing Gaps & Limitations' section present)")
+    return True
 
 
 def check_brokers(slug, months=3):
@@ -1246,6 +1413,9 @@ def main():
     p13 = sub.add_parser("disclaimer")
     p13.add_argument("report_path")
 
+    p13b = sub.add_parser("filenames")
+    p13b.add_argument("slug")
+
     p14 = sub.add_parser("whitespace")
     p14.add_argument("pdf_path")
     p14.add_argument("--ratio", type=float, default=0.5,
@@ -1260,9 +1430,16 @@ def main():
     p15b.add_argument("slug")
     p15b.add_argument("--months", type=int, default=6)
 
+    p15c = sub.add_parser("deals")
+    p15c.add_argument("slug")
+    p15c.add_argument("--months", type=int, default=6)
+
     p16 = sub.add_parser("paragraphs")
     p16.add_argument("report_path")
     p16.add_argument("--max-words", type=int, default=160)
+
+    p16b = sub.add_parser("gaps")
+    p16b.add_argument("report_path")
 
     p17 = sub.add_parser("social")
     p17.add_argument("slug")
@@ -1304,14 +1481,20 @@ def main():
         ok = check_quotes(args.report_path, args.sources_dir)
     elif args.cmd == "disclaimer":
         ok = check_disclaimer(args.report_path)
+    elif args.cmd == "filenames":
+        ok = check_filenames(args.slug)
     elif args.cmd == "whitespace":
         ok = check_whitespace(args.pdf_path, args.ratio)
     elif args.cmd == "ratings":
         ok = check_ratings_recency(args.slug, args.months)
     elif args.cmd == "announcements":
         ok = check_announcements(args.slug, args.months)
+    elif args.cmd == "deals":
+        ok = check_deals(args.slug, args.months)
     elif args.cmd == "paragraphs":
         ok = check_paragraphs(args.report_path, args.max_words)
+    elif args.cmd == "gaps":
+        ok = check_gaps(args.report_path)
     elif args.cmd == "social":
         ok = check_social(args.slug, args.report_path, args.months)
     elif args.cmd == "brokers":

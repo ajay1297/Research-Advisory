@@ -44,10 +44,11 @@ judgment call for this.** Full checklist (what to run, in what order, and why ea
 check exists) is in `reference/guardrails.md` — read it now if this is your first
 run this session. Short version: `html` → render PDF → `pdf` → `report` →
 `sources` → `freshness` → `extraction` → `depth`, plus `quotes`/`disclaimer`/
-`whitespace`/`ratings`/`announcements`/`social`/`paragraphs` before delivery, and a
-visual spot-check via `pdftoppm`. **Any FAIL is a stop-and-fix, not a
-note-and-continue.** Delete intermediate chart PNGs and `report.html` only after all
-checks pass; only the final PDF and `report.md` belong in
+`filenames`/`whitespace`/`ratings`/`announcements`/`deals`/`social`/`paragraphs`/`gaps` before
+delivery, and a visual spot-check via `pdftoppm`. **Any FAIL is a stop-and-fix, not
+a note-and-continue.** Delete intermediate chart PNGs and `report.html` only after
+all checks pass; only the final PDF and `<Company_Name>_report.md` (never the
+generic `report.md`/`report.pdf` — `filenames` checks exactly this) belong in
 `~/.report-generator/output/<company_slug>/`.
 
 **Legacy fallback — reportlab, text-only. Last resort only, and always flagged.** Use

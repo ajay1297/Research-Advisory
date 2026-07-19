@@ -560,7 +560,26 @@ Three separate things to check:
    needed, unlike guidance/fund-raises/ratings/litigation, which persist across runs in
    their own JSON files because screener.in itself only shows the current state, not a
    log of past report runs. Just read the last several columns of that one table.
-3. **Promoter fund raises (preferential equity, warrants, debt)** — use
+3. **Bulk & block deals** — use `scripts/bulk_block_deals.py <scrip_code> --from
+   <YYYYMMDD> --to <YYYYMMDD>` against the standard ~18-month sourcing-depth window
+   (see `reference/data_sources.md`'s "Bulk & Block Deals" section for fetch
+   mechanics and the recency-check discipline — this is a standing check every run,
+   not gated behind the company looking interesting). The API returns every bulk and
+   block deal's date, counterparty name, buy/sell side, quantity, and price in one
+   call, no pagination needed. **Only name a deal in the report if the counterparty
+   is a recognizable mutual fund, FII/FPI, insurance company, AIF, or a well-known
+   individual/entity already established elsewhere in the report** (e.g. a
+   promoter/promoter-group entity already named under Fund Raises below) — same
+   verifiability bar as naming a marquee customer; an unfamiliar LLP/trust name isn't
+   "notable" just because it traded in size. Log the sweep every run via
+   `source_manifest.py <slug> add-document --type deals_sweep --status performed
+   --evidence "<what was found, or 'no deals found'>"` (or `--status skipped
+   --reason "..."` if it genuinely can't be done) — `verify_report.py deals` FAILs
+   if this was never logged or the most recent entry is stale/placeholder, same
+   pattern as the announcements/social sweeps below. State explicitly in the report
+   if genuinely no bulk/block deals were found, or if deals exist but none involve a
+   recognizable institution — both are legitimate findings, not gaps to hide.
+4. **Promoter fund raises (preferential equity, warrants, debt)** — use
    `scripts/fundraise_tracker.py` against the cached `fundraise_history.json` for the
    company. Sourcing:
    - **Preferential equity / warrants**: BSE/NSE corporate announcements filtered to

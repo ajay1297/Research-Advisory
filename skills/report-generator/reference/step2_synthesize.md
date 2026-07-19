@@ -46,7 +46,10 @@ dedicated section, paraphrase never reproduce, never bypass a paywall) ·
 criticality, switching costs; never invent one sources don't support) · **Technical
 Snapshot** (table or bullets, never prose, normal body-text size) · **Promoter/
 Governance Track Record** — guidance reliability (`guidance_tracker.py report`) +
-shareholding trend table + **promoter fund raises** (`fundraise_tracker.py add-raise`,
+shareholding trend table + **bulk & block deals** (`bulk_block_deals.py`, name only
+recognizable institutions/funds/AIFs/FIIs — never every counterparty — checked every
+report regardless of whether the company looks active, not lookback-limited) +
+**promoter fund raises** (`fundraise_tracker.py add-raise`,
 `--investors` whenever named, not lookback-limited) + **credit ratings**
 (`rating_tracker.py add-rating`, every report gets checked regardless of visible debt,
 not lookback-limited) + **litigation** (`litigation_tracker.py add-case`, watch for

@@ -44,13 +44,13 @@ from datetime import datetime, timezone
 
 DOC_TYPES = ["concall", "investor_presentation", "annual_report", "press_release",
              "broker_report", "rating_rationale", "announcement_sweep",
-             "social_media_check", "broker_sweep", "other"]
+             "social_media_check", "deals_sweep", "broker_sweep", "other"]
 
-# announcement_sweep/social_media_check/broker_sweep log a *check performed*, not
-# a fetched document — there is no real file in sources/<slug>/ for these, so
+# announcement_sweep/social_media_check/deals_sweep/broker_sweep log a *check
+# performed*, not a fetched document — there is no real file in sources/<slug>/ for these, so
 # --filename is not required for them (see add_document()'s validation below).
 # Every other type is a genuine fetched document and --filename stays required.
-FILENAME_OPTIONAL_TYPES = {"announcement_sweep", "social_media_check", "broker_sweep"}
+FILENAME_OPTIONAL_TYPES = {"announcement_sweep", "social_media_check", "deals_sweep", "broker_sweep"}
 
 
 def _path(slug):
@@ -74,8 +74,9 @@ def _save(slug, data):
 
 
 def add_document(args):
-    # --status/--evidence/--reason exist specifically for the announcement_sweep and
-    # social_media_check doc types (see reference/guardrails.md's `announcements`/`social`
+    # --status/--evidence/--reason exist specifically for the announcement_sweep,
+    # social_media_check, deals_sweep, and broker_sweep doc types (see
+    # reference/guardrails.md's `announcements`/`social`/`deals`/`brokers`
     # guardrails, which verify_report.py FAILs if a "performed" entry has no real evidence,
     # or if the most recent entry is a disclosed "skipped"). This was previously documented
     # in SKILL.md but not actually implemented here — a real spec/script mismatch that
@@ -186,7 +187,8 @@ def main():
     p1.add_argument("--date", required=True, help="ISO date of the document itself, not today")
     p1.add_argument("--filename",
                      help="filename as saved in sources/<slug>/ — required for every type "
-                          "except announcement_sweep/social_media_check/broker_sweep, which log "
+                          "except announcement_sweep/social_media_check/deals_sweep/broker_sweep, which "
+                          "log "
                           "a check performed rather than a fetched document")
     p1.add_argument("--pages-total", type=int)
     p1.add_argument("--pages-extracted-start", type=int)
@@ -196,8 +198,8 @@ def main():
     p1.add_argument("--extraction-verified", action="store_true",
                      help="pass this if scripts/verify_report.py extraction was run and passed")
     p1.add_argument("--status", choices=["performed", "skipped"],
-                     help="for announcement_sweep/social_media_check/broker_sweep doc types: "
-                          "was the sweep actually performed this run, or explicitly skipped")
+                     help="for announcement_sweep/social_media_check/deals_sweep/broker_sweep doc "
+                          "types: was the sweep actually performed this run, or explicitly skipped")
     p1.add_argument("--evidence",
                      help="required if --status performed: what was actually searched and found "
                           "(or 'nothing new') — a real finding, not a placeholder")

@@ -30,34 +30,51 @@ final quarter alone had swung to an actual net loss — a fact the company's own
 release would very likely have stated as its own line, not left for the reader to
 reconstruct by subtracting two other cited numbers.
 
-**Where to find it — primary method, BSE's own Corporate Announcements filter (use
-this first, before falling back to anything else):** BSE's corp-announcements page for
-any scrip (`bseindia.com/stock-share-price/<company-slug>/<symbol>/<scrip-code>/corp-announcements`
-— get the exact slug/symbol/scrip-code from screener.in's BSE link on the company's
-own page) has a filter form with **Category: "Company Update"** and **Sub Category:
-"Press Release / Media Release"**, plus a From/To Date range. Setting these two
-category filters (not a keyword search) surfaces exactly the company's own official
-press releases, one row per quarter, each with a direct PDF download link and the
-exact exchange-received timestamp — this is far more reliable than guessing search
-terms or relying on a third-party aggregator's index of the same filings. Set the date
-range to cover the last ~18 months (6 quarters) in one pass rather than querying
-quarter-by-quarter. **This page is JS-rendered — `WebFetch`/`mcp__workspace__web_fetch`
-returns an empty shell for it, so this specifically requires driving a real browser**
-(Claude in Chrome, if connected this session) to fill the filter form and submit;
-screener.in's own "Documents → Announcements → Search" panel (login-gated, but mirrors
-the same BSE data) is a usable substitute if Chrome isn't available and the user (or
-this session) has a screener.in account — it renders as plain HTML servable via a
-Browser pane without hitting bseindia.com directly, unlike the BSE page itself. If
-neither is available, ask the user to pull the filtered results directly (as
-demonstrated in practice: a screenshot or the page's raw HTML naming each release's
-PDF link is enough to fetch every quarter's press release in one exchange). Each
-resulting PDF link resolves to `bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=<uuid>.pdf`
-— confirmed to work directly with `WebFetch` (unlike the corp-announcements search
-page itself), even though `WebFetch`'s own text-summarization step cannot parse a
-digitally-signed PDF's binary structure — the binary is still saved to disk in that
-case, so follow up with `pdf_to_text.py --expect-name "<company name>"` on the saved
-file to get real, grep-able text rather than treating the summarizer's failure as a
-fetch failure.
+**Where to find it — `scripts/bse_announcements.py`, the standard method (confirmed
+working 2026-07, supersedes the BSE-browser-filter approach entirely):** BSE's
+corp-announcements *page* (the filter UI on `bseindia.com` itself) is blocked by
+policy in the Browser pane and cannot be reached by any browser-based method in this
+environment — don't attempt it. But the JSON API that page itself calls
+(`api.bseindia.com`) is on a different subdomain and is directly reachable via a
+plain HTTPS request from this sandbox. `scripts/bse_announcements.py` wraps it:
+
+```
+python3 scripts/bse_announcements.py <scrip_code> --from <YYYYMMDD> --to <YYYYMMDD> \
+    --category "Company Update" --subcategory "Press Release / Media Release"
+```
+
+Get `<scrip_code>` from screener.in's BSE link on the company's page (the numeric
+code in the BSE URL, e.g. `540595` for Tejas Networks). Set the date range to cover
+the last ~18 months (6 quarters), same as the standard sourcing-depth window. This
+prints (or, with `--json`, returns structured records for) every matching
+announcement's date, headline, and a direct PDF download URL — **pass both
+`--category` and `--subcategory` together**; the script auto-defaults `--category`
+to `"Company Update"` if only `--subcategory` is given, but confirmed in practice
+that omitting `--category` entirely (leaving both at their "-1"/all default) returns
+every announcement type unfiltered, not just press releases — check the script's own
+`--help` before assuming a parameter combination filters the way it looks like it
+should. Each returned PDF URL then downloads via `WebFetch` directly (same pattern as
+every other BSE PDF in this pipeline — `bseindia.com/stockinfo/AnnPdfOpen.aspx` URLs
+work fine with `WebFetch` even though the *page* is blocked), followed by
+`pdf_to_text.py --expect-name "<company name>"` to extract it.
+
+If the company genuinely doesn't issue a separate press release (some smaller
+companies only file the bare financial statements with no accompanying narrative),
+this same query will confirm that (zero matching rows) — say so explicitly per the
+"never drop anything silently" rule rather than silently substituting secondary
+coverage without noting the gap.
+
+**If a returned PDF's results-figures pages come back blank from `pdf_to_text.py`**
+(confirmed in practice for two Tejas Networks quarterly results press releases
+specifically), that's a sign the source PDF is image-based/scanned rather than a
+text-native filing — no OCR tool exists in this pipeline, so note the gap (filing/date
+confirmed via the API, figures not recoverable) rather than treating the blank
+extraction as a script failure to debug.
+
+**Only fall back to asking the user to download and upload a press release
+themselves** if `bse_announcements.py` genuinely can't reach the API (a real network
+failure, not just an empty result set) — this should now be rare, not the default
+path it was before this method was confirmed working.
 
 If the company genuinely doesn't issue a separate press release (some smaller
 companies only file the bare financial statements with no accompanying narrative),
