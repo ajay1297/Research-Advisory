@@ -36,6 +36,37 @@ Usage:
     default; --json prints the raw list for scripting. Paginates automatically using
     the API's own Table1[0].ROWCNT total-count field — no need to guess page count.
 
+The standard sweep set — run all six on a first-time (`no_state`) report run. Every
+category/subcategory pairing below was confirmed working 2026-07-19 against scrip
+514234 (Sangam India); the script knows these pairings, so --category can be omitted
+for any of them:
+
+    ANNUAL_2Y=20240701; W18M=20250101; W8M=20251201; TODAY=20260719
+
+    # Annual reports — last 2 fiscal years (widen --from for older years)
+    python3 bse_announcements.py <scrip> --from $ANNUAL_2Y --to $TODAY \\
+        --category "Others" --subcategory "Reg. 34 (1) Annual Report"
+    # Financial results — last 18 months
+    python3 bse_announcements.py <scrip> --from $W18M --to $TODAY \\
+        --category "Result" --subcategory "Financial Results"
+    # Press releases — last 18 months (an empty result is a real finding: some
+    # companies file no standalone press release at all)
+    python3 bse_announcements.py <scrip> --from $W18M --to $TODAY \\
+        --category "Company Update" --subcategory "Press Release / Media Release"
+    # Investor presentations — last 18 months
+    python3 bse_announcements.py <scrip> --from $W18M --to $TODAY \\
+        --category "Company Update" --subcategory "Investor Presentation"
+    # Earnings call transcripts — last 18 months
+    python3 bse_announcements.py <scrip> --from $W18M --to $TODAY \\
+        --category "Company Update" --subcategory "Earnings Call Transcript"
+    # Credit ratings — last 18 months (the exchange disclosure; the agency's own
+    # site still gets a WebSearch for the full rationale)
+    python3 bse_announcements.py <scrip> --from $W18M --to $TODAY \\
+        --category "Company Update" --subcategory "Credit Rating"
+    # Everything else — last 8 months, unfiltered, to catch order wins, M&A,
+    # management changes, and anything else the five targeted sweeps miss
+    python3 bse_announcements.py <scrip> --from $W8M --to $TODAY
+
 Examples:
     # All Company Update / Press Release filings for Tejas Networks (scrip 540595)
     # over the last ~18 months (the standard sourcing-depth window):
@@ -150,9 +181,15 @@ def main():
     # annual reports under "Others") — only auto-default for subcategories this script has actually
     # confirmed the correct category for; guessing wrong here would silently return an empty or
     # unfiltered result set rather than erroring, which is worse than requiring --category explicitly.
+    # All six pairings below confirmed working 2026-07-19 against scrip 514234
+    # (Sangam India) — see this module's docstring for the standard sweep set.
     KNOWN_SUBCATEGORY_CATEGORY = {
         "press release / media release": "Company Update",
         "reg. 34 (1) annual report": "Others",
+        "financial results": "Result",
+        "investor presentation": "Company Update",
+        "earnings call transcript": "Company Update",
+        "credit rating": "Company Update",
     }
     if args.subcategory and not args.category:
         known = KNOWN_SUBCATEGORY_CATEGORY.get(args.subcategory.strip().lower())

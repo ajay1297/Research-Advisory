@@ -21,6 +21,12 @@ notch comparison across agencies is not always apples-to-apples) — the caller
 the action explicitly via --action. The script's job is just to keep the
 history and flag the current state plainly.
 
+Re-logging is safe: add-rating is idempotent on (agency, date, instrument). The
+18-month Credit Rating sweep re-runs every regeneration and returns actions already
+on file, so calling add-rating with a known action is normal, not an error — an exact
+repeat is skipped with a message, while the same agency/date/instrument logged with
+*different* terms is refused as a conflict to re-check (--force to override).
+
 Runs entirely locally, no network required.
 
 Usage:
@@ -35,6 +41,7 @@ Usage:
 import argparse
 import json
 import os
+import sys
 
 AGENCIES = ["crisil", "icra", "care", "india_ratings", "acuite", "brickwork", "other"]
 OUTLOOKS = ["stable", "positive", "negative", "watch_developing",
@@ -63,9 +70,45 @@ def save(path: str, data: dict):
         json.dump(data, f, indent=2, ensure_ascii=False)
 
 
+def find_same_action(ratings, agency, date, instrument):
+    """An agency does not issue two different actions on the same instrument on the
+    same day, so (agency, date, instrument) is the natural key for a rating action."""
+    for r in ratings:
+        if (r["agency"], r["date"], r["instrument"]) == (agency, date, instrument):
+            return r
+    return None
+
+
 def add_rating(args):
     path = cache_path(args.company_slug)
     data = load(path)
+
+    # Idempotency guard. The 18-month "Credit Rating" BSE sweep re-runs on every
+    # regeneration and returns the same actions again, so add-rating is called with
+    # already-logged actions as a matter of course, not by mistake. Appending blindly
+    # would duplicate them and make `report` double-count the in-force set.
+    existing = find_same_action(data["ratings"], args.agency, args.date, args.instrument)
+    if existing and not args.force:
+        same = (existing["rating"] == args.rating
+                and existing["outlook"] == args.outlook
+                and existing["action"] == args.action)
+        if same:
+            print(f"Already logged as #{existing['id']} ({existing['agency'].upper()} "
+                  f"{existing['rating']}/{existing['outlook']} on {existing['instrument']}, "
+                  f"{existing['date']}) — nothing to do.")
+            return
+        # Same agency/date/instrument but different terms: a correction, a misread of
+        # the rationale, or two genuinely distinct same-day actions. Don't guess.
+        print(f"ERROR: #{existing['id']} already logs {existing['agency'].upper()} on "
+              f"{existing['instrument']} dated {existing['date']}, but with different "
+              f"terms:\n"
+              f"  logged: {existing['rating']} / {existing['outlook']} / {existing['action']}\n"
+              f"  now:    {args.rating} / {args.outlook} / {args.action}\n"
+              f"Re-read the rationale and confirm which is right. Pass --force to append "
+              f"this as a separate action anyway (correct only if the agency genuinely "
+              f"took two distinct actions on this instrument that day).", file=sys.stderr)
+        sys.exit(1)
+
     entry = {
         "id": len(data["ratings"]),
         "date": args.date,
@@ -139,6 +182,9 @@ def main():
     p1.add_argument("--action", required=True, choices=ACTIONS)
     p1.add_argument("--note")
     p1.add_argument("--source", help='e.g. "CRISIL Ratings rationale, 15 Mar 2026"')
+    p1.add_argument("--force", action="store_true",
+                     help="append even if an action for this agency/date/instrument "
+                          "already exists (see the dedupe note in this file's docstring)")
     p1.set_defaults(func=add_rating)
 
     p2 = sub.add_parser("report")

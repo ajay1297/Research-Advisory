@@ -259,7 +259,7 @@ so this doesn't rely on eyeballing a 60+KB markdown file for one overlong block.
 
 This report is built with the help of local scripts (`scripts/guidance_tracker.py`,
 `scripts/fundraise_tracker.py`, `scripts/rating_tracker.py`, `scripts/litigation_tracker.py`,
-`scripts/forward_pe.py`, `scripts/capacity_utilization.py`, etc.) — those names belong in
+`scripts/capacity_utilization.py`, etc.) — those names belong in
 SKILL.md and source_playbook.md, which describe *how the report gets built*, never in
 the report itself, which is *the finished deliverable*. Write findings directly: "Guidance
 reliability (last 2 tracked quarters):" not "Guidance reliability (via

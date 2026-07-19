@@ -14,6 +14,13 @@ seemingly-closed matter that is still reopenable and therefore still a real
 contingent liability. This script exists to keep that distinction explicit
 across refreshes, not to re-derive it from scratch each time.
 
+Re-logging is safe: add-case is idempotent on (case_ref, forum), compared
+case/whitespace-insensitively since both are free text re-typed from each year's
+annual report. The same contingent liability is re-disclosed annually, so re-logging
+is routine — an exact repeat is skipped (leaving any status set via update-status
+untouched), and a restated amount is refused with a pointer to `update-status
+--amount-cr`, which revises the figure in place instead of double-counting it.
+
 Runs entirely locally, no network required.
 
 Usage:
@@ -33,6 +40,7 @@ Usage:
 import argparse
 import json
 import os
+import sys
 
 CASE_TYPES = ["tax_dispute", "customer_vendor_dispute", "regulatory", "labor",
               "ip", "criminal", "arbitration", "consumer", "promoter_related", "other"]
@@ -59,9 +67,57 @@ def save(path: str, data: dict):
         json.dump(data, f, indent=2, ensure_ascii=False)
 
 
+def norm(s):
+    """Case refs and forums are free text re-typed from each year's annual report, so
+    compare them case- and whitespace-insensitively."""
+    return " ".join((s or "").lower().split())
+
+
+def find_same_case(cases, case_ref, forum):
+    for c in cases:
+        if (norm(c["case_ref"]), norm(c["forum"])) == (norm(case_ref), norm(forum)):
+            return c
+    return None
+
+
 def add_case(args):
     path = cache_path(args.company_slug)
     data = load(path)
+
+    # Idempotency guard. Contingent liabilities are re-disclosed in every annual report,
+    # so the same case is re-read and re-logged on each refresh by design. Appending
+    # blindly would double-count it in `report`'s total disclosed contingent-liability
+    # figure -- i.e. silently overstate the company's legal exposure.
+    existing = find_same_case(data["cases"], args.case_ref, args.forum)
+    if existing and not args.force:
+        # Deliberately does NOT compare status/appeal_window/note: those evolve
+        # legitimately via update-status, and a re-log must never reset that progress.
+        same = (existing["case_type"] == args.case_type
+                and norm(existing["parties"]) == norm(args.parties)
+                and existing["amount_cr"] == args.amount_cr)
+        if same:
+            print(f"Already logged as #{existing['id']} ({existing['case_ref']}, "
+                  f"{existing['forum']}) — nothing to do. Existing status "
+                  f"'{existing['status']}' left untouched.")
+            return
+        amount_changed = existing["amount_cr"] != args.amount_cr
+        print(f"ERROR: #{existing['id']} already logs '{existing['case_ref']}' at "
+              f"{existing['forum']}, but with different details:\n"
+              f"  logged: {existing['case_type']} / {existing['parties']} / "
+              f"INR{existing['amount_cr']}cr\n"
+              f"  now:    {args.case_type} / {args.parties} / INR{args.amount_cr}cr\n"
+              + (f"The amount changed, which is normal — a contingent liability is "
+                 f"restated each year as interest/penalty accrues. Update the existing "
+                 f"case in place rather than adding a second one:\n"
+                 f"  litigation_tracker.py {args.company_slug} update-status --id "
+                 f"{existing['id']} --status {existing['status']} --amount-cr "
+                 f"{args.amount_cr}\n"
+                 if amount_changed else
+                 f"Re-read the disclosure and confirm which is right.\n")
+              + f"Pass --force only if this is genuinely a separate case that happens to "
+                f"share a reference and forum.", file=sys.stderr)
+        sys.exit(1)
+
     entry = {
         "id": len(data["cases"]),
         "case_ref": args.case_ref,
@@ -92,8 +148,14 @@ def update_status(args):
         match["note"] = (match["note"] + " " if match["note"] else "") + args.note
     if args.appeal_window:
         match["appeal_window"] = args.appeal_window
+    old_amount = match.get("amount_cr")
+    if args.amount_cr is not None:
+        match["amount_cr"] = args.amount_cr
     save(path, data)
-    print(f"Case #{args.id} ({match['case_ref']}): status {old_status} -> {args.status}")
+    msg = f"Case #{args.id} ({match['case_ref']}): status {old_status} -> {args.status}"
+    if args.amount_cr is not None and args.amount_cr != old_amount:
+        msg += f", amount INR{old_amount}cr -> INR{args.amount_cr}cr"
+    print(msg)
 
 
 def report(args):
@@ -153,12 +215,19 @@ def main():
     p1.add_argument("--appeal-window", help='e.g. "appeal period expires Sep 2027"')
     p1.add_argument("--note")
     p1.add_argument("--source", help='e.g. "FY26 Annual Report, Note 34"')
+    p1.add_argument("--force", action="store_true",
+                     help="append even if a case with this ref/forum already exists "
+                          "(see the dedupe note in this file's docstring)")
     p1.set_defaults(func=add_case)
 
     p2 = sub.add_parser("update-status")
     p2.add_argument("--id", type=int, required=True)
     p2.add_argument("--status", required=True, choices=STATUSES)
     p2.add_argument("--appeal-window")
+    p2.add_argument("--amount-cr", type=float,
+                     help="revised contingent-liability amount, INR crore — use this when "
+                          "a new annual report restates the figure, rather than logging "
+                          "the case a second time")
     p2.add_argument("--note")
     p2.set_defaults(func=update_status)
 

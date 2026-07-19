@@ -71,7 +71,7 @@ just when assembling the final report.
   for the exact checklist of what to fetch vs. what carries forward unchanged.
 - **Don't burn more than one retry on a stuck source.** If screener.in's numeric
   widgets won't populate after one wait/retry, stop retrying it and fall back per
-  `reference/data_sources.md`'s "BSE / NSE filings" section (exchange filing
+  `reference/data_sources.md`'s "screener.in" section (the BSE filing
   directly, the concall/investor presentation you're already fetching, or a secondary
   quote aggregator for just the price) — debugging a stuck fetch costs more than
   switching sources.

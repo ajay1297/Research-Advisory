@@ -37,7 +37,7 @@ imported %, country breakdown if any portion is imported) · **Capacity Utilizat
 (industry's own physical unit, never a bare %; flag shared multi-purpose pools; run
 `capacity_utilization.py`, `--post-capex-max-revenue-cr` if a post-capex figure
 already surfaced elsewhere) · **Total Addressable Market** (only if an actual figure,
-not a growth rate, was disclosed) · **Valuation/Forward PE** (`forward_pe.py`, plus
+not a growth rate, was disclosed) · **Valuation/Forward PE** (computed inline, plus
 the company's own historical median PE from a secondary aggregator) · **Broker/agency
 research** (uploaded OR actively searched — inline `[BROKER_DDMMYYYY]` tags, no
 dedicated section, paraphrase never reproduce, never bypass a paywall) ·

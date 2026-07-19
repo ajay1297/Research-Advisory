@@ -13,8 +13,8 @@ company doesn't hold a concall, use the results filing date instead — see
 reference/sourcing_depth.md's "If the company doesn't hold concalls" section. The
 script diffs the date against state.json and tells Claude exactly what to do next:
 
-  - "up_to_date": nothing changed, reuse the cached report.md as-is (or just rerun
-    forward_pe.py if the user supplied a new price — that alone doesn't need a refetch).
+  - "up_to_date": nothing changed, reuse the cached report.md as-is (or just recompute
+    the forward PE inline if the user supplied a new price — that alone doesn't need a refetch).
   - "new_quarter": exactly one thing to fetch/parse — the new concall/results — nothing
     else. Old transcripts already in sources/ are NOT reprocessed.
   - "no_state": first time for this company, full pipeline runs, then call
@@ -197,7 +197,7 @@ def main():
             "last_processed_label": state.get("last_processed_label"),
             "last_processed_at": state.get("last_processed_at"),
             "note": "No new concall/results since last run. Reuse ~/.report-generator/research_cache/<company>/report.md. "
-                    "If the user gave a new price, only rerun forward_pe.py — don't refetch anything.",
+                    "If the user gave a new price, only recompute the forward PE inline — don't refetch anything.",
             **({"cadence": cadence} if cadence else {}),
         }, indent=2))
     else:

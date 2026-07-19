@@ -306,7 +306,7 @@ and annual results tables give revenue, PBT, and PAT directly for at least the l
 5 years (and gross margin or EBITDA margin, whichever the company discloses). No
 separate fetch needed; just don't discard these columns when you scope the rest of the
 report to the standard 18-month/6-quarter lookback window (see
-`reference/sourcing_depth.md`'s "Filtering to an 18-month window" section) — this
+`reference/sourcing_depth.md`'s "Windowing" section) — this
 section is explicitly a multi-year trend, not a
 recent-quarter snapshot, and is exempt from that lookback default.
 
@@ -385,7 +385,7 @@ the concall or investor presentation — it lives in the **annual report's Notes
 Accounts**, usually under a heading like "Value of raw materials, components and spare
 parts consumed" or "Additional Information pursuant to Schedule III," broken into
 indigenous vs. imported ₹ value and %. Fetch the latest available annual report (per
-`reference/sourcing_depth.md`'s "Annual reports — processing" section) and search its
+`reference/sourcing_depth.md`'s "Annual reports — reading discipline" section) and search its
 extracted text for "imported" / "indigenous" /
 "raw material consumed."
 
@@ -627,11 +627,15 @@ this sweep is for the *rest* of what a company discloses: order wins, management
 changes, new client relationships, capacity/capex approvals, and anything else that
 moved the stock or the story between concalls.
 
-**Where to fetch it**: BSE (`https://www.bseindia.com/stock-share-price/<company>/
-<code>/corp-announcements/`) or NSE (`https://www.nseindia.com/companies-listing/
-corporate-filings-announcements`) — see `reference/data_sources.md`'s "BSE / NSE filings" section for the fetch
-mechanics (fallback pattern, Chrome escalation if JS-rendered). Filter to the last 6
-months by announcement date.
+**Where to fetch it**: BSE, always — `python3 scripts/bse_announcements.py
+<scrip_code> --from <YYYYMMDD> --to <YYYYMMDD>` over the last 6 months, per the
+BSE-first rule in `reference/data_sources.md`. Don't try to browse BSE's
+corp-announcements page (policy-blocked in this environment) and don't substitute a
+news roundup for the sweep — the API returns every announcement's date, category,
+headline, and direct PDF URL in one call, which is exactly what this sweep needs.
+**Order wins in particular come from here and nowhere else** as the source of record;
+news/LinkedIn coverage of an order win is discovery only, and the announcement is
+what gets cited.
 
 **Assess materiality before deciding what to fold in — most announcements are routine
 noise, and forcing all of them into the report would bury the ones that matter.**

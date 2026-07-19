@@ -12,10 +12,11 @@ never-drop-anything-silently, accuracy discipline) live in
 This is the step that makes regeneration cheap. Never re-run the full pipeline on a
 report you've already generated for this company.
 
-1. Fetch screener.in's Documents/Concalls tab only (not the transcript itself yet) —
-   the cheapest single-page source for these dates (see `reference/data_sources.md`'s
-   screener.in section). If this tab won't load or its widgets come back masked, use
-   `reference/data_sources.md`'s BSE/NSE fallback instead for this same lookup.
+1. Run the results/transcript sweeps from `reference/data_sources.md`'s "standard BSE
+   sweep set" — dates only at this stage, not the documents themselves. This is the
+   cheapest possible lookup for these dates: one `bse_announcements.py` call returns
+   every filing's date without fetching a single PDF. (screener.in's Documents/Concalls
+   tab works as a cross-check if the sweep looks incomplete.)
    Collect the latest quarter's **full date** (e.g. `2026-04-29`, not "May 2026" or
    "Q4 FY26" — see `check_freshness.py`'s own docstring for why a full date is
    required) plus **every concall date shown** on the page (not just the latest).
@@ -41,10 +42,13 @@ report you've already generated for this company.
    - `force_full` → refetch every source document and rebuild every section per the
      docstring; nothing extra to add here.
    - `up_to_date` → reuse `~/.report-generator/research_cache/<company_slug>/report.md`
-     as-is. If the user only supplied a new price for the valuation section, rerun
-     `scripts/forward_pe.py` alone with the cached revenue-guidance/margin/shares
-     inputs (stored in `~/.report-generator/research_cache/<company_slug>/bullets.json`)
-     — do not refetch or reprocess anything else.
+     as-is. If the user only supplied a new price for the valuation section, recompute
+     the forward PE inline (formula and labeling rules in
+     `reference/report_sections.md`'s "Valuation — Forward PE" section) using the
+     cached revenue-guidance/margin/shares inputs stored in
+     `~/.report-generator/research_cache/<company_slug>/bullets.json` — carry the
+     cached margin's guided-vs-assumed label forward unchanged, and do not refetch or
+     reprocess anything else.
    - `new_quarter` → only fetch and parse the new concall/results (see
      `reference/step1_retrieve.md`); do NOT reprocess transcripts already sitting in
      `~/.report-generator/sources/<company_slug>/`. Update the Near/Medium/Long Term

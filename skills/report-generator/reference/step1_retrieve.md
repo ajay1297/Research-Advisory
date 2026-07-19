@@ -7,14 +7,28 @@ result says are needed.
 ## Source pipeline (only run the parts Step 0 says are needed)
 
 **Get the source documents.** Read `reference/data_sources.md` for exactly which
-tool to use for which source (screener.in, BSE/NSE, industry/peer sources, technicals
-provider). In short: `WebSearch`/`mcp__workspace__web_fetch` for screener.in and PDF
-concalls/presentations/annual reports; escalate to Claude in Chrome only if a page is
-JS-rendered and web_fetch returns an empty shell. Never write a raw `curl`/`requests`
-fetch script — this sandbox's network is allowlisted and direct calls to arbitrary
-domains fail with a proxy 403. If the user has uploaded documents, use those instead
-of fetching. Save whatever raw text/PDF you obtain to
-`~/.report-generator/sources/<company_slug>/` before processing it.
+tool to use for which source (BSE, screener.in, industry/peer sources, technicals
+provider). In short:
+
+- **BSE, always** — concall transcripts, annual reports, financial statements/
+  quarterly results, press releases, and order wins. Discover with
+  `scripts/bse_announcements.py`, fetch the returned `AnnPdfOpen.aspx` PDF with
+  `WebFetch`. Company IR pages and screener.in's Documents tab are fallbacks for when
+  that path fails, not alternatives to it.
+- **BSE + `WebSearch`** — rating reports: the BSE disclosure for the action and its
+  date, the rating agency's own site (searched across all six agencies) for the full
+  rationale.
+- **`WebSearch`** — brokerage/agency research, and all industry/macro context.
+- **`WebSearch`/`mcp__workspace__web_fetch`** — screener.in for structured financials
+  and everything else; escalate to Claude in Chrome only if a page is JS-rendered and
+  web_fetch returns an empty shell.
+
+Never write a raw `curl`/`requests` fetch script — this sandbox's network is
+allowlisted and direct calls to arbitrary domains fail with a proxy 403. The only
+exceptions are `bse_announcements.py`/`bulk_block_deals.py` against
+`api.bseindia.com`, which already exist; don't write new ones. If the user has
+uploaded documents, use those instead of fetching. Save whatever raw text/PDF you
+obtain to `~/.report-generator/sources/<company_slug>/` before processing it.
 
 **Before extracting any PDF fetched from a search result (not the company's own IR
 page or a direct exchange filing link), verify it's actually the right company's
@@ -34,12 +48,12 @@ milliseconds regardless of document length, so narrowing what gets *read* is not
 the token/time savings should come from.
 
 For a **large annual report (roughly 150+ pages)**, use `pdf_to_text_parallel.py`
-instead of `pdf_to_text.py` — see `reference/data_sources.md`'s "PDF fetch-extract-log
-pattern" section for when and why (performance numbers, chunk-safety guarantee).
+instead of `pdf_to_text.py` — see `reference/data_sources.md`'s "BSE filings — fetch, extract,
+log" section for when and why (performance numbers, chunk-safety guarantee).
 
 `pdf_to_text.py`'s `--pages START-END` flag is for scouting only, never a substitute
-for full-document extraction — see `reference/data_sources.md`'s "PDF fetch-extract-log
-pattern" section for exactly when it's safe to use.
+for full-document extraction — see `reference/data_sources.md`'s "BSE filings — fetch, extract,
+log" section for exactly when it's safe to use.
 
 **Pre-filter to candidate quotes.** `python3 scripts/extract_theme_quotes.py
 <transcript.txt> <out.json>` buckets forward-looking lines into near/medium/long-term

@@ -362,15 +362,32 @@ duplicate the full explanation twice.
 ### 10. Valuation — Forward PE
 
 Only include if the company gave explicit forward revenue guidance (which the Near/
-Medium/Long Term sections should already have captured). Compute via
-`scripts/forward_pe.py`:
+Medium/Long Term sections should already have captured). This is plain arithmetic on
+a management estimate, not a valuation model — compute it inline, no script:
 
-- Forward EPS = (revenue guidance x PAT margin assumption) / shares outstanding.
-- PAT margin assumption: use management's explicitly guided margin if they gave one;
-  otherwise fall back to trailing actual PAT margin and label it clearly as an
-  **assumption, not guidance**.
+```
+Forward PAT = revenue_guidance_cr × pat_margin_pct ÷ 100
+Forward EPS = Forward PAT ÷ shares_outstanding_cr        (crore ÷ crore → ₹/share)
+Forward PE  = price ÷ Forward EPS
+```
+
+- **The PAT margin is the input that must be labeled, and it is the whole reason this
+  section has a Source/Basis column.** Use management's explicitly guided margin if
+  they gave one. If they didn't, derive it from trailing actuals
+  (`trailing_PAT_cr ÷ trailing_revenue_cr × 100`) and label the result an
+  **assumption, not guidance** — in the table row, and again in the note below it.
+  The arithmetic is identical either way and only the label distinguishes them, which
+  is exactly why it gets stated twice rather than left implicit.
+- **If neither is available, drop the section** — don't invent a margin, and don't
+  quietly reuse a peer's or an industry-typical figure. A forward PE resting on a
+  margin nobody stated is not a weaker version of this section; it's a fabricated
+  number wearing a table.
+- Shares outstanding: equity capital ÷ face value, both shown on screener.in.
 - Price: use the current market price fetched from screener.in unless the user
   supplied their own price, in which case use theirs and say so.
+- Show the working, not just the result — the reader should be able to recompute it
+  from the table alone (e.g. "Forward EPS = (₹2,400cr × 12.9%) ÷ 15.64cr shares =
+  ₹19.80"). Never present a forward PE as a bare multiple with the inputs elsewhere.
 - **Lead with a table** — this is the primary format for this section, not an
   afterthought below a paragraph. One row per input, so every number and its basis can
   be scanned without parsing a sentence:

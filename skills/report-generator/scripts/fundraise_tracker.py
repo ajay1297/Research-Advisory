@@ -19,6 +19,13 @@ remaining 75% and convert to equity. If the promoter lets warrants lapse
 which only makes sense if the promoter's own view of the stock soured after
 allotment. That is a fact worth stating plainly, not softening.
 
+Re-logging is safe: add-raise is idempotent on (date, instrument, allottee). The BSE
+announcements sweep re-runs every regeneration and re-surfaces the same allotments, so
+calling add-raise with a known raise is normal, not an error — an exact repeat is
+skipped (leaving any status set via update-status untouched), while the same
+date/instrument/allottee logged with different amounts/units/price is refused as a
+conflict to re-check, since logging both would double-count it in the totals below.
+
 Runs entirely locally, no network required.
 
 Usage:
@@ -36,6 +43,7 @@ Usage:
 import argparse
 import json
 import os
+import sys
 
 INSTRUMENTS = [
     "preferential_equity", "warrants", "ncd", "term_loan",
@@ -65,9 +73,50 @@ def save(path: str, data: dict):
         json.dump(data, f, indent=2, ensure_ascii=False)
 
 
+def find_same_raise(raises, date, instrument, allottee):
+    """A given allottee doesn't receive two separate allotments of the same instrument
+    on the same date, so (date, instrument, allottee) is the natural key for a raise."""
+    for r in raises:
+        if (r["date"], r["instrument"], r["allottee"]) == (date, instrument, allottee):
+            return r
+    return None
+
+
 def add_raise(args):
     path = cache_path(args.company_slug)
     data = load(path)
+
+    # Idempotency guard. The 8-month unfiltered BSE sweep re-runs on every regeneration
+    # and re-surfaces the same allotment announcements, so add-raise gets called with
+    # already-logged raises routinely. Appending blindly would double-count them in
+    # `report`'s promoter/debt totals -- i.e. silently overstate how much was raised.
+    existing = find_same_raise(data["raises"], args.date, args.instrument, args.allottee)
+    if existing and not args.force:
+        # Deliberately does NOT compare status/note: those evolve legitimately via
+        # update-status (a warrant goes pending -> converted/lapsed), and a re-log
+        # must never reset that progress.
+        same = (existing["amount_cr"] == args.amount_cr
+                and existing["units"] == args.units
+                and existing["price_per_unit"] == args.price_per_unit)
+        if same:
+            print(f"Already logged as #{existing['id']} ({existing['instrument']}, "
+                  f"INR{existing['amount_cr']}cr, allottee={existing['allottee']}, "
+                  f"{existing['date']}) — nothing to do. Existing status "
+                  f"'{existing['status']}' left untouched.")
+            return
+        print(f"ERROR: #{existing['id']} already logs a {existing['instrument']} allotment "
+              f"to {existing['allottee']} dated {existing['date']}, but with different "
+              f"terms:\n"
+              f"  logged: INR{existing['amount_cr']}cr / {existing['units']} units / "
+              f"INR{existing['price_per_unit']} per unit\n"
+              f"  now:    INR{args.amount_cr}cr / {args.units} units / "
+              f"INR{args.price_per_unit} per unit\n"
+              f"Re-read the allotment notice and confirm which is right — logging both "
+              f"would double-count this raise in the promoter/debt totals. Pass --force "
+              f"only if these are genuinely two separate allotments on the same date.",
+              file=sys.stderr)
+        sys.exit(1)
+
     default_status = "pending" if args.instrument == "warrants" else "allotted"
     entry = {
         "id": len(data["raises"]),
@@ -185,6 +234,9 @@ def main():
                           "— only named allottees actually disclosed in the BSE/NSE allotment "
                           "notice or shareholding pattern, never inferred")
     p1.add_argument("--note")
+    p1.add_argument("--force", action="store_true",
+                     help="append even if a raise for this date/instrument/allottee "
+                          "already exists (see the dedupe note in this file's docstring)")
     p1.set_defaults(func=add_raise)
 
     p2 = sub.add_parser("update-status")

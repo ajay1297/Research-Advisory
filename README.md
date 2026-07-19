@@ -17,7 +17,7 @@ does while running ever adds, modifies, or deletes a file here.
 
 | Skill | What it does |
 |---|---|
-| [`report-generator`](skills/report-generator/SKILL.md) | Generates/refreshes India-listed-company research reports (visual PDF + Markdown) from concall transcripts, investor presentations, annual reports, credit-rating rationales, and screener.in/BSE/NSE data. Full pipeline, directory structure, and setup are documented in this README below (Usage and Setup sections); the skill's own `SKILL.md` and `reference/*.md` are the operational spec Claude reads at run time. |
+| [`report-generator`](skills/report-generator/SKILL.md) | Generates/refreshes India-listed-company research reports (visual PDF + Markdown) from BSE filings (concall transcripts, investor presentations, annual reports, results, press releases, credit-rating disclosures), screener.in structured financials, and web-searched brokerage/industry research. Full pipeline, directory structure, and setup are documented in this README below (Usage and Setup sections); the skill's own `SKILL.md` and `reference/*.md` are the operational spec Claude reads at run time. |
 | [`portfolio-analysis`](skills/portfolio-analysis/SKILL.md) | **Placeholder — not yet implemented.** Reserved for future portfolio-level analysis/advisory. |
 
 More skills may be added here over time, each in its own `skills/<name>/` directory.
@@ -34,12 +34,11 @@ Research-Advisory/                    (plugin root -- everything here is the plu
 |-- .gitignore
 `-- skills/
     |-- report-generator/             One skill = one self-contained directory
-    |   |-- SKILL.md
-    |   |-- README.md
-    |   |-- reference/
-    |   |-- scripts/
-    |   |-- assets/
-    |   `-- examples/
+    |   |-- SKILL.md                  Entry point Claude reads on trigger
+    |   |-- reference/                Pipeline spec (4 step files + 8 topic docs)
+    |   |-- scripts/                  Bundled Python 3 helpers
+    |   |-- assets/                   report_style.css for the PDF template
+    |   `-- examples/                 A worked reference report
     `-- portfolio-analysis/           Placeholder -- not yet implemented
         `-- SKILL.md
 
@@ -134,15 +133,15 @@ dependencies (see Setup below), then confirm it installed correctly:
 ## Setup
 
 No API keys or environment variables required for anything in this plugin.
-Not every skill necessarily shares the same dependencies — check each
-skill's own README for its full setup section; `report-generator`'s is
-summarized here since it's the only implemented skill so far.
+Not every skill necessarily shares the same dependencies; `report-generator`'s
+are below, and it's the only implemented skill so far.
 
 ### `report-generator`
 
-All sourcing is done via web search/fetch (screener.in, BSE/NSE, credit-rating
-agency sites) and locally bundled Python 3 scripts — nothing needs a server or
-daemon.
+All sourcing is done via BSE's public JSON API (queried by the bundled
+`bse_announcements.py`/`bulk_block_deals.py`, no key or auth required) plus web
+search/fetch for screener.in, credit-rating agency sites, and brokerage/industry
+research — nothing needs a server, daemon, or credentials.
 
 **Python packages:**
 
@@ -269,10 +268,42 @@ files live under `~/.report-generator/` (`research_cache/<slug>/` or
 
 | Step | Step file | Reference docs it reads | Scripts it invokes | Data files it reads/writes |
 |---|---|---|---|---|
-| 0 — Perceive (freshness check) | `step0_perceive.md` | `data_sources.md`, `sourcing_depth.md`, `SKILL.md`, `step1_retrieve.md` | `check_freshness.py`, `forward_pe.py`, `guidance_tracker.py` | `state.json`, `report.md`, `bullets.json`, `guidance_history.json` |
-| 1 — Retrieve (fetch + extract) | `step1_retrieve.md` | `data_sources.md`, `step0_perceive.md`, `step3_memorize.md` | `pdf_to_text.py`, `pdf_to_text_parallel.py`, `extract_theme_quotes.py` | `sources/<slug>/`, `candidate_quotes/*.json`, `quotes.json` |
-| 2 — Synthesize (draft sections) | `step2_synthesize.md` | `step0_perceive.md`, `report_format.md`, `report_sections.md`, `source_playbook.md` | `guidance_tracker.py`, `capacity_utilization.py`, `forward_pe.py`, `fundraise_tracker.py`, `rating_tracker.py`, `litigation_tracker.py` | `quotes.json`, `guidance_history.json`, `fundraise_history.json`, `rating_history.json`, `litigation_history.json` |
-| 3 — Memorize (save + verify) | `step3_memorize.md` | `step0_perceive.md`, `report_assembly.md`, `guardrails.md` | `html_helpers.py`, `charts.py`, `verify_report.py`, `report_to_pdf.py`, `check_freshness.py` | `report.html`, `*_report.pdf`, `report.md`, `quotes.json`, `bullets.json`, 4 tracker histories (guidance/fundraise/rating/litigation), `state.json` |
+| 0 — Perceive (freshness check) | `step0_perceive.md` | `data_sources.md`, `sourcing_depth.md`, `SKILL.md`, `step1_retrieve.md` | `bse_announcements.py`, `check_freshness.py` | `state.json`, `report.md`, `bullets.json` |
+| 1 — Retrieve (fetch + extract) | `step1_retrieve.md` | `data_sources.md`, `sourcing_depth.md`, `step0_perceive.md`, `step3_memorize.md` | `bse_announcements.py`, `pdf_to_text.py`, `pdf_to_text_parallel.py`, `semantic_search.py`, `extract_theme_quotes.py`, `source_manifest.py` | `sources/<slug>/`, `source_manifest.json`, `candidate_quotes/*.json` |
+| 2 — Synthesize (draft sections) | `step2_synthesize.md` | `step0_perceive.md`, `report_format.md`, `report_sections.md`, `source_playbook.md` | `guidance_tracker.py`, `capacity_utilization.py`, `fundraise_tracker.py`, `rating_tracker.py`, `litigation_tracker.py`, `bulk_block_deals.py` | `quotes.json`, `guidance_history.json`, `fundraise_history.json`, `rating_history.json`, `litigation_history.json` |
+| 3 — Memorize (save + verify) | `step3_memorize.md` | `step0_perceive.md`, `report_assembly.md`, `guardrails.md` | `html_helpers.py`, `charts.py`, `verify_report.py`, `report_to_pdf.py`, `check_freshness.py` | `report.html`, `*_report.pdf`, `report.md`, `quotes.json`, `bullets.json`, `source_manifest.json`, 4 tracker histories (guidance/fundraise/rating/litigation), `state.json` |
+
+"Scripts it invokes" means the step actually runs them. Several step files *name*
+scripts they don't run — `step1_retrieve.md` opens by referring back to Step 0's
+`check_freshness.py` result, and `step3_memorize.md` documents the tracker scripts
+that Step 2 invokes — so the column is deliberately narrower than a grep for `.py`
+would suggest.
+
+**Step 0 can also end the run outright.** In the `up_to_date` branch, when the user
+supplied nothing but a new price, the cached revenue-guidance/margin/share inputs come
+out of `bullets.json`, the forward PE is recomputed inline (it's four operations —
+there is no script for it), and the run finishes without ever entering Retrieve.
+
+**Sourcing is BSE-first.** Steps 0 and 1 both run `bse_announcements.py`, which
+queries BSE's own JSON API with a date range and returns each filing's date,
+category, headline, and direct PDF URL. Step 0 uses it for *dates only* (the
+cheapest possible freshness check — no PDF is fetched); Step 1 re-runs it over the
+full window and fetches what it returns. Seven standard sweeps cover annual reports,
+financial results, press releases, investor presentations, earnings-call transcripts,
+credit ratings, and an unfiltered catch-all for order wins and governance events —
+the set is tabulated in `reference/data_sources.md`. Only the three things with no
+exchange filing behind them come from elsewhere: brokerage research and
+industry/macro context (`WebSearch`), and company social posts (LinkedIn/X).
+
+**Where memory is written vs. documented.** `source_manifest.py` is *invoked* in
+Step 1 — one `add-document` call immediately after each extraction, never batched —
+but the model behind it is *documented* in `step3_memorize.md`'s "What gets recorded,
+and when," which is why it appears in both rows above. The timing matters:
+`sources/<slug>/` holds multi-MB PDFs and gets deleted to save space, and the
+manifest is what survives that so `verify_report.py depth`/`extraction` can still
+confirm the sourcing depth was met. The same file also records sweeps that found
+nothing, which keeps "the check was skipped" distinguishable from "the check ran and
+came up empty."
 
 Two cross-cutting files every step reads but none of them "owns":
 `reference/rules_and_validation.md` (standing constraints — token
