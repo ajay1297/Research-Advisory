@@ -6,11 +6,11 @@ This file is purely about rendering what's already been written, not about what 
 in the report.
 
 The default, primary deliverable is an infographic-style PDF assembled as HTML and
-rendered with WeasyPrint — the same pattern as `scripts/charts.py` and
-`scripts/html_helpers.py`'s own docstrings, which live in this plugin's `scripts/`
+rendered with WeasyPrint — the same pattern as `scripts/helpers/charts.py` and
+`scripts/helpers/html_helpers.py`'s own docstrings, which live in this plugin's `scripts/`
 directory, paired with `assets/report_style.css`. The drafted markdown report (per
 `reference/report_sections.md`'s section-by-section spec) is still produced and cached as usual — see
-`reference/step3_memorize.md`'s "Save and cache" step — the HTML/PDF assembly consumes
+`pipeline/step3_memorize.md`'s "Save and cache" step — the HTML/PDF assembly consumes
 the same facts and figures, it doesn't replace the markdown as the source of truth for
 what was found.
 
@@ -21,7 +21,7 @@ was reversed after the report itself came out too chart-heavy without a correspo
 gain in clarity. **Financial Performance Summary, Order Book, Capacity Utilization &
 Headroom, the shareholding trend, and Promoter Fund Raises all render as `data_table()`
 only by default — no `charts.*` call for any of them unless the user explicitly asks
-for a visual/chart version.** `scripts/charts.py` still exists and still works if a
+for a visual/chart version.** `scripts/helpers/charts.py` still exists and still works if a
 chart is specifically requested for a given report, or if a genuinely long time series
 (10+ years) makes a table hard to scan — but that's now the exception, not the default.
 A one-off list of named allottees with exact amounts, or a detailed litigation/rating
@@ -35,7 +35,7 @@ immediately after their `data_table()` — one pie per period/basis shown in the
 (e.g. FY26 and FY25 each get their own pie for a geography split shown across two
 columns). The table stays mandatory regardless — the pie is additive, for the reader's
 at-a-glance read, not a replacement for the exact percentages, which belong in the table
-alone (see the pie_chart() docstring in `scripts/charts.py`; use `donut_chart()`
+alone (see the pie_chart() docstring in `scripts/helpers/charts.py`; use `donut_chart()`
 instead, unchanged, for Promoter Fund Raises' fund-raise/ownership breakdowns per the
 existing convention above — the two are visually distinct so a reader can tell which
 kind of breakdown they're looking at). Only render the pie if the relevant basis is
@@ -86,7 +86,7 @@ every section instead, relying on the CSS rules already in `report_style.css`
 (`page-break-after: avoid` on headings, `page-break-inside: avoid` on table rows/
 timeline items) to prevent an orphaned heading or a split table row — a section
 spanning a page boundary normally is preferable to guaranteed dead space, every time.
-`scripts/verify_report.py whitespace <pdf>` checks this mechanically before delivery
+`scripts/pipeline/verify_report.py whitespace <pdf>` checks this mechanically before delivery
 — see `reference/guardrails.md`.
 
 ```python
@@ -125,7 +125,7 @@ source `report.md` belong in `~/.report-generator/output/<company_slug>/`.
 (`pdftoppm -jpeg -r 120 report.pdf page`) to visually check charts aren't clipped,
 tables aren't overflowing the page width, and page breaks land sensibly.
 
-**Legacy fallback**: `scripts/report_to_pdf.py` (markdown → PDF via reportlab, no
+**Legacy fallback**: `scripts/pipeline/report_to_pdf.py` (markdown → PDF via reportlab, no
 charts, no cover/badges) still exists and still works if WeasyPrint genuinely can't be
 installed in a given environment — text-only, but never blocks delivery. Prefer the
 visual pipeline above whenever both are available.

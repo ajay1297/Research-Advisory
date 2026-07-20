@@ -106,7 +106,7 @@ Organized into three tiers (see reference/guardrails.md for the full rationale o
     python3 verify_report.py filenames <company_slug>
         Checks ~/.report-generator/output/<company_slug>/ contains
         <Company_Name>_report.md and <Company_Name>_report.pdf, per
-        reference/step3_memorize.md's "Save and cache" naming rule — and FAILs
+        pipeline/step3_memorize.md's "Save and cache" naming rule — and FAILs
         if it instead finds the generic report.md/report.pdf (the naming used
         only for the internal research_cache/ working copy, never for the
         output/ deliverable). Catches exactly the mistake already made once in
@@ -196,7 +196,7 @@ def check_pdf(path):
     elif "ReportLab" in producer:
         print(f"WARN: Producer is {producer} — this is the legacy text-only "
               f"fallback. This is only acceptable if WeasyPrint genuinely failed "
-              f"twice (see reference/step3_memorize.md), AND you must state this explicitly in your "
+              f"twice (see pipeline/step3_memorize.md), AND you must state this explicitly in your "
               f"chat response to the user — never let this pass silently.")
         # Not a hard FAIL — ReportLab is an allowed fallback — but it must be
         # surfaced, so callers should treat WARN as requiring explicit disclosure.
@@ -320,7 +320,23 @@ def check_freshness(slug):
               f"--mark-processed likely wasn't called at the end of this run")
         return False
 
-    print(f"PASS: last_processed_at={ts} is today")
+    # last_success_at is what the NEXT run's delta window counts back from (see
+    # check_freshness.py's bse_fetch_window). A state.json written by an older
+    # version of --mark-processed won't have it, and the next run would silently
+    # fall back to a full-depth sweep instead of the intended 7-day delta — worth a
+    # FAIL here rather than a surprise wide refetch later.
+    success = state.get("last_success_at")
+    if not success:
+        print(f"FAIL: state.json has no last_success_at field — the next run's BSE "
+              f"delta window has no anchor and will fall back to a full-depth sweep. "
+              f"Re-run check_freshness.py --mark-processed to write it.")
+        return False
+    if success[:10] != today.isoformat():
+        print(f"FAIL: last_success_at={success} is not today ({today}) — "
+              f"--mark-processed likely wasn't called at the end of this run")
+        return False
+
+    print(f"PASS: last_processed_at={ts} is today, last_success_at={success}")
     return True
 
 
@@ -592,8 +608,10 @@ def check_slug(slug):
 
 def check_links():
     print("=== reference-link integrity check (this skill's own docs) ===")
-    skill_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    # this file lives in scripts/pipeline/, so the skill root is two levels up
+    scripts_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    skill_dir = os.path.dirname(scripts_dir)
+    sys.path.insert(0, os.path.join(scripts_dir, "helpers"))
     import check_reference_links
     findings = check_reference_links.check(skill_dir)
     if not findings:
@@ -771,7 +789,7 @@ def check_filenames(slug):
     generic = [f for f in entries if f in ("report.md", "report.pdf")]
     if generic:
         print(f"FAIL: found generic filename(s) {generic} in {out_dir} — "
-              f"reference/step3_memorize.md requires <Company_Name>_report.md/.pdf "
+              f"pipeline/step3_memorize.md requires <Company_Name>_report.md/.pdf "
               f"for the output/ deliverable (e.g. TD_Power_Systems_report.md); "
               f"'report.md'/'report.pdf' is only the internal research_cache/ "
               f"working-copy name and must never be the delivered filename. Rename "
@@ -1007,7 +1025,7 @@ def check_deals(slug, months=6):
     "Bulk & Block Deals" section and reference/report_sections.md's Promoter/
     Governance sub-section, not something to skip because the company looks quiet).
     Log a sweep via `source_manifest.py <slug> add-document --type deals_sweep
-    --status performed --evidence "<what scripts/bulk_block_deals.py returned>"`
+    --status performed --evidence "<what scripts/helpers/bulk_block_deals.py returned>"`
     each run (or --status skipped --reason "..." if it genuinely can't be done)."""
     base = os.path.expanduser("~/.report-generator")
     manifest_path = os.path.join(base, "research_cache", slug, "source_manifest.json")

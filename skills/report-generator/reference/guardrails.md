@@ -1,7 +1,7 @@
 # Deterministic Guardrails — the enforcement layer
 
 Everything else in this skill states rules; this file is what actually checks them.
-`scripts/verify_report.py` (see its own docstring for exact usage) implements every
+`scripts/pipeline/verify_report.py` (see its own docstring for exact usage) implements every
 check named below, tested against real report runs, not written and left unverified.
 
 **The standing rule for all of it: any FAIL is a stop-and-fix, not a note-and-continue**
@@ -26,13 +26,13 @@ Catch a bad input before it corrupts everything built on top of it:
 - **`slug <company_slug>`** — validates a derived company slug is safe to use in
   filesystem paths (`[a-z0-9_]+` only) before it's used to construct any path under
   `~/.report-generator/`.
-- **Company/ticker existence** — before running the full pipeline, the Step 0
+- **Company/ticker existence** — before running the full pipeline, the Step 1a
   freshness check's screener.in fetch already serves as an implicit input gate: if
   the company can't be found there at all, that's the signal to ask the user to
   confirm the name/ticker rather than proceeding to build a report for a company
   that may not exist or may be misspelled.
 - **`links`** — not a per-report check, a self-integrity check on this skill's own
-  `SKILL.md`/`reference/*.md` docs (via `scripts/check_reference_links.py`). Run
+  `SKILL.md`/`reference/*.md` docs (via `scripts/helpers/check_reference_links.py`). Run
   this once per session after editing any reference file or `SKILL.md` — not once
   per report — since that's when a dangling cross-reference (a pointer surviving
   a file split/rename/heading move) actually gets introduced.
@@ -94,7 +94,7 @@ silently" gets mechanically enforced rather than left to memory.
    once — catching the case where a broker PDF was read and summarized to yourself
    but its facts never actually made it into the report.
 4. **`sources <company_slug>`** — confirms the `sources/`/`research_cache/` split
-   (bulky raw material vs. small synthesized state, per `reference/step3_memorize.md`'s
+   (bulky raw material vs. small synthesized state, per `pipeline/step3_memorize.md`'s
    "Save and cache" section) wasn't violated: no bulky `.pdf`/`.txt`/`.bm25.pkl` leaked into
    `research_cache/`, no candidate-quotes JSON left loose in `sources/` instead of
    `research_cache/<slug>/candidate_quotes/`.
@@ -105,7 +105,7 @@ silently" gets mechanically enforced rather than left to memory.
    extracted this run, **before** deleting/losing the source PDF. Confirms the
    extraction actually starts at page 1 and reaches the document's real final page —
    catches a scouting/partial-range extraction being mistaken for the full-document
-   extraction `reference/step1_retrieve.md`'s "always extract the whole document"
+   extraction `pipeline/step1_retrieve.md`'s "always extract the whole document"
    rule requires. This
    only works if the source PDF is still on disk, so always save a fetched annual
    report PDF to `sources/<company_slug>/` before extracting it — don't
@@ -121,7 +121,7 @@ silently" gets mechanically enforced rather than left to memory.
    suffixes) rather than counted per file, so 6 chunks of one document correctly
    count as 1 report, not 6. **Survives `sources/` being deleted**: falls back to
    `research_cache/<slug>/source_manifest.json` — a small, durable log of every
-   document ever fetched/extracted, logged via `scripts/source_manifest.py
+   document ever fetched/extracted, logged via `scripts/helpers/source_manifest.py
    add-document` right after each fetch (see `reference/sourcing_depth.md`'s
    "Concalls, investor presentations, annual reports, press releases" and "Annual
    reports — processing" sections). If both `sources/` and the manifest
@@ -142,7 +142,7 @@ mandatory before delivery:
 - **`disclaimer <report.md>`** — the required "not investment advice" language is
   present.
 - **`filenames <company_slug>`** — `~/.report-generator/output/<company_slug>/`
-  contains `<Company_Name>_report.md`/`.pdf`, per `reference/step3_memorize.md`'s
+  contains `<Company_Name>_report.md`/`.pdf`, per `pipeline/step3_memorize.md`'s
   "Save and cache" naming rule, and FAILs if it instead finds the generic
   `report.md`/`report.pdf` — that generic name belongs only to the internal
   `research_cache/<slug>/report.md` working copy, never the delivered `output/`
@@ -191,7 +191,7 @@ mandatory before delivery:
   sweep genuinely can't be done this run, log it as skipped and accept the resulting
   FAIL rather than working around it. For `deals` specifically, "no bulk or block
   deals found for this scrip in the period reviewed" is itself valid, real evidence
-  (an empty result from `scripts/bulk_block_deals.py` is a legitimate finding, not a
+  (an empty result from `scripts/helpers/bulk_block_deals.py` is a legitimate finding, not a
   fetch failure) — don't confuse a genuinely empty result with a skipped check.
   `brokers` specifically guards against the failure mode observed in practice: a
   broad web search surfacing an unattributed rating claim (no named agency, no
@@ -221,7 +221,7 @@ mandatory before delivery:
 Summary, Value Chain Positioning, and one table-heavy page. The script catches
 missing structural elements, not visual bugs like overflowing tables, unreadable
 font sizes, or dead whitespace (a common cause: a chart PNG saved without tight
-bounding-box cropping — see `scripts/charts.py`'s `bbox_inches='tight'` usage — or a
+bounding-box cropping — see `scripts/helpers/charts.py`'s `bbox_inches='tight'` usage — or a
 chart wrongly wrapped in `chart_row()`). If regenerating/fixing an existing company,
 comparing side-by-side against another company's already-correct PDF from earlier in
 the same session is a fast way to catch anything the script and a solo skim would

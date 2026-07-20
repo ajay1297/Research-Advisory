@@ -1,15 +1,19 @@
 #!/usr/bin/env python3
 """
 check_reference_links.py — link-checker for this skill's own docs (SKILL.md +
-reference/*.md).
+pipeline/*.md + reference/*.md).
 
-Why this exists: every restructuring of this skill's reference files (splitting a
-file, moving a section between files, renaming a heading) has produced dangling
-cross-references that were only caught by manual grep/read-through passes — a
-pointer like `reference/pipeline_steps.md`'s "Step 0" section surviving after
-pipeline_steps.md was deleted, or a heading move leaving an "above"/"below"
-reference pointing at the wrong file. This script mechanizes that check instead of
-relying on remembering to grep for it every time.
+Why this exists: every restructuring of this skill's docs (splitting a file, moving a
+section between files, moving a file between pipeline/ and reference/, renaming a
+heading) has produced dangling cross-references that were only caught by manual
+grep/read-through passes — a pointer to a step file surviving after that file was
+merged into another, or a heading move leaving an "above"/"below" reference pointing
+at the wrong file. This script mechanizes that check instead of relying on
+remembering to grep for it every time.
+
+Filenames are unique across pipeline/, reference/, and examples/, so a pointer
+resolves whether it is written bare (`step2_synthesize.md`) or folder-qualified
+(`pipeline/step2_synthesize.md`).
 
 What it checks (heuristic, not a full markdown parser — false positives are
 possible on genuinely ambiguous prose, but a clean run is a real signal):
@@ -45,14 +49,16 @@ DELIVERABLE_NAME_RE = re.compile(r"(^report\.md$|_report\.md$)")
 
 
 def _load_files(skill_dir):
-    """Return {filename: (path, content, headings)} for SKILL.md + reference/*.md
-    + examples/*.md (the latter are legitimate cross-reference targets, just not
-    part of the reference/ split)."""
+    """Return {filename: (path, content, headings)} for SKILL.md + pipeline/*.md
+    + reference/*.md + examples/*.md. Filenames are unique across these folders, so
+    they key the map directly — a pointer may spell a target either bare
+    (`step2_synthesize.md`) or folder-qualified (`pipeline/step2_synthesize.md`) and
+    both resolve to the same entry."""
     files = {}
     skill_md = os.path.join(skill_dir, "SKILL.md")
     if os.path.exists(skill_md):
         files["SKILL.md"] = skill_md
-    for sub in ("reference", "examples"):
+    for sub in ("pipeline", "reference", "examples"):
         d = os.path.join(skill_dir, sub)
         if os.path.isdir(d):
             for name in sorted(os.listdir(d)):
@@ -96,13 +102,13 @@ def _heading_exists(target_headings, quoted_text):
     return False
 
 
-FILE_REF_RE = re.compile(r"`?(?:reference/)?([A-Za-z0-9_]+\.md)`?")
+FILE_REF_RE = re.compile(r"`?(?:(?:reference|pipeline)/)?([A-Za-z0-9_]+\.md)`?")
 # `<file>`'s "<Heading>" or `<file>` "<Heading>" — allow a few words of glue text
 # between the filename and the opening quote (e.g. "'s ... section) ... \"").
 # Quoted text itself may wrap across source lines (markdown line-wrapping), so
 # allow newlines inside the quote but not inside the glue text before it.
 FILE_HEADING_RE = re.compile(
-    r"`(?:reference/)?([A-Za-z0-9_]+\.md)`(?:'s)?[^\"\n]{0,40}\"([^\"]{3,120})\"",
+    r"`(?:(?:reference|pipeline)/)?([A-Za-z0-9_]+\.md)`(?:'s)?[^\"\n]{0,40}\"([^\"]{3,120})\"",
     re.DOTALL,
 )
 # The reverse ordering also appears in this codebase's prose: "<Heading>"
@@ -111,7 +117,7 @@ FILE_HEADING_RE = re.compile(
 # quote in the text even when that quote belongs to a different, later file
 # reference. Matched separately and given precedence when both fire nearby.
 HEADING_FILE_RE = re.compile(
-    r"\"([^\"]{3,120})\"\s*\(?`(?:reference/)?([A-Za-z0-9_]+\.md)`\)?",
+    r"\"([^\"]{3,120})\"\s*\(?`(?:(?:reference|pipeline)/)?([A-Za-z0-9_]+\.md)`\)?",
     re.DOTALL,
 )
 
@@ -135,7 +141,7 @@ def check(skill_dir):
                 findings.append((
                     "FAIL", name,
                     f"references '{ref_name}' which does not exist in "
-                    f"reference/, examples/, or as SKILL.md"
+                    f"pipeline/, reference/, examples/, or as SKILL.md"
                 ))
 
         # 2. Heading-existence check. "<Heading>" (`<file>`) ordering is checked

@@ -196,7 +196,7 @@ def main():
     p1.add_argument("--source-url")
     p1.add_argument("--user-uploaded", action="store_true")
     p1.add_argument("--extraction-verified", action="store_true",
-                     help="pass this if scripts/verify_report.py extraction was run and passed")
+                     help="pass this if scripts/pipeline/verify_report.py extraction was run and passed")
     p1.add_argument("--status", choices=["performed", "skipped"],
                      help="for announcement_sweep/social_media_check/deals_sweep/broker_sweep doc "
                           "types: was the sweep actually performed this run, or explicitly skipped")

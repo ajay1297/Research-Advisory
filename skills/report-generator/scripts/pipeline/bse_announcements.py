@@ -36,10 +36,17 @@ Usage:
     default; --json prints the raw list for scripting. Paginates automatically using
     the API's own Table1[0].ROWCNT total-count field — no need to guess page count.
 
-The standard sweep set — run all six on a first-time (`no_state`) report run. Every
+The standard sweep set — run all seven on a first-time (`no_state`) report run. Every
 category/subcategory pairing below was confirmed working 2026-07-19 against scrip
 514234 (Sangam India); the script knows these pairings, so --category can be omitted
-for any of them:
+for any of them.
+
+The --from/--to below are illustrative only. The real window comes from
+check_freshness.py's `bse_fetch_window` — use its `from`/`to` for every sweep except
+the Annual Report one, which uses `annual_from`. On a refresh that is the last
+successful run's timestamp minus a 7-day overlap buffer through today; on a first-time
+or --force run it is the full standard depth. See pipeline/step1_retrieve.md's
+"Step 1a" section. Do not hardcode a window.
 
     ANNUAL_2Y=20240701; W18M=20250101; W8M=20251201; TODAY=20260719
 

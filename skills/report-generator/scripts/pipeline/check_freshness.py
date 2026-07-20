@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """
-check_freshness.py — decide how much of the pipeline actually needs to re-run.
+check_freshness.py — decide how much of the pipeline actually needs to re-run, and
+compute the exact BSE date window to sweep.
 
 The point: regenerating a report should NOT re-fetch and re-process every historical
 concall/annual report every time. Each company has a small state.json recording what
@@ -27,6 +28,20 @@ script diffs the date against state.json and tells Claude exactly what to do nex
     rating_history.json, litigation_history.json) are a cumulative record of real past
     disclosures and are NOT wiped by --force; they keep accumulating exactly as before.
 
+Every result also carries a `bse_fetch_window` — the `--from`/`--to` (YYYYMMDD) to
+pass straight to bse_announcements.py, so the sweep is date-filtered at the API
+rather than fetched wide and discarded. How the window is derived:
+
+  - Refresh runs (up_to_date / new_quarter): from = last successful run's timestamp
+    minus DELTA_DAYS (default 7), to = today. The backward overlap is deliberate —
+    BSE filings land late, get amended, and get recategorized after the fact, so a
+    window that starts exactly at the last success silently misses them. Example:
+    last success 2026-07-01, running 2026-07-21 → sweep 2026-06-24 to 2026-07-21.
+  - First-ever and from-scratch runs (no_state / force_full): the window is floored
+    to the full standard depth — STANDARD_LOOKBACK_MONTHS (18) back from today for
+    the quarterly sweeps, ANNUAL_LOOKBACK_MONTHS (24) for the annual-report sweep —
+    because there is no prior state to be incremental against.
+
 Runs entirely locally, no network required — the actual "what's the latest quarter"
 check is a WebSearch/web_fetch call Claude makes separately and passes in here.
 
@@ -38,9 +53,53 @@ Usage:
 import argparse
 import json
 import os
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 STANDARD_LOOKBACK_MONTHS = 18  # ~6 quarters — the default sourcing-depth assumption
+ANNUAL_LOOKBACK_MONTHS = 24  # last 2 fiscal years of annual reports
+DEFAULT_DELTA_DAYS = 7  # backward overlap on a refresh sweep, for late/amended filings
+
+
+def _bse(d: datetime) -> str:
+    """BSE's API takes dates as YYYYMMDD, not ISO."""
+    return d.strftime("%Y%m%d")
+
+
+def _full_depth_window(today: datetime) -> dict:
+    return {
+        "mode": "full_depth",
+        "from": _bse(today - timedelta(days=STANDARD_LOOKBACK_MONTHS * 30)),
+        "to": _bse(today),
+        "annual_from": _bse(today - timedelta(days=ANNUAL_LOOKBACK_MONTHS * 30)),
+        "note": "No usable prior state — sweep the full standard depth "
+                f"({STANDARD_LOOKBACK_MONTHS} months, {ANNUAL_LOOKBACK_MONTHS} for annual "
+                "reports). Pass these as --from/--to to bse_announcements.py; use "
+                "annual_from for the Annual Report sweep only.",
+    }
+
+
+def _delta_window(last_success_iso: str, delta_days: int, today: datetime) -> dict:
+    """Refresh window: last success minus the overlap buffer, through today."""
+    if not last_success_iso:
+        return _full_depth_window(today)
+    try:
+        last = datetime.strptime(last_success_iso[:10], "%Y-%m-%d").replace(tzinfo=timezone.utc)
+    except ValueError:
+        return _full_depth_window(today)
+    start = last - timedelta(days=delta_days)
+    return {
+        "mode": "delta",
+        "from": _bse(start),
+        "to": _bse(today),
+        "annual_from": _bse(start),
+        "last_success": last.strftime("%Y-%m-%d"),
+        "delta_days": delta_days,
+        "note": f"Incremental sweep: last successful run {last.strftime('%Y-%m-%d')} "
+                f"minus a {delta_days}-day overlap buffer, through today. The buffer is "
+                "there because BSE filings arrive late, get amended, and get "
+                "recategorized — do not narrow it to the bare last-success date. Pass "
+                "these as --from/--to to bse_announcements.py.",
+    }
 
 
 def _cadence_from_dates(dates_csv: str, today: datetime = None) -> dict:
@@ -138,6 +197,13 @@ def main():
                               "matching the standard 2-annual-report/6-quarter sourcing depth. "
                               "Do not override unless the user explicitly asks for a "
                               "longer/shorter history.")
+    parser.add_argument("--delta-days", type=int, default=DEFAULT_DELTA_DAYS,
+                         help="backward overlap applied to the last successful run's "
+                              "timestamp when computing the BSE sweep window on a refresh "
+                              f"(default {DEFAULT_DELTA_DAYS}). Widen it if a company is known "
+                              "to file late or amend often; it costs one wider API query, not "
+                              "extra PDF fetches, since already-processed filings are skipped "
+                              "by the dedupe in pipeline/step1_retrieve.md.")
     parser.add_argument("--concall-dates",
                          help="comma-separated ISO dates (YYYY-MM-DD) of every concall found "
                               "on screener.in's Documents/Concalls tab — cheap to pass (already "
@@ -149,16 +215,22 @@ def main():
     path = state_path(args.company_slug)
     state = load(path)
     cadence = _cadence_from_dates(args.concall_dates) if args.concall_dates else None
+    today = datetime.now(timezone.utc)
 
     if args.mark_processed:
         state = state or {}
         state["last_processed_label"] = args.mark_processed
-        state["last_processed_at"] = datetime.now(timezone.utc).isoformat()
+        state["last_processed_at"] = today.isoformat()
+        # The window anchor for the *next* run. Distinct from last_processed_label
+        # (which is the newest filing date seen) — this is when the run itself
+        # succeeded, which is what the delta window counts back from.
+        state["last_success_at"] = today.strftime("%Y-%m-%d")
         if args.price is not None:
             state["last_price_used"] = args.price
         with open(path, "w", encoding="utf-8") as f:
             json.dump(state, f, indent=2)
-        print(f"Recorded state: last_processed_label={args.mark_processed}")
+        print(f"Recorded state: last_processed_label={args.mark_processed}, "
+              f"last_success_at={state['last_success_at']}")
         return
 
     if args.force:
@@ -167,6 +239,7 @@ def main():
             "action": "run_full_pipeline_ignore_cache",
             "previously_processed_label": (state or {}).get("last_processed_label"),
             "lookback_months": args.lookback_months,
+            "bse_fetch_window": _full_depth_window(today),
             "note": "User asked to regenerate from scratch. Refetch every source document "
                     "(concall, investor presentation, annual report, screener.in) fresh and "
                     "rebuild every report section from those fetches — do not carry anything "
@@ -182,6 +255,7 @@ def main():
             "status": "no_state",
             "action": "run_full_pipeline",
             "lookback_months": args.lookback_months,
+            "bse_fetch_window": _full_depth_window(today),
             **({"cadence": cadence} if cadence else {}),
         }, indent=2))
         return
@@ -196,6 +270,7 @@ def main():
             "action": "reuse_cached_report",
             "last_processed_label": state.get("last_processed_label"),
             "last_processed_at": state.get("last_processed_at"),
+            "bse_fetch_window": _delta_window(state.get("last_success_at"), args.delta_days, today),
             "note": "No new concall/results since last run. Reuse ~/.report-generator/research_cache/<company>/report.md. "
                     "If the user gave a new price, only recompute the forward PE inline — don't refetch anything.",
             **({"cadence": cadence} if cadence else {}),
@@ -207,6 +282,7 @@ def main():
             "previously_processed_label": state.get("last_processed_label"),
             "now_seen_label": args.latest_seen,
             "lookback_months": args.lookback_months,
+            "bse_fetch_window": _delta_window(state.get("last_success_at"), args.delta_days, today),
             "note": "Fetch and parse only the new concall/results. Do not reprocess earlier "
                     "transcripts already under ~/.report-generator/sources/<company>/. Append one new "
                     "guidance_tracker.py entry rather than rebuilding the whole guidance history.",

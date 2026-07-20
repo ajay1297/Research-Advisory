@@ -17,7 +17,7 @@ does while running ever adds, modifies, or deletes a file here.
 
 | Skill | What it does |
 |---|---|
-| [`report-generator`](skills/report-generator/SKILL.md) | Generates/refreshes India-listed-company research reports (visual PDF + Markdown) from BSE filings (concall transcripts, investor presentations, annual reports, results, press releases, credit-rating disclosures), screener.in structured financials, and web-searched brokerage/industry research. Full pipeline, directory structure, and setup are documented in this README below (Usage and Setup sections); the skill's own `SKILL.md` and `reference/*.md` are the operational spec Claude reads at run time. |
+| [`report-generator`](skills/report-generator/SKILL.md) | Generates/refreshes India-listed-company research reports (visual PDF + Markdown) from BSE filings (concall transcripts, investor presentations, annual reports, results, press releases, credit-rating disclosures), screener.in structured financials, and web-searched brokerage/industry research. Full pipeline, directory structure, and setup are documented in this README below (Usage and Setup sections); the skill's own `SKILL.md`, `pipeline/*.md`, and `reference/*.md` are the operational spec Claude reads at run time. |
 | [`portfolio-analysis`](skills/portfolio-analysis/SKILL.md) | **Placeholder — not yet implemented.** Reserved for future portfolio-level analysis/advisory. |
 
 More skills may be added here over time, each in its own `skills/<name>/` directory.
@@ -35,8 +35,11 @@ Research-Advisory/                    (plugin root -- everything here is the plu
 `-- skills/
     |-- report-generator/             One skill = one self-contained directory
     |   |-- SKILL.md                  Entry point Claude reads on trigger
-    |   |-- reference/                Pipeline spec (4 step files + 8 topic docs)
-    |   |-- scripts/                  Bundled Python 3 helpers
+    |   |-- pipeline/                 The 3 step files (what to do, in order)
+    |   |-- reference/                8 topic docs the steps pull in on demand
+    |   |-- scripts/
+    |   |   |-- pipeline/             Scripts the 3 steps run
+    |   |   `-- helpers/              Trackers + utilities called from a step
     |   |-- assets/                   report_style.css for the PDF template
     |   `-- examples/                 A worked reference report
     `-- portfolio-analysis/           Placeholder -- not yet implemented
@@ -180,7 +183,7 @@ pdftoppm -v
 
 Known gotchas and fallback behavior (what happens when a fetch fails, when
 WeasyPrint isn't installed, when a PDF extraction comes back partial) are
-documented inline in the skill's own `reference/*.md` files, not duplicated
+documented inline in the skill's own `pipeline/*.md` and `reference/*.md` files, not duplicated
 here — see the table below for which file covers which step.
 
 ## Usage
@@ -244,56 +247,73 @@ below.
 flowchart TD
     A[User prompt] --> B[LLM - Claude]
     B --> C["Procedural memory: SKILL.md"]
-    subgraph PIPE["Four-step pipeline"]
+    subgraph PIPE["Three-step pipeline"]
         direction LR
-        P0["Perceive<br/>step0_perceive.md"] --> P1["Retrieve<br/>step1_retrieve.md"]
-        P1 --> P2["Synthesize<br/>step2_synthesize.md"]
+        P1["Retrieve<br/>step1_retrieve.md<br/>1a scope + 1b fetch"] --> P2["Synthesize<br/>step2_synthesize.md"]
         P2 --> P3["Memorize<br/>step3_memorize.md"]
     end
-    C --> P0
+    C --> P1
     P2 --> SM[("Semantic memory<br/>research_cache/*.json")]
     P3 --> SM
     P3 --> EV{"Eval<br/>verify_report.py"}
     EV -->|pass| OUT["Deliver .md + .pdf"]
-    EV -.->|mark-processed, loop| P0
+    EV -.->|mark-processed, loop| P1
 ```
 
 #### Pipeline steps and the files each one touches
 
-The pipeline runs as four steps, each owned by its own file under
-`skills/report-generator/reference/`. Files with no extension shown are
-`.md`; `.py` files live in `skills/report-generator/scripts/`; JSON/HTML/PDF
+The pipeline runs as three steps, each owned by its own file under
+`skills/report-generator/pipeline/`. Files with no extension shown are `.md` and
+live in `skills/report-generator/reference/`; `.py` files live in
+`skills/report-generator/scripts/pipeline/` or `scripts/helpers/`; JSON/HTML/PDF
 files live under `~/.report-generator/` (`research_cache/<slug>/` or
 `output/<slug>/`, as noted in Setup above).
 
 | Step | Step file | Reference docs it reads | Scripts it invokes | Data files it reads/writes |
 |---|---|---|---|---|
-| 0 — Perceive (freshness check) | `step0_perceive.md` | `data_sources.md`, `sourcing_depth.md`, `SKILL.md`, `step1_retrieve.md` | `bse_announcements.py`, `check_freshness.py` | `state.json`, `report.md`, `bullets.json` |
-| 1 — Retrieve (fetch + extract) | `step1_retrieve.md` | `data_sources.md`, `sourcing_depth.md`, `step0_perceive.md`, `step3_memorize.md` | `bse_announcements.py`, `pdf_to_text.py`, `pdf_to_text_parallel.py`, `semantic_search.py`, `extract_theme_quotes.py`, `source_manifest.py` | `sources/<slug>/`, `source_manifest.json`, `candidate_quotes/*.json` |
-| 2 — Synthesize (draft sections) | `step2_synthesize.md` | `step0_perceive.md`, `report_format.md`, `report_sections.md`, `source_playbook.md` | `guidance_tracker.py`, `capacity_utilization.py`, `fundraise_tracker.py`, `rating_tracker.py`, `litigation_tracker.py`, `bulk_block_deals.py` | `quotes.json`, `guidance_history.json`, `fundraise_history.json`, `rating_history.json`, `litigation_history.json` |
-| 3 — Memorize (save + verify) | `step3_memorize.md` | `step0_perceive.md`, `report_assembly.md`, `guardrails.md` | `html_helpers.py`, `charts.py`, `verify_report.py`, `report_to_pdf.py`, `check_freshness.py` | `report.html`, `*_report.pdf`, `report.md`, `quotes.json`, `bullets.json`, `source_manifest.json`, 4 tracker histories (guidance/fundraise/rating/litigation), `state.json` |
+| 1a — Retrieve: scope the window | `step1_retrieve.md` | `data_sources.md`, `sourcing_depth.md`, `SKILL.md` | `bse_announcements.py`, `check_freshness.py` | `state.json`, `report.md`, `bullets.json` |
+| 1b — Retrieve: fetch + extract | `step1_retrieve.md` | `data_sources.md`, `sourcing_depth.md`, `step3_memorize.md` | `bse_announcements.py`, `pdf_to_text.py`, `pdf_to_text_parallel.py`, `semantic_search.py`, `extract_theme_quotes.py`, `source_manifest.py` | `sources/<slug>/`, `source_manifest.json`, `candidate_quotes/*.json` |
+| 2 — Synthesize (draft sections) | `step2_synthesize.md` | `step1_retrieve.md`, `report_format.md`, `report_sections.md`, `source_playbook.md` | `guidance_tracker.py`, `capacity_utilization.py`, `fundraise_tracker.py`, `rating_tracker.py`, `litigation_tracker.py`, `bulk_block_deals.py` | `quotes.json`, `guidance_history.json`, `fundraise_history.json`, `rating_history.json`, `litigation_history.json` |
+| 3 — Memorize (save + verify) | `step3_memorize.md` | `step1_retrieve.md`, `report_assembly.md`, `guardrails.md` | `html_helpers.py`, `charts.py`, `verify_report.py`, `report_to_pdf.py`, `check_freshness.py` | `report.html`, `*_report.pdf`, `report.md`, `quotes.json`, `bullets.json`, `source_manifest.json`, 4 tracker histories (guidance/fundraise/rating/litigation), `state.json` |
+
+Steps 1a and 1b share one file because 1a's only output — the fetch window and the
+decision of how much to re-run — is exactly 1b's input; splitting them across two
+files meant every reader had to hold both open anyway.
 
 "Scripts it invokes" means the step actually runs them. Several step files *name*
-scripts they don't run — `step1_retrieve.md` opens by referring back to Step 0's
-`check_freshness.py` result, and `step3_memorize.md` documents the tracker scripts
-that Step 2 invokes — so the column is deliberately narrower than a grep for `.py`
-would suggest.
+scripts they don't run — `step1_retrieve.md` names `guidance_tracker.py` when
+describing the `new_quarter` path, and `step3_memorize.md` documents the tracker
+scripts that Step 2 invokes — so the column is deliberately narrower than a grep for
+`.py` would suggest.
 
-**Step 0 can also end the run outright.** In the `up_to_date` branch, when the user
+**Step 1a can also end the run outright.** In the `up_to_date` branch, when the user
 supplied nothing but a new price, the cached revenue-guidance/margin/share inputs come
 out of `bullets.json`, the forward PE is recomputed inline (it's four operations —
-there is no script for it), and the run finishes without ever entering Retrieve.
+there is no script for it), and the run finishes without ever entering 1b.
 
-**Sourcing is BSE-first.** Steps 0 and 1 both run `bse_announcements.py`, which
-queries BSE's own JSON API with a date range and returns each filing's date,
-category, headline, and direct PDF URL. Step 0 uses it for *dates only* (the
-cheapest possible freshness check — no PDF is fetched); Step 1 re-runs it over the
-full window and fetches what it returns. Seven standard sweeps cover annual reports,
-financial results, press releases, investor presentations, earnings-call transcripts,
-credit ratings, and an unfiltered catch-all for order wins and governance events —
-the set is tabulated in `reference/data_sources.md`. Only the three things with no
-exchange filing behind them come from elsewhere: brokerage research and
-industry/macro context (`WebSearch`), and company social posts (LinkedIn/X).
+**Sourcing is BSE-first, and date-windowed.** Both halves of Step 1 run
+`bse_announcements.py`, which queries BSE's own JSON API with a date range and returns
+each filing's date, category, headline, and direct PDF URL. 1a uses it for *dates
+only* (the cheapest possible freshness check — no PDF is fetched); 1b re-runs it over
+the window `check_freshness.py` computed and fetches what it returns.
+
+That window is the incremental lever. On a refresh it runs from the last successful
+run's timestamp minus a 7-day overlap buffer through today — so a run on 21 Jul 2026
+whose last success was 1 Jul sweeps 24 Jun onward, not 18 months. The buffer is
+deliberate: BSE filings land late, get amended, and get recategorized, so a window
+starting exactly at the last success drops them silently. A first-time or from-scratch
+run has no prior state to be incremental against, so it falls back to the full standard
+depth (18 months; 24 for annual reports). Because the date filter is applied by the API
+itself, the incremental sweep is a genuinely narrow query rather than a wide fetch
+that gets discarded — and a dedupe against `sources/<slug>/` keeps the PDF fetches
+narrow too.
+
+Seven standard sweeps cover annual reports, financial results, press releases,
+investor presentations, earnings-call transcripts, credit ratings, and an unfiltered
+catch-all for order wins and governance events — the set is tabulated in
+`reference/data_sources.md`. Only the three things with no exchange filing behind them
+come from elsewhere: brokerage research and industry/macro context (`WebSearch`), and
+company social posts (LinkedIn/X).
 
 **Where memory is written vs. documented.** `source_manifest.py` is *invoked* in
 Step 1 — one `add-document` call immediately after each extraction, never batched —
@@ -310,5 +330,7 @@ Two cross-cutting files every step reads but none of them "owns":
 discipline, never-drop-anything-silently, accuracy discipline) and
 `reference/guardrails.md` (the `verify_report.py` checklist reference).
 Step 3's Memorize is also where the loop closes: `check_freshness.py
---mark-processed` writes `state.json`, which the *next* run's Step 0/Perceive
-reads back to decide how much of the pipeline actually needs to re-run.
+--mark-processed` writes `state.json` — including the `last_success_at` stamp that
+the *next* run's Step 1a counts its delta window back from — which that run reads
+back to decide both how much of the pipeline needs to re-run and how far back to
+sweep BSE.

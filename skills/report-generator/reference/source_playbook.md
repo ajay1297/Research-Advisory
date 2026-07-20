@@ -1,6 +1,6 @@
 # Source Playbook — per-report-topic sourcing for Step 2
 
-**Read only by `reference/step2_synthesize.md`.** Where and how to fetch each
+**Read only by `pipeline/step2_synthesize.md`.** Where and how to fetch each
 source (tool, URL pattern, fallback chain, uploads) lives in
 `reference/data_sources.md` — read it once per report. This file tells you what to
 pull for each part of the report; each section below names its primary source and
@@ -262,7 +262,7 @@ chooses to volunteer on a concall.
   longer for some tax matters). If a source describes a case as "dismissed" or "decided
   in the company's favor," check whether it also mentions an appeal window or a pending
   appeal at a higher forum before treating it as closed. Log it with
-  `scripts/litigation_tracker.py add-case --status dismissed_appealable` rather than
+  `scripts/helpers/litigation_tracker.py add-case --status dismissed_appealable` rather than
   `closed_final` whenever that ambiguity exists — the tracker's `report` command flags
   this status explicitly so it isn't lost on a later refresh.
 - Also check for litigation involving the **promoters personally** (not just the
@@ -335,7 +335,7 @@ surface it (utilization commentary is often backward-looking, not forward-lookin
 the forward-looking-keyword filter can miss it). If a direct % wasn't given, the
 investor presentation's operations/manufacturing slide sometimes states installed
 capacity and actual production/sales volume separately, from which
-`scripts/capacity_utilization.py` can derive utilization (Mode B).
+`scripts/helpers/capacity_utilization.py` can derive utilization (Mode B).
 
 **Find the industry's own physical capacity unit, not just a %** — every industry
 reports capacity differently, and the physical unit is the primary figure a reader
@@ -542,9 +542,9 @@ Always record the as-of date next to the numbers — this section goes stale fas
 ## Promoter / governance track record
 
 Three separate things to check:
-1. **Guidance reliability** — use `scripts/guidance_tracker.py` against the cached
+1. **Guidance reliability** — use `scripts/helpers/guidance_tracker.py` against the cached
    `guidance_history.json` for the company (built up over successive report runs from
-   this skill; see `reference/step0_perceive.md`). This needs no new fetching once a couple of quarters are
+   this skill; see `pipeline/step1_retrieve.md`). This needs no new fetching once a couple of quarters are
    logged — it's a local comparison.
 2. **Other governance signals** — pull directly from screener.in's Shareholding
    Pattern (promoter holding trend, pledge % if shown) and Documents tab (auditor
@@ -560,7 +560,7 @@ Three separate things to check:
    needed, unlike guidance/fund-raises/ratings/litigation, which persist across runs in
    their own JSON files because screener.in itself only shows the current state, not a
    log of past report runs. Just read the last several columns of that one table.
-3. **Bulk & block deals** — use `scripts/bulk_block_deals.py <scrip_code> --from
+3. **Bulk & block deals** — use `scripts/helpers/bulk_block_deals.py <scrip_code> --from
    <YYYYMMDD> --to <YYYYMMDD>` against the standard ~18-month sourcing-depth window
    (see `reference/data_sources.md`'s "Bulk & Block Deals" section for fetch
    mechanics and the recency-check discipline — this is a standing check every run,
@@ -580,7 +580,7 @@ Three separate things to check:
    if genuinely no bulk/block deals were found, or if deals exist but none involve a
    recognizable institution — both are legitimate findings, not gaps to hide.
 4. **Promoter fund raises (preferential equity, warrants, debt)** — use
-   `scripts/fundraise_tracker.py` against the cached `fundraise_history.json` for the
+   `scripts/helpers/fundraise_tracker.py` against the cached `fundraise_history.json` for the
    company. Sourcing:
    - **Preferential equity / warrants**: BSE/NSE corporate announcements filtered to
      "Preferential Issue" / "Allotment pursuant to Preferential Issue" — search
@@ -627,7 +627,7 @@ this sweep is for the *rest* of what a company discloses: order wins, management
 changes, new client relationships, capacity/capex approvals, and anything else that
 moved the stock or the story between concalls.
 
-**Where to fetch it**: BSE, always — `python3 scripts/bse_announcements.py
+**Where to fetch it**: BSE, always — `python3 scripts/pipeline/bse_announcements.py
 <scrip_code> --from <YYYYMMDD> --to <YYYYMMDD>` over the last 6 months, per the
 BSE-first rule in `reference/data_sources.md`. Don't try to browse BSE's
 corp-announcements page (policy-blocked in this environment) and don't substitute a

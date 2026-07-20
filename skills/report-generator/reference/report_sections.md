@@ -313,7 +313,7 @@ capacity instead, say that explicitly too — the distinction is the point, not 
 to skip.
 
 Once the physical-unit figures are established, optionally convert to a revenue lens
-via `scripts/capacity_utilization.py`: current revenue at current utilization %, and
+via `scripts/helpers/capacity_utilization.py`: current revenue at current utilization %, and
 the max revenue achievable at 100% utilization of *existing* capacity with no further
 capex. State both the physical-unit figures and, where realization/pricing data
 supports it, the revenue headroom plainly — e.g. "Installed capacity is 50 million
@@ -329,7 +329,7 @@ the Capex/Milestones timeline above, not just running the existing plant harder.
 **Before vs. after capex, where a post-capex figure exists**: if the Capex/Milestones
 timeline (section 2) or the outlook sections already captured a management-disclosed
 revenue potential once planned capacity additions complete (e.g. "capacity to support
-INR3,000-3,200cr sales by FY28"), pass it to `scripts/capacity_utilization.py` via
+INR3,000-3,200cr sales by FY28"), pass it to `scripts/helpers/capacity_utilization.py` via
 `--post-capex-max-revenue-cr` (don't re-derive a number management already gave) so the
 section shows both figures side by side: current-capacity ceiling ("before capex") and
 the disclosed post-capex potential ("after capex"), plus the revenue the capex itself
@@ -425,7 +425,7 @@ Forward PE  = price ÷ Forward EPS
   expensive" on its own is not. Never present
   forward PE as a standalone number with no table/inputs anywhere nearby.
 - Keep using the ₹ symbol in the markdown itself, for readability. The legacy
-  `scripts/report_to_pdf.py` reportlab path substitutes "Rs." automatically since its
+  `scripts/pipeline/report_to_pdf.py` reportlab path substitutes "Rs." automatically since its
   base font renders a raw ₹ as a black box; the primary WeasyPrint pipeline (see
   `reference/report_assembly.md`) embeds a real font and renders ₹ natively, no substitution needed.
 
@@ -600,7 +600,7 @@ themselves belong in the table/bullets, not folded into that closing sentence.
 
 ### 14. Promoter / Governance Track Record
 
-Sourced from `scripts/guidance_tracker.py`'s output (see `reference/step2_synthesize.md`'s workflow). Show a
+Sourced from `scripts/helpers/guidance_tracker.py`'s output (see `pipeline/step2_synthesize.md`'s workflow). Show a
 short table or list of the last 6 quarters (the framework's standard sourcing-depth
 lookback, not a per-report choice): guidance given vs. actual delivered,
 and whether it was a beat/met/miss. If 2 or more of the last 4 tracked guidance calls
@@ -619,7 +619,7 @@ a promoter-pledge `card_grid()` metric alongside it if a pledge % is disclosed.
 **Bulk & Block Deals** (sub-section, immediately after Shareholding Pattern, before
 Promoter Fund Raises — checked on every report, same standing-check discipline as
 Credit Ratings below, not gated behind the company "looking interesting"). Sourced
-from `scripts/bulk_block_deals.py` (see `reference/data_sources.md`'s "Bulk & Block
+from `scripts/helpers/bulk_block_deals.py` (see `reference/data_sources.md`'s "Bulk & Block
 Deals" section for fetch mechanics and the recency/empty-result discipline). **Only
 name a deal if the counterparty is a recognizable, named mutual fund, FII/FPI,
 insurance company, AIF, or a well-known individual/entity already established
@@ -645,7 +645,7 @@ performed.
 unlike guidance, this is not lookback-limited to the standard 18-month window; a
 preferential/warrant/debt raise from several years ago is still relevant governance
 context). Sourced from
-`scripts/fundraise_tracker.py report`. List every preferential equity issue, warrant
+`scripts/helpers/fundraise_tracker.py report`. List every preferential equity issue, warrant
 allotment, NCD/debenture issue, term loan, or promoter loan/guarantee on record, each
 with: date, instrument, amount (INR crore), allottee category (promoter/promoter
 group/public/institution), **named individual/institutional investors where disclosed**
@@ -673,7 +673,7 @@ visual breakdown.
 
 **Credit Rating Snapshot** (sub-section, included whenever any rating rationale was
 found — say explicitly if none could be found for any agency rather than omitting the
-sub-section silently). Sourced from `scripts/rating_tracker.py report`. For each rated
+sub-section silently). Sourced from `scripts/helpers/rating_tracker.py report`. For each rated
 instrument, show: agency, rating, outlook, the rationale's own date, and the current
 action (reaffirmed/upgrade/downgrade/outlook revised/withdrawn). Always reproduce the
 script's downgrade / negative-outlook flag verbatim if it fires, and carry that flag
@@ -683,7 +683,7 @@ action should not be buried under the company's own more upbeat framing elsewher
 
 **Legal & Litigation** (sub-section, checked on every report — say explicitly if no
 litigation was found rather than omitting the sub-section silently). Sourced from
-`scripts/litigation_tracker.py report`. List every material court case, tax dispute, or
+`scripts/helpers/litigation_tracker.py report`. List every material court case, tax dispute, or
 regulatory/arbitration matter on record, each with: case reference, forum, case type,
 parties, disclosed contingent-liability amount (if any), and status (ongoing/disposed
 favorable/disposed unfavorable/settled/**dismissed but appealable**/closed final).

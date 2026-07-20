@@ -1,6 +1,6 @@
 # Step 3 — Memorize (Save and Verify)
 
-Fourth of four step files — see `reference/step0_perceive.md`'s header for how the
+Third of three step files — see `pipeline/step1_retrieve.md`'s header for how the
 four chain together.
 
 ## Save and cache
@@ -25,7 +25,7 @@ visual, one plain-text ReportLab) reads as broken, not as an acceptable fallback
 **Before building anything, verify WeasyPrint actually works — don't assume from a
 prior run or a different session.** Run `python3 -c "import weasyprint"` first. If
 that fails, run `pip install weasyprint --break-system-packages` (add `matplotlib`
-too if `scripts/charts.py` will be used) and re-check with the same import — do not
+too if `scripts/helpers/charts.py` will be used) and re-check with the same import — do not
 proceed past this step on a guess. Only after that second check still fails is the
 environment considered genuinely unable to run WeasyPrint.
 
@@ -39,7 +39,7 @@ without error (the render step has no way to know the content is unstyled), whic
 is exactly why "the PDF exists and WeasyPrint didn't error" is not sufficient
 verification on its own — see the mandatory check below.
 
-**Verify before delivering — run `scripts/verify_report.py`, don't rely on your own
+**Verify before delivering — run `scripts/pipeline/verify_report.py`, don't rely on your own
 judgment call for this.** Full checklist (what to run, in what order, and why each
 check exists) is in `reference/guardrails.md` — read it now if this is your first
 run this session. Short version: `html` → render PDF → `pdf` → `report` →
@@ -67,7 +67,7 @@ ready, whichever path was used.
 Save/update `~/.report-generator/research_cache/<company_slug>/quotes.json`, `bullets.json`,
 `guidance_history.json`, `fundraise_history.json`, `rating_history.json`,
 `litigation_history.json`, and `report.md`, then mark freshness state per
-`reference/step0_perceive.md`'s step 3.
+`pipeline/step1_retrieve.md`'s step 5.
 
 ## What gets recorded, and when
 

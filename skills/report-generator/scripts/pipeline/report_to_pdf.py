@@ -13,7 +13,7 @@ Two things this exists to guard against, learned from generating real reports:
    a black box in the output PDF, add it to that dict rather than fighting
    font embedding.
 2. INTERNAL FILE NAMES LEAKING INTO THE DELIVERABLE. Report prose should never
-   say "via `scripts/guidance_tracker.py report`" — that's an internal
+   say "via `scripts/helpers/guidance_tracker.py report`" — that's an internal
    implementation detail, not something a reader of the PDF needs or wants to
    see. The primary fix is not drafting that text in the first place (see
    reference/report_format.md's rule on this); this script also strips any
@@ -57,8 +57,8 @@ GLYPH_SAFE_REPLACEMENTS = {
 }
 
 # Backstop filter for internal script/file references that shouldn't reach
-# the reader. Matches things like "via `scripts/guidance_tracker.py report`"
-# or a bare "`scripts/fundraise_tracker.py`" mention.
+# the reader. Matches things like "via `scripts/helpers/guidance_tracker.py report`"
+# or a bare "`scripts/helpers/fundraise_tracker.py`" mention.
 SCRIPT_MENTION_RE = re.compile(
     r"\s*\(?\b(?:via|using|run(?:ning)?|per)?\s*`scripts/[\w./-]+\.py[^`]*`\)?", re.IGNORECASE
 )

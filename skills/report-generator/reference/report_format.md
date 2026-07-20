@@ -153,7 +153,7 @@ described, don't force exactly four if the real chain is shorter or longer:
 Only ASCII characters in the diagram (`+`, `-`, `|`, `v`, letters, digits, standard
 punctuation) — no Unicode box-drawing characters (─│┌┐ etc.) or arrow glyphs (→, ↓) —
 this keeps the markdown deliverable portable and safe if it's ever rendered through the
-legacy `scripts/report_to_pdf.py` reportlab path (see `reference/report_assembly.md`), whose base
+legacy `scripts/pipeline/report_to_pdf.py` reportlab path (see `reference/report_assembly.md`), whose base
 font renders those glyphs as black boxes. If a stage isn't disclosed clearly enough to
 fill in confidently, say so in the box text itself (e.g. `<not disclosed beyond "OEMs
 and distributors">`) rather than inventing specifics.
@@ -209,7 +209,7 @@ the headline:
 - **`[Missed]`** — the horizon has passed and the outcome fell short.
 
 **How to assess it, not guess it**: log every outlook item you draft into
-`guidance_history.json` via `scripts/guidance_tracker.py add-guidance`, with your own
+`guidance_history.json` via `scripts/helpers/guidance_tracker.py add-guidance`, with your own
 `--status` assessment based on what the sources actually say (never auto-derived — a
 facility-launch milestone and a revenue number aren't comparable the same way). When a
 later concall revises an item already logged (raises/lowers a number, extends a
@@ -217,7 +217,7 @@ timeline, confirms an earlier phase completed), log the new entry with
 `--supersedes-id` pointing at the earlier one, so the item's full evolution can be
 reconstructed — the same way the example status cards work: "at the Q3 call, guided
 X; at the Q4 call, revised to Y; now considered on track." Run
-`scripts/guidance_tracker.py <slug> report` and pull each item's current status and
+`scripts/helpers/guidance_tracker.py <slug> report` and pull each item's current status and
 evolution history from there — this is not lookback-limited to 6 months, since an
 item's full guidance history is exactly what determines whether it's genuinely
 "on track" or just freshly asserted. If a bullet is being drafted for the first time
@@ -242,7 +242,7 @@ bullets that follow is fine (as already established for Investment Thesis Summar
 and MOATs) — the rule is about the *body* of the explanation, not about banning
 every sentence of prose.
 
-**Check this before delivering**: `scripts/verify_report.py paragraphs
+**Check this before delivering**: `scripts/pipeline/verify_report.py paragraphs
 <report.md>` scans for any paragraph exceeding this length and flags it by section,
 so this doesn't rely on eyeballing a 60+KB markdown file for one overlong block.
 
@@ -257,14 +257,14 @@ so this doesn't rely on eyeballing a 60+KB markdown file for one overlong block.
 
 ## Never mention internal tooling in the report text
 
-This report is built with the help of local scripts (`scripts/guidance_tracker.py`,
-`scripts/fundraise_tracker.py`, `scripts/rating_tracker.py`, `scripts/litigation_tracker.py`,
-`scripts/capacity_utilization.py`, etc.) — those names belong in
+This report is built with the help of local scripts (`scripts/helpers/guidance_tracker.py`,
+`scripts/helpers/fundraise_tracker.py`, `scripts/helpers/rating_tracker.py`, `scripts/helpers/litigation_tracker.py`,
+`scripts/helpers/capacity_utilization.py`, etc.) — those names belong in
 SKILL.md and source_playbook.md, which describe *how the report gets built*, never in
 the report itself, which is *the finished deliverable*. Write findings directly: "Guidance
 reliability (last 2 tracked quarters):" not "Guidance reliability (via
-`scripts/guidance_tracker.py report`):"; "The following fund raises are on record:" not
-"Sourced from `scripts/fundraise_tracker.py report`." State the fact, the source document
+`scripts/helpers/guidance_tracker.py report`):"; "The following fund raises are on record:" not
+"Sourced from `scripts/helpers/fundraise_tracker.py report`." State the fact, the source document
 it came from (concall date, filing, rationale), and — where a flag fires — the flag
 itself, in plain language. A reader of the final report should never see a file path,
 a script name, or a `--flag` value.

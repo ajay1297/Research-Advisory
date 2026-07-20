@@ -7,7 +7,7 @@ of reading a 6,000-10,000 word transcript, the model reads a ~40-80 line JSON of
 candidates.
 
 Heuristic, not perfect — it over-selects on purpose (the model does the final curation
-in scripts/build_report.py's input step). It never drops information silently without
+in scripts/pipeline/build_report.py's input step). It never drops information silently without
 also writing an "unclassified" bucket, so nothing forward-looking should be lost outright.
 
 Runs entirely locally, no network required.

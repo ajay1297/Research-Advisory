@@ -1,6 +1,6 @@
 # Step 2 — Synthesize (Build Each Section)
 
-Third of four step files — see `reference/step0_perceive.md`'s header for how the
+Second of three step files — see `pipeline/step1_retrieve.md`'s header for how the
 four chain together.
 
 ## Building each section

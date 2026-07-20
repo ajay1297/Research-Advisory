@@ -1,7 +1,7 @@
 """
 Reusable HTML snippet builders for report-generator's visual PDF pipeline.
 Adapted from the company-thesis-report skill's html_helpers.py. Pairs with
-assets/report_style.css and scripts/charts.py (embed chart PNGs via
+assets/report_style.css and scripts/helpers/charts.py (embed chart PNGs via
 chart_block()).
 
 These return HTML strings — assemble a per-company report by concatenating

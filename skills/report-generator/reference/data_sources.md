@@ -8,7 +8,7 @@ here for *how* to actually get it — read this once per report, not once per to
 **BSE covers roughly 90% of what a report needs.** Everything a listed Indian company
 is required to disclose — annual reports, results, transcripts, presentations, press
 releases, rating actions, order wins, governance events — is filed on BSE and
-reachable through `scripts/bse_announcements.py`. The remaining ~10% is what has no
+reachable through `scripts/pipeline/bse_announcements.py`. The remaining ~10% is what has no
 filing behind it: brokerage research, industry/macro context, and company social
 posts. Those go through `WebSearch` / LinkedIn / X. That split is the whole of this
 file.
@@ -25,7 +25,7 @@ file.
 | **Rating reports** | **BSE** for the disclosure + **`WebSearch`** the agency's own site for the full rationale |
 | **Brokerage reports** | **`WebSearch`** |
 | **Industry/macro context** (tailwinds, headwinds, sector trends) | **`WebSearch`** |
-| **Bulk & block deals** | **BSE** (`scripts/bulk_block_deals.py`) |
+| **Bulk & block deals** | **BSE** (`scripts/helpers/bulk_block_deals.py`) |
 | **Company social posts** | LinkedIn / X directly |
 | **Everything else** (ratios, shareholding history, peers, technicals) | screener.in, Trendlyne/Tijori as fallback |
 
@@ -39,18 +39,27 @@ Run all seven on a first-time (`no_state`) run. Every category/subcategory pairi
 below is confirmed working (2026-07-19, scrip 514234) and is known to
 `bse_announcements.py`, so `--category` may be omitted for any of them:
 
-| Sweep | Window | `--category` / `--subcategory` |
-|---|---|---|
-| Annual reports | last 2 FYs | `Others` / `Reg. 34 (1) Annual Report` |
-| Financial results | 18 months | `Result` / `Financial Results` |
-| Press releases | 18 months | `Company Update` / `Press Release / Media Release` |
-| Investor presentations | 18 months | `Company Update` / `Investor Presentation` |
-| Earnings call transcripts | 18 months | `Company Update` / `Earnings Call Transcript` |
-| Credit ratings | 18 months | `Company Update` / `Credit Rating` |
-| Everything else | 8 months | *(both omitted — unfiltered)* |
+| Sweep | `--category` / `--subcategory` |
+|---|---|
+| Annual reports | `Others` / `Reg. 34 (1) Annual Report` |
+| Financial results | `Result` / `Financial Results` |
+| Press releases | `Company Update` / `Press Release / Media Release` |
+| Investor presentations | `Company Update` / `Investor Presentation` |
+| Earnings call transcripts | `Company Update` / `Earnings Call Transcript` |
+| Credit ratings | `Company Update` / `Credit Rating` |
+| Everything else | *(both omitted — unfiltered)* |
+
+**The `--from`/`--to` window is not per-sweep policy any more — it comes from
+`check_freshness.py`'s `bse_fetch_window`** (see `pipeline/step1_retrieve.md`'s
+"Step 1a" section). Use its `from`/`to` for all seven sweeps, except the Annual
+Reports sweep, which uses `annual_from` in place of `from`. On a refresh that window
+is the last successful run's timestamp minus a 7-day overlap buffer through today; on
+a first-time or `--force` run it is the full standard depth (18 months, 24 for annual
+reports). Don't hand-roll a window here — the point of the API's date filter is that
+the incremental sweep stays genuinely narrow.
 
 ```
-python3 scripts/bse_announcements.py <scrip_code> --from <YYYYMMDD> --to <YYYYMMDD> \
+python3 scripts/pipeline/bse_announcements.py <scrip_code> --from <YYYYMMDD> --to <YYYYMMDD> \
     [--category "..." --subcategory "..."] [--json]
 ```
 
@@ -128,7 +137,7 @@ The pattern for every document the sweeps return:
 2. **Fetch** — `WebFetch` the PDF URL, save to
    `~/.report-generator/sources/<company_slug>/`. Cap is 10MB; over that, see
    "User-uploaded documents" below.
-3. **Extract** — `scripts/pdf_to_text.py <input.pdf> <output.txt>`, always the
+3. **Extract** — `scripts/pipeline/pdf_to_text.py <input.pdf> <output.txt>`, always the
    **whole** document, never a guessed page range (an annual report's segment,
    litigation, and PP&E notes sit well past the MD&A). Pass
    `--expect-name "<company name>"` when the PDF came from a search result rather than
@@ -138,12 +147,12 @@ The pattern for every document the sweeps return:
    several concurrently when extracting multiple annual reports in one run.
    `--pages START-END` exists for one narrow use: a scouting pass to read a table of
    contents and locate a section before committing to full extraction.
-4. **Log** — `python3 scripts/source_manifest.py <company_slug> add-document --type
+4. **Log** — `python3 scripts/helpers/source_manifest.py <company_slug> add-document --type
    <concall|investor_presentation|annual_report|press_release> --label "<e.g. Q4 FY26>"
    --date "<document's own date>" --filename <name.txt>` (add `--pages-total`/
    `--pages-extracted-start`/`--pages-extracted-end`/`--extraction-verified` for annual
    reports), **right after extraction, every time** — not batched at the end of the
-   run. See `reference/step3_memorize.md`'s "What gets recorded, and when" for why the
+   run. See `pipeline/step3_memorize.md`'s "What gets recorded, and when" for why the
    timing matters.
 
 Save an annual report's PDF **before** extracting — `verify_report.py extraction`
@@ -185,7 +194,7 @@ the only places a *named* institution, FII/FPI, insurer, or HNI shows up trading
 the open market — the shareholding table only ever shows category totals.
 
 ```
-python3 scripts/bulk_block_deals.py <scrip_code> --from <YYYYMMDD> --to <YYYYMMDD>
+python3 scripts/helpers/bulk_block_deals.py <scrip_code> --from <YYYYMMDD> --to <YYYYMMDD>
 ```
 
 Same `api.bseindia.com` exception as the announcements script. Fetches both deal types
@@ -223,10 +232,10 @@ covers the company, and say so explicitly if genuinely none does.
 - **What to extract**: current rating and outlook (e.g. "CRISIL A-/Stable"), the
   instrument it applies to (a company can carry different ratings for bank facilities,
   NCDs, CP), the rationale's date, and 1-2 lines of the agency's own reasoning.
-- **Log it**: `scripts/rating_tracker.py add-rating`, once per action found. Call it
+- **Log it**: `scripts/helpers/rating_tracker.py add-rating`, once per action found. Call it
   for every action the sweep returns without checking first whether it's already
   logged — it's idempotent on `(agency, date, instrument)` and skips exact repeats.
-  See `reference/step3_memorize.md`'s "What gets recorded, and when" for the
+  See `pipeline/step3_memorize.md`'s "What gets recorded, and when" for the
   `--action` values and the conflict case.
 - **Check for an action in the last 6 months on every run**, even when
   `rating_history.json` already has entries — agencies review on their own schedule, so
@@ -417,4 +426,4 @@ source, even arriving in one batch.
 A user-uploaded **broker/agency report** is a distinct case — see "Broker / agency
 research" above for how its facts get folded in. Treat any file with a broker
 letterhead, a rating, and a 12-month target as that type rather than an investor
-presentation; `scripts/verify_report.py sniff` can classify an ambiguous upload.
+presentation; `scripts/pipeline/verify_report.py sniff` can classify an ambiguous upload.

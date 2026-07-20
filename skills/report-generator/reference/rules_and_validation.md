@@ -1,9 +1,9 @@
 # Rules and Validation — standing constraints that apply across every step
 
 These aren't sequencing — they're discipline that holds throughout every step —
-`reference/step0_perceive.md` → `step1_retrieve.md` → `step2_synthesize.md`
+`pipeline/step1_retrieve.md` → `step2_synthesize.md`
 → `step3_memorize.md` — not something to apply only at one point in the run. The scripted enforcement
-layer for all of this is `scripts/verify_report.py`; see `reference/guardrails.md`
+layer for all of this is `scripts/pipeline/verify_report.py`; see `reference/guardrails.md`
 for the full tier-by-tier reference (what each check does, FAIL vs. WARN) — this
 file is the *why*, that file is the *how it's checked*.
 
@@ -36,7 +36,7 @@ just when assembling the final report.
   Read.** Grep only finds exact keyword matches — a section can exist and still be
   missed because the report phrases it differently than the keyword you guessed (e.g.
   you grep "backward integration" but the annual report only ever says "manufactures
-  its own preforms in-house"). `python3 scripts/semantic_search.py <text_file>
+  its own preforms in-house"). `python3 scripts/helpers/semantic_search.py <text_file>
   "<natural language query>" --top-k 5` runs a BM25-ranked relevance search over the
   document and returns the most relevant chunks with their line ranges, so you can
   `grep`/`Read` that exact range for full context. The index is chunked and cached
@@ -67,7 +67,7 @@ just when assembling the final report.
   re-reading then re-writing the same section multiple times — the Read-after-Edit habit
   is unnecessary here since the harness already confirms edits succeeded.
 - **On a `new_quarter` refresh, fetch only what changed** — the single biggest token
-  lever in the pipeline; see `reference/step0_perceive.md`'s `new_quarter` case
+  lever in the pipeline; see `pipeline/step1_retrieve.md`'s `new_quarter` case
   for the exact checklist of what to fetch vs. what carries forward unchanged.
 - **Don't burn more than one retry on a stuck source.** If screener.in's numeric
   widgets won't populate after one wait/retry, stop retrying it and fall back per
@@ -104,7 +104,7 @@ verified "nothing here" from an unverified "I didn't check."
 
 **This rule has a second half that matters just as much: don't just intend to catch
 gaps, mechanically check for the specific ones this pipeline has actually hit.**
-`scripts/verify_report.py` (see `reference/guardrails.md`) exists because several of
+`scripts/pipeline/verify_report.py` (see `reference/guardrails.md`) exists because several of
 the gaps below have already slipped through on judgment/memory alone in practice — a
 hand-written HTML report that still rendered fine through WeasyPrint, an annual report
 extraction that silently started at page 40 instead of page 1, a broker PDF whose
@@ -138,7 +138,7 @@ This applies everywhere a gap can happen, not just document fetches:
   "couldn't verify" (a gap, which must say so) — never let the second read like the
   first.
 - **Renderer/dependency fallbacks** — e.g. the legacy ReportLab PDF fallback used in
-  place of WeasyPrint (see `reference/step3_memorize.md`'s "Save and cache"
+  place of WeasyPrint (see `pipeline/step3_memorize.md`'s "Save and cache"
   section) — must be
   flagged in your chat response to the user, not just left for them to notice from how
   the PDF looks.
@@ -154,9 +154,9 @@ trusting a gap they were never told about.
 
 ## Deterministic Guardrails
 
-`scripts/verify_report.py` is the enforcement layer for every rule stated above —
+`scripts/pipeline/verify_report.py` is the enforcement layer for every rule stated above —
 three tiers (Input/Execution/Output), each check's exact purpose, and the FAIL-vs-WARN
-distinction are all in `reference/guardrails.md`. `reference/step3_memorize.md`'s
+distinction are all in `reference/guardrails.md`. `pipeline/step3_memorize.md`'s
 "Verify before
 delivering" checklist (Save and cache) is the operational sequence; that file is the
 full reference when you need to know *why* a specific check exists or what a WARN vs

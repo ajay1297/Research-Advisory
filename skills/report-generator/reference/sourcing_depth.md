@@ -1,6 +1,6 @@
-# Sourcing Depth — document-set and cadence policy for Step 0
+# Sourcing Depth — document-set and cadence policy for Step 1
 
-**Read only by `reference/step0_perceive.md`.** This is document-set/depth/cadence
+**Read only by `pipeline/step1_retrieve.md`.** This is document-set/depth/cadence
 policy — how many quarters back, what counts as standard depth, what changes on a
 refresh vs. a from-scratch rebuild, how a no-concall company changes the plan. It
 answers "what should get fetched," not "how to fetch it"
@@ -47,7 +47,7 @@ read, the **Segment-wise Performance**/**TAM**/**Manufacturing Locations** secti
 and the **Investment Thesis Summary**/**Verdict**. It does not change the
 Near/Medium/Long Term outlook bullets, which still reflect *current* guidance.
 
-**Check the depth was met, don't just intend it**: `python3 scripts/verify_report.py
+**Check the depth was met, don't just intend it**: `python3 scripts/pipeline/verify_report.py
 depth <company_slug>` counts the concall, investor-presentation, and annual-report
 `.txt` files actually sitting in `sources/<company_slug>/` and WARNs on a shortfall —
 the prompt to either fetch what's missing or state the shortfall explicitly in the
@@ -121,7 +121,7 @@ section's grep/`semantic_search.py` pass.
 
 If a section you know should exist (raw-material sourcing note, a value-chain
 description, a customer mention) doesn't surface under any keyword, run
-`scripts/semantic_search.py <extracted.txt> "<what you're looking for, in plain
+`scripts/helpers/semantic_search.py <extracted.txt> "<what you're looking for, in plain
 language>"` before giving up on grep — annual reports vary enough in phrasing that a
 keyword that worked for one company's report often doesn't for another's.
 
