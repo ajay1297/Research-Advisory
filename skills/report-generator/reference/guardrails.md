@@ -4,6 +4,14 @@ Everything else in this skill states rules; this file is what actually checks th
 `scripts/pipeline/verify_report.py` (see its own docstring for exact usage) implements every
 check named below, tested against real report runs, not written and left unverified.
 
+**Always invoke it as `python3 scripts/pipeline/verify_report.py <subcommand>`** — that
+entry point is the whole CLI. The checks themselves live beside it in
+`scripts/pipeline/verify/`, split by the same three tiers this file uses (`core.py`,
+`inputs.py`, `execution.py`, `output.py`, plus `recency.py` for the five
+sweep-freshness checks); each declares its own arguments via a `@check(...)`
+decorator, so adding a check means one decorated function, not a parser edit. Only
+`verify_report.py`'s `ORDER` tuple needs to know the new name.
+
 **The standing rule for all of it: any FAIL is a stop-and-fix, not a note-and-continue**
 — a deterministic check with no consequence for failing isn't actually a guardrail,
 it's decoration. WARN-level results (sourcing-depth shortfalls, a ReportLab fallback)
