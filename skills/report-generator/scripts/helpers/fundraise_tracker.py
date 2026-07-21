@@ -26,19 +26,38 @@ skipped (leaving any status set via update-status untouched), while the same
 date/instrument/allottee logged with different amounts/units/price is refused as a
 conflict to re-check, since logging both would double-count it in the totals below.
 
+Face value and stock splits — why `report --cmp`'s premium/discount figure is
+face-value-normalized, not a raw price ratio. An issue price from years ago and
+today's CMP are only directly comparable if the share's face value hasn't changed in
+between; a stock split (e.g. 10:1, face value Rs.10 -> Rs.1) changes the *nominal*
+price scale without changing anything real, and a raw "issue price vs current price"
+percentage across a split is not just imprecise, it can have the wrong *sign* —
+confirmed in practice: a pre-split preferential issue price naively compared to a
+post-split CMP showed a "+285% premium" when the split-adjusted reality was a
+discount. `--face-value` (on add-raise/update-price) records the face value that
+priced *this specific raise*; `report --cmp-face-value` records the *current* face
+value. `report` normalizes both sides to a multiple of face value before comparing,
+and — this is the important part — refuses to print a premium/discount figure at all
+if either face value is unknown, rather than silently computing a wrong percentage on
+an unstated assumption that both sides share the same basis.
+
 Runs entirely locally, no network required.
 
 Usage:
     python3 fundraise_tracker.py <company_slug> add-raise \
         --date "2025-11-15" --instrument warrants --allottee promoter \
-        --amount-cr 127.5 --units 1500000 --price-per-unit 850 \
+        --amount-cr 127.5 --units 1500000 --price-per-unit 850 --face-value 10 \
         --upfront-pct 25 --purpose "capex expansion" \
         --source "BSE announcement 15 Nov 2025"
 
     python3 fundraise_tracker.py <company_slug> update-status --id 0 \
         --status lapsed --note "Promoter did not pay remaining 75% within the 18-month window"
 
-    python3 fundraise_tracker.py <company_slug> report [--cmp 910]
+    python3 fundraise_tracker.py <company_slug> update-price --id 0 \
+        --units 2481592 --price-per-unit 1694.50 --face-value 10 \
+        --note "Price per BSE/NSE allotment notice, found after initial logging"
+
+    python3 fundraise_tracker.py <company_slug> report --cmp 439.2 --cmp-face-value 1
 """
 import argparse
 import json
@@ -126,6 +145,7 @@ def add_raise(args):
         "amount_cr": args.amount_cr,
         "units": args.units,
         "price_per_unit": args.price_per_unit,
+        "face_value": args.face_value,
         "upfront_pct": args.upfront_pct,
         "tenure": args.tenure,
         "rate_pct": args.rate_pct,
@@ -157,6 +177,36 @@ def update_status(args):
           f"status {old_status} -> {args.status}")
 
 
+def update_price(args):
+    """Backfill units/price-per-unit/face-value on an already-logged raise. Exists
+    because the source available at add-raise time (often just an investor
+    presentation's aggregate-amount slide) frequently doesn't carry the per-share
+    price, but the actual BSE/NSE allotment notice or contemporaneous press coverage
+    often does — found later, once someone goes looking specifically for it. Only
+    touches units/price_per_unit/face_value (and appends to note, same as
+    update-status); never touches amount_cr, since a price discrepancy against the
+    originally-logged amount is a finding to state in the note, not a reason to
+    silently overwrite the amount a primary company source already gave."""
+    path = cache_path(args.company_slug)
+    data = load(path)
+    match = next((r for r in data["raises"] if r["id"] == args.id), None)
+    if not match:
+        print(f"No raise with id={args.id} found for {args.company_slug}.")
+        return
+    if args.units is not None:
+        match["units"] = args.units
+    if args.price_per_unit is not None:
+        match["price_per_unit"] = args.price_per_unit
+    if args.face_value is not None:
+        match["face_value"] = args.face_value
+    if args.note:
+        match["note"] = (match["note"] + " " if match["note"] else "") + args.note
+    save(path, data)
+    print(f"Raise #{args.id} ({match['instrument']}, INR{match['amount_cr']}cr): "
+          f"units={match['units']}, price_per_unit={match['price_per_unit']}, "
+          f"face_value={match.get('face_value')}")
+
+
 def report(args):
     path = cache_path(args.company_slug)
     data = load(path)
@@ -176,10 +226,28 @@ def report(args):
     print(f"All logged fund raises ({len(raises)} total):")
     for r in raises:
         price_bit = f" @ INR{r['price_per_unit']}/unit" if r.get("price_per_unit") else ""
+        if r.get("price_per_unit"):
+            price_bit += f" (FV Rs.{r['face_value']})" if r.get("face_value") else " (FV unknown)"
         premium_bit = ""
         if args.cmp and r.get("price_per_unit"):
-            delta_pct = (r["price_per_unit"] - args.cmp) / args.cmp * 100
-            premium_bit = f" ({delta_pct:+.1f}% vs current price INR{args.cmp})"
+            if r.get("face_value") and args.cmp_face_value:
+                # Normalize both sides to "multiple of face value" before comparing
+                # — a raw price ratio is only valid if face value hasn't changed
+                # since this raise (see module docstring's "Face value and stock
+                # splits" note). A split between the raise and today changes the
+                # nominal price scale on one side only, and comparing the raw
+                # numbers directly can flip the sign of the result, not just its
+                # magnitude.
+                then_multiple = r["price_per_unit"] / r["face_value"]
+                now_multiple = args.cmp / args.cmp_face_value
+                delta_pct = (then_multiple - now_multiple) / now_multiple * 100
+                premium_bit = (f" ({delta_pct:+.1f}% vs current price INR{args.cmp}, "
+                               f"face-value-normalized)")
+            else:
+                premium_bit = (" (premium/discount not shown — face value at issue "
+                               "and/or --cmp-face-value not given; a raw price "
+                               "comparison risks the wrong sign across a stock "
+                               "split, see module docstring)")
         print(f"  #{r['id']} {r['date']} — {r['instrument']} — INR{r['amount_cr']}cr "
               f"— allottee: {r['allottee']}{price_bit}{premium_bit} — status: {r['status'].upper()}")
         if r.get("investors"):
@@ -220,6 +288,11 @@ def main():
     p1.add_argument("--amount-cr", type=float, required=True)
     p1.add_argument("--units", type=int, help="number of shares/warrants/debentures allotted")
     p1.add_argument("--price-per-unit", type=float, help="issue price per share/warrant, INR")
+    p1.add_argument("--face-value", type=float,
+                     help="face value per share at the time of THIS raise, INR (e.g. 10) — "
+                          "needed to compare this raise's price against a current CMP that "
+                          "may be on a different face value after a stock split; see module "
+                          "docstring's 'Face value and stock splits' note")
     p1.add_argument("--upfront-pct", type=float,
                      help="pct paid upfront (relevant for warrants, typically 25 per SEBI ICDR)")
     p1.add_argument("--tenure", help='for debt, e.g. "5 years"')
@@ -245,10 +318,25 @@ def main():
     p2.add_argument("--note")
     p2.set_defaults(func=update_status)
 
+    p2b = sub.add_parser("update-price")
+    p2b.add_argument("--id", type=int, required=True, help="id shown in `report` output")
+    p2b.add_argument("--units", type=int, help="number of shares/warrants/debentures allotted")
+    p2b.add_argument("--price-per-unit", type=float, help="issue price per share/warrant, INR")
+    p2b.add_argument("--face-value", type=float,
+                      help="face value per share at the time of this raise, INR — see "
+                           "add-raise's --face-value help")
+    p2b.add_argument("--note")
+    p2b.set_defaults(func=update_price)
+
     p3 = sub.add_parser("report")
     p3.add_argument("--cmp", type=float,
-                     help="current market price — if given, shows each issue price as a "
-                          "premium/discount to CMP")
+                     help="current market price — if given (with --cmp-face-value), shows "
+                          "each issue price as a face-value-normalized premium/discount to CMP")
+    p3.add_argument("--cmp-face-value", type=float,
+                     help="the share's CURRENT face value, INR — required alongside --cmp to "
+                          "show a premium/discount figure at all; without it, report prints "
+                          "the raw issue price only rather than risk a wrong-sign comparison "
+                          "across an intervening stock split")
     p3.set_defaults(func=report)
 
     args = parser.parse_args()

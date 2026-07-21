@@ -128,7 +128,7 @@ ORDER = (
     "sniff", "slug", "links",
     "scope", "reproduction",
     "quotes", "disclaimer", "filenames", "whitespace",
-    "ratings", "announcements", "deals",
+    "ratings", "announcements", "deals", "shareholding",
     "paragraphs", "gaps", "financials", "social", "brokers",
 )
 

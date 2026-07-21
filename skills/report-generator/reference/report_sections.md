@@ -616,6 +616,25 @@ returns the multi-quarter history in one fetch (see source_playbook.md) — no s
 tracking script needed for this one, unlike guidance/fund-raises/ratings/litigation. Add
 a promoter-pledge `card_grid()` metric alongside it if a pledge % is disclosed.
 
+**Named public/non-promoter holders — `scripts/helpers/shareholding_pattern.py`,
+optional enrichment, run every report regardless of whether the company "looks
+institutionally held."** screener.in's Promoter/FII/DII/Public trend is category
+percentages only, never names; this script queries BSE's own regulation-mandated
+public-shareholding filing directly and returns every holder BSE itself already named
+(mutual funds, FPIs, bodies corporate, individuals — typically anyone at or above
+~1%), each with its exact %. This is real, verifiable, named institutional/HNI
+participation, the same evidentiary weight as a Bulk & Block Deals counterparty —
+apply the identical naming-verifiability bar (only characterize a holder as
+"institutional"/notable if it's a recognizable fund/FPI/insurer/well-known individual;
+an unfamiliar bodies-corporate or LLP name gets stated factually without embellishment).
+Confirmed useful in practice: it independently cross-validated an ICRA-cited
+promoter-partner equity stake against BSE's own filing, and separately surfaced named
+mutual-fund holders a screener.in-only pass would never show. Endpoint covers
+public/non-promoter holders only — it does not replace the promoter-trend table
+above. If no individually-named holder is returned for the latest quarter, state that
+plainly rather than omitting the check — a legitimate finding for a closely-held
+company, not a fetch failure.
+
 **Bulk & Block Deals** (sub-section, immediately after Shareholding Pattern, before
 Promoter Fund Raises — checked on every report, same standing-check discipline as
 Credit Ratings below, not gated behind the company "looking interesting"). Sourced
@@ -650,8 +669,24 @@ allotment, NCD/debenture issue, term loan, or promoter loan/guarantee on record,
 with: date, instrument, amount (INR crore), allottee category (promoter/promoter
 group/public/institution), **named individual/institutional investors where disclosed**
 (e.g. a well-known HNI, FPI, or mutual fund named in the BSE/NSE allotment notice — not
-just the category), issue price versus current market price if both are known, and
-status (allotted/pending/converted/lapsed/outstanding/repaid). Naming a recognizable
+just the category), **price per share/unit as its own explicit table column for any
+equity/warrant instrument (preferential_equity, warrants) — not folded into prose,
+and not omitted just because the investor presentation's own summary slide only gave
+an aggregate amount.** The per-share price is a standard SEBI ICDR allotment
+disclosure and is almost always findable in the BSE/NSE allotment notice or
+contemporaneous press coverage even when the company's own investor presentation
+skips it (confirmed in practice: an aggregate-only investor-presentation figure and a
+press-reported per-share price for the same tranche can genuinely disagree by a
+material amount if the press figure is the board-approved ceiling rather than the
+final allotment — state both figures and the discrepancy explicitly rather than
+picking one silently, per the "never drop anything silently" rule). Show issue price
+versus current market price as a premium/discount **only when both prices are on the
+same face-value basis** — `fundraise_tracker.py report --cmp <price> --cmp-face-value
+<value>` normalizes for a stock split between the raise and today and refuses to
+print a percentage at all if either side's face value is unknown, precisely because a
+raw price ratio across a split can show the wrong sign, not just the wrong magnitude.
+Never hand-compute this percentage outside the script once a split has occurred. Also
+show status (allotted/pending/converted/lapsed/outstanding/repaid). Naming a recognizable
 investor is a real, verifiable signal (the same principle as naming a marquee customer
 in the Marquee & Niche Customers section) — never infer participation from a
 shareholding-pattern increase alone; only name someone the allotment notice, exchange

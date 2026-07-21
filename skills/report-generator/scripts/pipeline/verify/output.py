@@ -250,17 +250,31 @@ def check_gaps(report_path):
 
 @check("financials", Arg("report_path"))
 def check_financials(report_path):
-    """Flags a Financial Performance Summary row where PBT is filled in but PAT is
-    blank (or vice versa) — the two are adjacent line items in almost every source
-    results table, so a partial fill is a strong signal the source table wasn't
-    fully transcribed, not that PAT genuinely wasn't disclosed. Confirmed in
-    practice: a real report carried PBT through for four quarters while silently
-    dropping PAT/Tax from the same already-extracted source rows each time.
+    """Flags a Financial Performance Summary row that is only partially filled in
+    — some value columns (Revenue, EBITDA Margin, PBT, PAT, PAT Margin, whichever
+    the table carries) present, others blank — for the same period. A results
+    table almost always discloses these together as one block, so a partial fill
+    is a strong signal the source wasn't fully transcribed, not that the blank
+    figures genuinely weren't disclosed. A row that's fully blank across every
+    value column is not flagged — that is the legitimate shape of a period with no
+    source at all (e.g. an early fiscal year nothing was fetched for), which this
+    check must not punish.
 
-    Column-position-agnostic by design — finds the PBT/PAT columns by header text
-    (case-insensitive, PAT matched as a whole word so it doesn't also match "PAT
-    Margin"), so it survives the column set varying report to report (e.g. EBITDA
-    Margin swapped in for Gross Margin when gross margin isn't disclosed)."""
+    Confirmed in practice: a real report carried PBT through for four quarters
+    while dropping PAT/Tax from the very same already-extracted source rows each
+    time, and separately left two full fiscal years blank despite their complete
+    income-statement figures sitting on an already-fetched slide. The original
+    version of this check only compared PBT against PAT specifically and would
+    have missed a gap in any other column pair — generalized here to check
+    across every value column, since the failure mode isn't PBT/PAT specific.
+
+    Column-position-agnostic by design — classifies columns by header text
+    (case-insensitive) rather than fixed position, so it survives the column set
+    varying report to report (e.g. EBITDA Margin swapped in for Gross Margin when
+    gross margin isn't disclosed). YoY/QoQ growth columns are exempt from the
+    completeness requirement even when every other column is filled — the first
+    period in a series has no prior period to compute growth against, which is a
+    structural gap, not a transcription one."""
     print(f"=== financial-performance completeness check: {report_path} ===")
     if not os.path.exists(report_path):
         print(f"FAIL: {report_path} does not exist")
@@ -289,38 +303,40 @@ def check_financials(report_path):
 
     header = cells(table_rows[0])
     period_idx = next((i for i, h in enumerate(header) if re.search(r"period|quarter|fy", h, re.I)), 0)
-    pbt_idx = next((i for i, h in enumerate(header) if re.search(r"\bpbt\b", h, re.I)), None)
-    pat_idx = next((i for i, h in enumerate(header)
-                     if re.search(r"\bpat\b", h, re.I) and not re.search(r"margin", h, re.I)), None)
+    growth_idxs = {i for i, h in enumerate(header) if re.search(r"growth|yoy|qoq", h, re.I)}
+    source_idxs = {i for i, h in enumerate(header) if re.search(r"source|basis|note", h, re.I)}
+    value_idxs = [i for i in range(len(header))
+                  if i != period_idx and i not in growth_idxs and i not in source_idxs]
 
-    if pbt_idx is None or pat_idx is None:
-        print("PASS: no PBT/PAT columns found in the table — nothing to cross-check")
+    if not value_idxs:
+        print("PASS: no value columns identified beyond Period/Growth/Source — nothing to check")
         return True
 
     def blank(v):
-        return v in ("", "-", "—", "–", "n/a", "na")
+        return v.lower() in ("", "-", "—", "–", "n/a", "na")
 
     flagged = []
     for row in table_rows[2:]:  # skip header + markdown separator row
         c = cells(row)
-        if max(pbt_idx, pat_idx, period_idx) >= len(c):
+        if max([period_idx] + value_idxs) >= len(c):
             continue
-        pbt_blank, pat_blank = blank(c[pbt_idx].lower()), blank(c[pat_idx].lower())
-        if pbt_blank != pat_blank:  # exactly one of the pair is filled in
-            have, missing = ("PBT", "PAT") if pat_blank else ("PAT", "PBT")
-            flagged.append((c[period_idx], have, missing))
+        filled = [(header[i], c[i]) for i in value_idxs if not blank(c[i])]
+        missing = [header[i] for i in value_idxs if blank(c[i])]
+        if filled and missing:  # a genuine mix — fully blank rows are exempt
+            flagged.append((c[period_idx], [h for h, _ in filled], missing))
 
     if flagged:
         for period, have, missing in flagged:
-            print(f"WARN: {period}: {have} is filled in but {missing} is blank — "
-                  f"if the source table already disclosed both (the common case — "
-                  f"PBT and PAT are adjacent line items in almost every results "
-                  f"table), this is a transcription gap, not a real source gap. "
-                  f"Re-check the source for this period before leaving it blank.")
+            print(f"WARN: {period}: {', '.join(have)} filled in but {', '.join(missing)} "
+                  f"blank — if the source table already disclosed all of these together "
+                  f"(the common case — a results table almost always reports revenue/"
+                  f"EBITDA/PBT/PAT/margins as one block), this is a transcription gap, not "
+                  f"a real source gap. Re-check the source for this period before leaving "
+                  f"the blank columns as-is.")
         return True  # informational WARN only — the gap may be genuine, confirm before treating as FAIL
 
-    print("PASS: no PBT-filled/PAT-blank (or vice versa) rows found in "
-          "Financial Performance Summary")
+    print("PASS: no partially-filled rows found in Financial Performance Summary — "
+          "every row is either fully populated or fully blank")
     return True
 
 

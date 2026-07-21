@@ -167,6 +167,36 @@ results filing rather than filing it separately. If the press-release sweep is e
 but the results filing carries a covering-letter narrative, note in the manifest label
 that it's "embedded in results filing" rather than logging a phantom document.
 
+**Chart-derived figures — don't trust `extract_text()` for a number that came from a
+chart, not a table.** `page.extract_text()` (what normal extraction uses) linearizes
+every word into reading order and throws away its on-page position — fine for
+paragraphs and real gridded tables, but a grouped bar chart's data-labels and
+axis-category labels are freeform vector text with no reading order that means
+anything, and `extract_text()` will still confidently produce *something*, silently
+pairing a number with the wrong label. Confirmed in practice: a report's
+segment-revenue figures were pulled from exactly this kind of scrambled extraction,
+and two of three divisions were mismatched to the wrong period — caught only because
+the reported figures didn't sum to the company's own disclosed consolidated revenue.
+
+Signs a number came from a chart rather than a table worth treating with this
+suspicion: the surrounding `extract_text()` output has numbers clustered together
+disconnected from clear per-item labels, or `pdfplumber`'s `extract_tables()` finds no
+grid at all on that page (confirms there's no real table underneath, just vector art).
+
+The fix: `python3 scripts/pipeline/pdf_to_text.py <input.pdf> --words-page N` (see the
+script's own docstring) dumps that page's words with exact bounding-box positions
+instead of linearized text. This automates getting the position data; it does **not**
+auto-detect which words are axis labels versus values and pair them — that requires
+actually looking at the layout, and a heuristic guessing it on an unseen chart risks a
+confidently wrong number, worse than the current visibly-scrambled output. The recipe:
+skim the printed positions, identify each axis-category label's x-range by eye, then
+pair each nearby numeric label to its nearest-by-x-position label (an x0/x1 overlap or
+near-overlap is normally unambiguous once you can see the actual coordinates). **Always
+cross-check the reconstructed figures against a disclosed total before using them**
+(e.g. segment figures should sum to the company's own consolidated revenue, within a
+few percent for normal inter-segment eliminations) — position-matching removes the
+reading-order failure, it doesn't remove the need to verify the result.
+
 ## screener.in — structured financials, not documents
 
 Not the entry point for documents; BSE is. What screener.in remains genuinely primary

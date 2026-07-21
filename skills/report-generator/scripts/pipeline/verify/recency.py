@@ -217,6 +217,29 @@ def check_deals(slug, months=6):
         long_noun="bulk/block deals sweep", evidence_verb="found")
 
 
+@check("shareholding", Arg("slug"), Arg("--months", type=int, default=6))
+def check_shareholding(slug, months=6):
+    """Log via `source_manifest.py <slug> add-document --type shareholding_sweep
+    --status performed --evidence "<what scripts/helpers/shareholding_pattern.py
+    returned>"`. Default window matches deals_sweep's, not brokers/social's tighter
+    3-month one — BSE's public-shareholding filing is itself only quarterly (SEBI-
+    mandated), so a fresh sweep can be at most one quarter stale regardless."""
+    return _manifest_sweep(
+        slug, months=months,
+        doc_type="shareholding_sweep",
+        heading="Named public/non-promoter holders sweep recency",
+        noun="shareholding sweep",
+        requirement_ref="reference/report_sections.md's Promoter/Governance "
+                        "'Named public/non-promoter holders' section",
+        no_entry_because="this sweep is a standing requirement, not something to "
+                         "skip because the company doesn't look institutionally held.",
+        stale_because="a fresh named-holders sweep genuinely needs to happen this "
+                      "run — BSE's public-shareholding filing updates quarterly, so "
+                      "an old log entry can already be a full quarter out of date.",
+        evidence_extra=" (or 'no named holder this quarter')",
+        long_noun="shareholding sweep", evidence_verb="found")
+
+
 @check("brokers", Arg("slug"), Arg("--months", type=int, default=3))
 def check_brokers(slug, months=3):
     """Default window is 3 months, not 6: a broker-forum sweep is a discovery

@@ -44,13 +44,16 @@ from datetime import datetime, timezone
 
 DOC_TYPES = ["concall", "investor_presentation", "annual_report", "press_release",
              "broker_report", "rating_rationale", "announcement_sweep",
-             "social_media_check", "deals_sweep", "broker_sweep", "other"]
+             "social_media_check", "deals_sweep", "broker_sweep",
+             "shareholding_sweep", "other"]
 
-# announcement_sweep/social_media_check/deals_sweep/broker_sweep log a *check
-# performed*, not a fetched document — there is no real file in sources/<slug>/ for these, so
-# --filename is not required for them (see add_document()'s validation below).
-# Every other type is a genuine fetched document and --filename stays required.
-FILENAME_OPTIONAL_TYPES = {"announcement_sweep", "social_media_check", "deals_sweep", "broker_sweep"}
+# announcement_sweep/social_media_check/deals_sweep/broker_sweep/shareholding_sweep
+# log a *check performed*, not a fetched document — there is no real file in
+# sources/<slug>/ for these, so --filename is not required for them (see
+# add_document()'s validation below). Every other type is a genuine fetched
+# document and --filename stays required.
+FILENAME_OPTIONAL_TYPES = {"announcement_sweep", "social_media_check", "deals_sweep",
+                            "broker_sweep", "shareholding_sweep"}
 
 
 def _path(slug):
@@ -187,7 +190,7 @@ def main():
     p1.add_argument("--date", required=True, help="ISO date of the document itself, not today")
     p1.add_argument("--filename",
                      help="filename as saved in sources/<slug>/ — required for every type "
-                          "except announcement_sweep/social_media_check/deals_sweep/broker_sweep, which "
+                          "except announcement_sweep/social_media_check/deals_sweep/broker_sweep/shareholding_sweep, which "
                           "log "
                           "a check performed rather than a fetched document")
     p1.add_argument("--pages-total", type=int)
@@ -198,7 +201,7 @@ def main():
     p1.add_argument("--extraction-verified", action="store_true",
                      help="pass this if scripts/pipeline/verify_report.py extraction was run and passed")
     p1.add_argument("--status", choices=["performed", "skipped"],
-                     help="for announcement_sweep/social_media_check/deals_sweep/broker_sweep doc "
+                     help="for announcement_sweep/social_media_check/deals_sweep/broker_sweep/shareholding_sweep doc "
                           "types: was the sweep actually performed this run, or explicitly skipped")
     p1.add_argument("--evidence",
                      help="required if --status performed: what was actually searched and found "
