@@ -69,6 +69,26 @@ Save/update `~/.report-generator/research_cache/<company_slug>/quotes.json`, `bu
 `litigation_history.json`, and `report.md`, then mark freshness state per
 `pipeline/step1_retrieve.md`'s step 5.
 
+## Deliver to Telegram
+
+**Last action of every run, after all `verify_report.py` checks pass and both `.md`
+and `.pdf` are confirmed on disk — never before.** Run:
+
+```
+python3 scripts/pipeline/send_telegram.py \
+  "~/.report-generator/output/<company_slug>/<Company_Name>_report.pdf" \
+  --caption "<Company Name> — investment thesis report"
+```
+
+Credentials (`TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`) live in
+`~/.report-generator/telegram.env`, never in the plugin directory — the script loads
+them at runtime and fails loudly (non-zero exit, message on stderr) if that file is
+missing or the Telegram API doesn't confirm delivery, rather than silently skipping
+send. If it fails, tell the user directly in chat (don't retry silently or treat the
+run as incomplete-but-fine) — the `.md`/`.pdf` are still saved locally regardless of
+delivery outcome. On a multi-company run, send each company's PDF right after that
+company's own verify checks pass, not batched at the very end.
+
 ## What gets recorded, and when
 
 This is the pipeline's memory model — the durable state that makes a later
