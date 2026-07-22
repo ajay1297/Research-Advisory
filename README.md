@@ -127,17 +127,20 @@ dependencies (see Setup below), then confirm it installed correctly:
    should show up by name in the list of available skills in the system prompt
    (visible to Claude every turn once the plugin is installed) — no need to
    invoke anything first, they're just present.
-2. Say `research <any company name>` and check that Claude follows the
-   `report-generator` pipeline end to end, creating
+2. Run `/research-advisory:report-generator <any company name>` (or the
+   shorter `/report-generator <any company name>`) and check that Claude
+   follows the `report-generator` pipeline end to end, creating
    `~/.report-generator/research_cache/<company_slug>/` and
    `~/.report-generator/output/<company_slug>/` (outside the plugin entirely —
    see Plugin structure above) as it goes.
 
 ## Setup
 
-No API keys or environment variables required for anything in this plugin.
-Not every skill necessarily shares the same dependencies; `report-generator`'s
-are below, and it's the only implemented skill so far.
+No API keys required to generate a report. One optional integration
+(Telegram delivery of the finished PDF) needs a credential file outside the
+plugin — see "Telegram delivery" below. Not every skill necessarily shares
+the same dependencies; `report-generator`'s are below, and it's the only
+implemented skill so far.
 
 ### `report-generator`
 
@@ -186,32 +189,52 @@ WeasyPrint isn't installed, when a PDF extraction comes back partial) are
 documented inline in the skill's own `pipeline/*.md` and `reference/*.md` files, not duplicated
 here — see the table below for which file covers which step.
 
+### Telegram delivery (optional)
+
+The last action of every run is sending the finished PDF to Telegram via
+`scripts/pipeline/send_telegram.py`. Set it up once:
+
+1. Message **@BotFather** on Telegram, run `/newbot`, and copy the bot token
+   it gives you.
+2. Message your new bot anything (so it can message you back), then open
+   `https://api.telegram.org/bot<TOKEN>/getUpdates` and read `chat.id` off
+   the response.
+3. Create `~/.report-generator/telegram.env` (outside this repo, alongside
+   the skill's other working state) containing:
+   ```
+   TELEGRAM_BOT_TOKEN=<token>
+   TELEGRAM_CHAT_ID=<chat id>
+   ```
+
+If this file is missing, `send_telegram.py` fails loudly (non-zero exit,
+message on stderr) rather than silently skipping delivery — the `.md`/`.pdf`
+are still saved locally either way; Telegram delivery failing doesn't fail
+the report itself.
+
 ## Usage
 
-Every skill in this plugin triggers via natural language — no slash command.
-Name the company each time; there is no separate "setup a company" step.
-
-### `report-generator`
-
-Four distinct things you can ask for — the phrasing tells Claude which one you mean:
+`report-generator` is invoked explicitly via
+`/research-advisory:report-generator <argument>` or `/report-generator
+<argument>` — it does not auto-trigger from a plain-language mention of a
+company in conversation (see the skill's own `SKILL.md` frontmatter). The
+argument is a free-text company name/ticker plus optional intent words that
+tell Claude which of four things you mean:
 
 **1. Generate a report for a new company** — full pipeline, first run:
 
 ```
-research <Company Name>
-generate a report on <Company Name>
-analyse <Company Name>'s concall
-what's the story with <Company/Ticker>
-build me a thesis on <Company Name>
+/report-generator <Company Name>
+/report-generator generate a report on <Company Name>
+/report-generator build me a thesis on <Company Name>
 ```
 
 **2. Update the report for an already-generated company** — the cheap default
 path; only refetches what's actually changed since the last run:
 
 ```
-regenerate <Company Name>'s report
-refresh <Company Name>'s report
-update <Company Name>'s report
+/report-generator regenerate <Company Name>'s report
+/report-generator refresh <Company Name>'s report
+/report-generator update <Company Name>'s report
 ```
 
 **3. Re-generate the report from scratch for an already-generated company** —
@@ -220,20 +243,20 @@ histories like guidance/fundraise/rating/litigation are cumulative records and
 are never wiped, from-scratch or not):
 
 ```
-regenerate <Company Name>'s report from scratch
-rebuild <Company Name> from scratch
-redo <Company Name>'s report from scratch
-ignore the cache and redo <Company Name>
+/report-generator regenerate <Company Name>'s report from scratch
+/report-generator rebuild <Company Name> from scratch
+/report-generator ignore the cache and redo <Company Name>
 ```
 
 **4. Invoking without a company name** — Claude won't guess or silently reuse
 a company from earlier in the conversation; it asks which company you mean
 before doing anything else.
 
-Also: `rerun for <Company A> and <Company B>` processes multiple companies
-independently in one request, and uploading a concall transcript, investor
-presentation, or annual report PDF directly also triggers the skill,
-preferring the uploaded document over fetching one.
+Also: `/report-generator rerun for <Company A> and <Company B>` processes
+multiple companies independently in one request, and uploading a concall
+transcript, investor presentation, or annual report PDF alongside the slash
+command also feeds the skill, preferring the uploaded document over fetching
+one.
 
 Every run ends with both `~/.report-generator/output/<company_slug>/<Company>_report.md`
 and `~/.report-generator/output/<company_slug>/<Company>_report.pdf` — PDF export
@@ -256,7 +279,8 @@ flowchart TD
     P2 --> SM[("Semantic memory<br/>research_cache/*.json")]
     P3 --> SM
     P3 --> EV{"Eval<br/>verify_report.py"}
-    EV -->|pass| OUT["Deliver .md + .pdf"]
+    EV -->|pass| OUT["Save .md + .pdf"]
+    OUT --> TG["send_telegram.py<br/>(optional, see Setup)"]
     EV -.->|mark-processed, loop| P1
 ```
 
@@ -274,7 +298,7 @@ files live under `~/.report-generator/` (`research_cache/<slug>/` or
 | 1a — Retrieve: scope the window | `step1_retrieve.md` | `data_sources.md`, `sourcing_depth.md`, `SKILL.md` | `bse_announcements.py`, `check_freshness.py` | `state.json`, `report.md`, `bullets.json` |
 | 1b — Retrieve: fetch + extract | `step1_retrieve.md` | `data_sources.md`, `sourcing_depth.md`, `step3_memorize.md` | `bse_announcements.py`, `pdf_to_text.py`, `pdf_to_text_parallel.py`, `semantic_search.py`, `extract_theme_quotes.py`, `source_manifest.py` | `sources/<slug>/`, `source_manifest.json`, `candidate_quotes/*.json` |
 | 2 — Synthesize (draft sections) | `step2_synthesize.md` | `step1_retrieve.md`, `report_format.md`, `report_sections.md`, `source_playbook.md` | `guidance_tracker.py`, `capacity_utilization.py`, `fundraise_tracker.py`, `rating_tracker.py`, `litigation_tracker.py`, `bulk_block_deals.py` | `quotes.json`, `guidance_history.json`, `fundraise_history.json`, `rating_history.json`, `litigation_history.json` |
-| 3 — Memorize (save + verify) | `step3_memorize.md` | `step1_retrieve.md`, `report_assembly.md`, `guardrails.md` | `html_helpers.py`, `charts.py`, `verify_report.py`, `report_to_pdf.py`, `check_freshness.py` | `report.html`, `*_report.pdf`, `report.md`, `quotes.json`, `bullets.json`, `source_manifest.json`, 4 tracker histories (guidance/fundraise/rating/litigation), `state.json` |
+| 3 — Memorize (save + verify) | `step3_memorize.md` | `step1_retrieve.md`, `report_assembly.md`, `guardrails.md` | `html_helpers.py`, `charts.py`, `verify_report.py`, `report_to_pdf.py`, `send_telegram.py`, `check_freshness.py` | `report.html`, `*_report.pdf`, `report.md`, `quotes.json`, `bullets.json`, `source_manifest.json`, 4 tracker histories (guidance/fundraise/rating/litigation), `state.json`, `~/.report-generator/telegram.env` (read, not written) |
 
 Steps 1a and 1b share one file because 1a's only output — the fetch window and the
 decision of how much to re-run — is exactly 1b's input; splitting them across two
